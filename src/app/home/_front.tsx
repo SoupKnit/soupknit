@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/navigation-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
-export const Route = createFileRoute("/_base")({
+export const Route = createFileRoute("/home/_front")({
   component: BaseLayout,
 })
 
@@ -25,14 +25,17 @@ function BaseLayout() {
             <NavigationMenuList>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link className={navigationMenuTriggerStyle()} to="/">
-                    Home
+                  <Link className={navigationMenuTriggerStyle()} to="/app">
+                    App
                   </Link>
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <NavigationMenuLink asChild>
-                  <Link className={navigationMenuTriggerStyle()} to="/blog">
+                  <Link
+                    className={navigationMenuTriggerStyle()}
+                    to="/home/blog"
+                  >
                     Blog
                   </Link>
                 </NavigationMenuLink>
@@ -48,7 +51,7 @@ function BaseLayout() {
               asChild
             >
               <a
-                href="https://github.com/mattiaz9/vite-react-tanstack-tailwind-shadcn-starter"
+                href="https://github.com/SoupKnit/soupknit"
                 target="_blank"
                 rel="noreferrer"
               >

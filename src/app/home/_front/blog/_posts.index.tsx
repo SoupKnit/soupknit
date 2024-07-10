@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 
-export const Route = createFileRoute("/_base/blog/_posts/")({
+export const Route = createFileRoute("/home/_front/blog/_posts/")({
   component: PostsListPage,
   pendingComponent: () => (
     <>
@@ -33,7 +33,7 @@ function PostsListPage() {
   return posts.map((post) => (
     <Card key={post.id} asChild>
       <Link
-        to="/blog/$postId"
+        to="/home/blog/$postId"
         params={{
           postId: post.id,
         }}

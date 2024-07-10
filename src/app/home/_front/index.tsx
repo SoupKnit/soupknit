@@ -6,7 +6,7 @@ import { Seo } from "@/components/layout/seo"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
-export const Route = createFileRoute("/_base/")({
+export const Route = createFileRoute("/home/_front/")({
   component: HomePage,
 })
 
@@ -84,12 +84,12 @@ function HomePage() {
 
           <Button size={"lg"} asChild>
             <a
-              href="https://github.com/mattiaz9/vite-react-tanstack-tailwind-shadcn-starter"
+              href="https://github.com/SoupKnit/soupknit"
               target="_blank"
               rel="noreferrer"
             >
               <SiGithub className="mr-2" size={18} />
-              Get the code!
+              GitHub
             </a>
           </Button>
         </div>
@@ -98,7 +98,7 @@ function HomePage() {
       <div className="container my-12">
         <h2 className="mb-8 text-xl font-bold">Explore some examples:</h2>
         <div className="mx-auto grid w-full max-w-screen-md grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-6">
-          <Link to="/blog">
+          <Link to="/home/blog">
             <Card className="transition-colors hover:border-indigo-400">
               <CardHeader>
                 <CardTitle>Simple blog</CardTitle>

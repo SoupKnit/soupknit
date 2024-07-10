@@ -13,119 +13,185 @@ import { createFileRoute } from "@tanstack/react-router"
 // Import Routes
 
 import { Route as rootRoute } from "./app/__root"
-import { Route as BaseImport } from "./app/_base"
-import { Route as BaseIndexImport } from "./app/_base/index"
-import { Route as BaseBlogPostsImport } from "./app/_base/blog/_posts"
-import { Route as BaseBlogPostsIndexImport } from "./app/_base/blog/_posts.index"
-import { Route as BaseBlogPostIdPostImport } from "./app/_base/blog/$postId/_post"
-import { Route as BaseBlogPostIdPostIndexImport } from "./app/_base/blog/$postId/_post.index"
+import { Route as IndexImport } from "./app/index"
+import { Route as HomeFrontImport } from "./app/home/_front"
+import { Route as AppEditorImport } from "./app/app/_editor"
+import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
+import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
+import { Route as HomeFrontBlogPostsImport } from "./app/home/_front/blog/_posts"
+import { Route as HomeFrontBlogPostsIndexImport } from "./app/home/_front/blog/_posts.index"
+import { Route as HomeFrontBlogPostIdPostImport } from "./app/home/_front/blog/$postId/_post"
+import { Route as HomeFrontBlogPostIdPostIndexImport } from "./app/home/_front/blog/$postId/_post.index"
 
 // Create Virtual Routes
 
-const BaseBlogImport = createFileRoute("/_base/blog")()
-const BaseBlogPostIdImport = createFileRoute("/_base/blog/$postId")()
+const HomeImport = createFileRoute("/home")()
+const AppImport = createFileRoute("/app")()
+const HomeFrontBlogImport = createFileRoute("/home/_front/blog")()
+const HomeFrontBlogPostIdImport = createFileRoute("/home/_front/blog/$postId")()
 
 // Create/Update Routes
 
-const BaseRoute = BaseImport.update({
-  id: "/_base",
+const HomeRoute = HomeImport.update({
+  path: "/home",
   getParentRoute: () => rootRoute,
 } as any)
 
-const BaseBlogRoute = BaseBlogImport.update({
+const AppRoute = AppImport.update({
+  path: "/app",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const IndexRoute = IndexImport.update({
+  path: "/",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const HomeFrontRoute = HomeFrontImport.update({
+  id: "/_front",
+  getParentRoute: () => HomeRoute,
+} as any)
+
+const AppEditorRoute = AppEditorImport.update({
+  id: "/_editor",
+  getParentRoute: () => AppRoute,
+} as any)
+
+const HomeFrontBlogRoute = HomeFrontBlogImport.update({
   path: "/blog",
-  getParentRoute: () => BaseRoute,
+  getParentRoute: () => HomeFrontRoute,
 } as any)
 
-const BaseIndexRoute = BaseIndexImport.update({
+const HomeFrontIndexRoute = HomeFrontIndexImport.update({
   path: "/",
-  getParentRoute: () => BaseRoute,
+  getParentRoute: () => HomeFrontRoute,
 } as any)
 
-const BaseBlogPostIdRoute = BaseBlogPostIdImport.update({
+const AppEditorIndexRoute = AppEditorIndexImport.update({
+  path: "/",
+  getParentRoute: () => AppEditorRoute,
+} as any)
+
+const HomeFrontBlogPostIdRoute = HomeFrontBlogPostIdImport.update({
   path: "/$postId",
-  getParentRoute: () => BaseBlogRoute,
+  getParentRoute: () => HomeFrontBlogRoute,
 } as any)
 
-const BaseBlogPostsRoute = BaseBlogPostsImport.update({
+const HomeFrontBlogPostsRoute = HomeFrontBlogPostsImport.update({
   id: "/_posts",
-  getParentRoute: () => BaseBlogRoute,
+  getParentRoute: () => HomeFrontBlogRoute,
 } as any)
 
-const BaseBlogPostsIndexRoute = BaseBlogPostsIndexImport.update({
+const HomeFrontBlogPostsIndexRoute = HomeFrontBlogPostsIndexImport.update({
   path: "/",
-  getParentRoute: () => BaseBlogPostsRoute,
+  getParentRoute: () => HomeFrontBlogPostsRoute,
 } as any)
 
-const BaseBlogPostIdPostRoute = BaseBlogPostIdPostImport.update({
+const HomeFrontBlogPostIdPostRoute = HomeFrontBlogPostIdPostImport.update({
   id: "/_post",
-  getParentRoute: () => BaseBlogPostIdRoute,
+  getParentRoute: () => HomeFrontBlogPostIdRoute,
 } as any)
 
-const BaseBlogPostIdPostIndexRoute = BaseBlogPostIdPostIndexImport.update({
-  path: "/",
-  getParentRoute: () => BaseBlogPostIdPostRoute,
-} as any)
+const HomeFrontBlogPostIdPostIndexRoute =
+  HomeFrontBlogPostIdPostIndexImport.update({
+    path: "/",
+    getParentRoute: () => HomeFrontBlogPostIdPostRoute,
+  } as any)
 
 // Populate the FileRoutesByPath interface
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    "/_base": {
-      id: "/_base"
-      path: ""
-      fullPath: ""
-      preLoaderRoute: typeof BaseImport
-      parentRoute: typeof rootRoute
-    }
-    "/_base/": {
-      id: "/_base/"
+    "/": {
+      id: "/"
       path: "/"
       fullPath: "/"
-      preLoaderRoute: typeof BaseIndexImport
-      parentRoute: typeof BaseImport
+      preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
     }
-    "/_base/blog": {
-      id: "/_base/blog"
-      path: "/blog"
-      fullPath: "/blog"
-      preLoaderRoute: typeof BaseBlogImport
-      parentRoute: typeof BaseImport
+    "/app": {
+      id: "/app"
+      path: "/app"
+      fullPath: "/app"
+      preLoaderRoute: typeof AppImport
+      parentRoute: typeof rootRoute
     }
-    "/_base/blog/_posts": {
-      id: "/_base/blog/_posts"
-      path: "/blog"
-      fullPath: "/blog"
-      preLoaderRoute: typeof BaseBlogPostsImport
-      parentRoute: typeof BaseBlogRoute
+    "/app/_editor": {
+      id: "/app/_editor"
+      path: "/app"
+      fullPath: "/app"
+      preLoaderRoute: typeof AppEditorImport
+      parentRoute: typeof AppRoute
     }
-    "/_base/blog/$postId": {
-      id: "/_base/blog/$postId"
-      path: "/$postId"
-      fullPath: "/blog/$postId"
-      preLoaderRoute: typeof BaseBlogPostIdImport
-      parentRoute: typeof BaseBlogImport
+    "/home": {
+      id: "/home"
+      path: "/home"
+      fullPath: "/home"
+      preLoaderRoute: typeof HomeImport
+      parentRoute: typeof rootRoute
     }
-    "/_base/blog/$postId/_post": {
-      id: "/_base/blog/$postId/_post"
-      path: "/$postId"
-      fullPath: "/blog/$postId"
-      preLoaderRoute: typeof BaseBlogPostIdPostImport
-      parentRoute: typeof BaseBlogPostIdRoute
+    "/home/_front": {
+      id: "/home/_front"
+      path: "/home"
+      fullPath: "/home"
+      preLoaderRoute: typeof HomeFrontImport
+      parentRoute: typeof HomeRoute
     }
-    "/_base/blog/_posts/": {
-      id: "/_base/blog/_posts/"
+    "/app/_editor/": {
+      id: "/app/_editor/"
       path: "/"
-      fullPath: "/blog/"
-      preLoaderRoute: typeof BaseBlogPostsIndexImport
-      parentRoute: typeof BaseBlogPostsImport
+      fullPath: "/app/"
+      preLoaderRoute: typeof AppEditorIndexImport
+      parentRoute: typeof AppEditorImport
     }
-    "/_base/blog/$postId/_post/": {
-      id: "/_base/blog/$postId/_post/"
+    "/home/_front/": {
+      id: "/home/_front/"
       path: "/"
-      fullPath: "/blog/$postId/"
-      preLoaderRoute: typeof BaseBlogPostIdPostIndexImport
-      parentRoute: typeof BaseBlogPostIdPostImport
+      fullPath: "/home/"
+      preLoaderRoute: typeof HomeFrontIndexImport
+      parentRoute: typeof HomeFrontImport
+    }
+    "/home/_front/blog": {
+      id: "/home/_front/blog"
+      path: "/blog"
+      fullPath: "/home/blog"
+      preLoaderRoute: typeof HomeFrontBlogImport
+      parentRoute: typeof HomeFrontImport
+    }
+    "/home/_front/blog/_posts": {
+      id: "/home/_front/blog/_posts"
+      path: "/blog"
+      fullPath: "/home/blog"
+      preLoaderRoute: typeof HomeFrontBlogPostsImport
+      parentRoute: typeof HomeFrontBlogRoute
+    }
+    "/home/_front/blog/$postId": {
+      id: "/home/_front/blog/$postId"
+      path: "/$postId"
+      fullPath: "/home/blog/$postId"
+      preLoaderRoute: typeof HomeFrontBlogPostIdImport
+      parentRoute: typeof HomeFrontBlogImport
+    }
+    "/home/_front/blog/$postId/_post": {
+      id: "/home/_front/blog/$postId/_post"
+      path: "/$postId"
+      fullPath: "/home/blog/$postId"
+      preLoaderRoute: typeof HomeFrontBlogPostIdPostImport
+      parentRoute: typeof HomeFrontBlogPostIdRoute
+    }
+    "/home/_front/blog/_posts/": {
+      id: "/home/_front/blog/_posts/"
+      path: "/"
+      fullPath: "/home/blog/"
+      preLoaderRoute: typeof HomeFrontBlogPostsIndexImport
+      parentRoute: typeof HomeFrontBlogPostsImport
+    }
+    "/home/_front/blog/$postId/_post/": {
+      id: "/home/_front/blog/$postId/_post/"
+      path: "/"
+      fullPath: "/home/blog/$postId/"
+      preLoaderRoute: typeof HomeFrontBlogPostIdPostIndexImport
+      parentRoute: typeof HomeFrontBlogPostIdPostImport
     }
   }
 }
@@ -133,15 +199,22 @@ declare module "@tanstack/react-router" {
 // Create and export the route tree
 
 export const routeTree = rootRoute.addChildren({
-  BaseRoute: BaseRoute.addChildren({
-    BaseIndexRoute,
-    BaseBlogRoute: BaseBlogRoute.addChildren({
-      BaseBlogPostsRoute: BaseBlogPostsRoute.addChildren({
-        BaseBlogPostsIndexRoute,
-      }),
-      BaseBlogPostIdRoute: BaseBlogPostIdRoute.addChildren({
-        BaseBlogPostIdPostRoute: BaseBlogPostIdPostRoute.addChildren({
-          BaseBlogPostIdPostIndexRoute,
+  IndexRoute,
+  AppRoute: AppRoute.addChildren({
+    AppEditorRoute: AppEditorRoute.addChildren({ AppEditorIndexRoute }),
+  }),
+  HomeRoute: HomeRoute.addChildren({
+    HomeFrontRoute: HomeFrontRoute.addChildren({
+      HomeFrontIndexRoute,
+      HomeFrontBlogRoute: HomeFrontBlogRoute.addChildren({
+        HomeFrontBlogPostsRoute: HomeFrontBlogPostsRoute.addChildren({
+          HomeFrontBlogPostsIndexRoute,
+        }),
+        HomeFrontBlogPostIdRoute: HomeFrontBlogPostIdRoute.addChildren({
+          HomeFrontBlogPostIdPostRoute:
+            HomeFrontBlogPostIdPostRoute.addChildren({
+              HomeFrontBlogPostIdPostIndexRoute,
+            }),
         }),
       }),
     }),
@@ -156,56 +229,85 @@ export const routeTree = rootRoute.addChildren({
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/_base"
+        "/",
+        "/app",
+        "/home"
       ]
     },
-    "/_base": {
-      "filePath": "_base.tsx",
+    "/": {
+      "filePath": "index.tsx"
+    },
+    "/app": {
+      "filePath": "app",
       "children": [
-        "/_base/",
-        "/_base/blog"
+        "/app/_editor"
       ]
     },
-    "/_base/": {
-      "filePath": "_base/index.tsx",
-      "parent": "/_base"
-    },
-    "/_base/blog": {
-      "filePath": "_base/blog",
-      "parent": "/_base",
+    "/app/_editor": {
+      "filePath": "app/_editor.tsx",
+      "parent": "/app",
       "children": [
-        "/_base/blog/_posts",
-        "/_base/blog/$postId"
+        "/app/_editor/"
       ]
     },
-    "/_base/blog/_posts": {
-      "filePath": "_base/blog/_posts.tsx",
-      "parent": "/_base/blog",
+    "/home": {
+      "filePath": "home",
       "children": [
-        "/_base/blog/_posts/"
+        "/home/_front"
       ]
     },
-    "/_base/blog/$postId": {
-      "filePath": "_base/blog/$postId",
-      "parent": "/_base/blog",
+    "/home/_front": {
+      "filePath": "home/_front.tsx",
+      "parent": "/home",
       "children": [
-        "/_base/blog/$postId/_post"
+        "/home/_front/",
+        "/home/_front/blog"
       ]
     },
-    "/_base/blog/$postId/_post": {
-      "filePath": "_base/blog/$postId/_post.tsx",
-      "parent": "/_base/blog/$postId",
+    "/app/_editor/": {
+      "filePath": "app/_editor/index.tsx",
+      "parent": "/app/_editor"
+    },
+    "/home/_front/": {
+      "filePath": "home/_front/index.tsx",
+      "parent": "/home/_front"
+    },
+    "/home/_front/blog": {
+      "filePath": "home/_front/blog",
+      "parent": "/home/_front",
       "children": [
-        "/_base/blog/$postId/_post/"
+        "/home/_front/blog/_posts",
+        "/home/_front/blog/$postId"
       ]
     },
-    "/_base/blog/_posts/": {
-      "filePath": "_base/blog/_posts.index.tsx",
-      "parent": "/_base/blog/_posts"
+    "/home/_front/blog/_posts": {
+      "filePath": "home/_front/blog/_posts.tsx",
+      "parent": "/home/_front/blog",
+      "children": [
+        "/home/_front/blog/_posts/"
+      ]
     },
-    "/_base/blog/$postId/_post/": {
-      "filePath": "_base/blog/$postId/_post.index.tsx",
-      "parent": "/_base/blog/$postId/_post"
+    "/home/_front/blog/$postId": {
+      "filePath": "home/_front/blog/$postId",
+      "parent": "/home/_front/blog",
+      "children": [
+        "/home/_front/blog/$postId/_post"
+      ]
+    },
+    "/home/_front/blog/$postId/_post": {
+      "filePath": "home/_front/blog/$postId/_post.tsx",
+      "parent": "/home/_front/blog/$postId",
+      "children": [
+        "/home/_front/blog/$postId/_post/"
+      ]
+    },
+    "/home/_front/blog/_posts/": {
+      "filePath": "home/_front/blog/_posts.index.tsx",
+      "parent": "/home/_front/blog/_posts"
+    },
+    "/home/_front/blog/$postId/_post/": {
+      "filePath": "home/_front/blog/$postId/_post.index.tsx",
+      "parent": "/home/_front/blog/$postId/_post"
     }
   }
 }
