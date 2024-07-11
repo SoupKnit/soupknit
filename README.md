@@ -11,6 +11,7 @@ This repository contains the source code for a web application built with React,
 - **Tailwind CSS**: A utility-first CSS framework for rapidly building custom designs.
 - **Shadcn**: A lightweight state management library.
 - **TanStack Router**: A flexible and efficient router for React.
+- **TanStack Query**: A powerful and flexible querying library for React.
 
 ## Setup
 

@@ -6,6 +6,7 @@ import {
   Package,
   Package2,
   PanelLeft,
+  ScanFace,
   Search,
   ShoppingCart,
   Users2,
@@ -41,78 +42,41 @@ function BaseLayout() {
   return (
     <TooltipProvider>
       <div className="flex h-dvh w-full flex-col overflow-hidden">
-        <EditorHeader />
+        <EditorHeaderAndSidebar />
 
         <ScrollArea
-          className="flex h-full w-full flex-col pt-14 [&>[data-orientation=vertical]]:!top-14 [&>[data-orientation=vertical]]:!h-auto"
+          className="flex h-full w-full flex-col [&>[data-orientation=vertical]]:!top-14 [&>[data-orientation=vertical]]:!h-auto"
           type="scroll"
         >
           <main className="flex flex-1 overflow-x-hidden">
             <Outlet />
           </main>
         </ScrollArea>
+        <EditorFooter />
       </div>
     </TooltipProvider>
   )
 }
 
-function EditorHeader() {
+function EditorFooter() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-4">
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button size="icon" variant="outline" className="sm:hidden">
-            <PanelLeft className="h-5 w-5" />
-            <span className="sr-only">Toggle Menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="sm:max-w-xs">
-          <nav className="grid gap-6 text-lg font-medium">
-            <Link
-              to="/home"
-              className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
-            >
-              <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
-              <span className="sr-only">Acme Inc</span>
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Home className="h-5 w-5" />
-              Dashboard
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-foreground"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              Orders
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Package className="h-5 w-5" />
-              Products
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Users2 className="h-5 w-5" />
-              Customers
-            </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <LineChart className="h-5 w-5" />
-              Settings
-            </Link>
-          </nav>
-        </SheetContent>
-      </Sheet>
+    <footer className="sticky bottom-0 z-30 ml-14 flex h-8 items-center gap-4 border-t border-gray-100 bg-white px-4 text-xs text-gray-400 shadow-md sm:py-2">
+      <div className="mx-auto flex-grow text-center">
+        Some info to display in the footer, stats like CPU usage, memory usage,
+        etc.
+      </div>
+      <div className="inline-block h-3 w-3 rounded-full bg-green-300"></div>
+      <div className="ml-auto">
+        <span>Last run: {new Date().toLocaleTimeString()}</span>
+      </div>
+    </footer>
+  )
+}
+
+function EditorHeaderAndSidebar() {
+  return (
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-2">
+      <Sidebar />
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -147,13 +111,14 @@ function EditorHeader() {
             size="icon"
             className="overflow-hidden rounded-full"
           >
-            <img
+            <ScanFace className="h-6 w-6 border-none" />
+            {/* <img
               src="/placeholder-user.jpg"
               width={36}
               height={36}
               alt="Avatar"
               className="overflow-hidden rounded-full"
-            />
+            /> */}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -166,5 +131,64 @@ function EditorHeader() {
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
+  )
+}
+
+function Sidebar() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button size="icon" variant="outline" className="sm:hidden">
+          <PanelLeft className="h-5 w-5" />
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="sm:max-w-xs">
+        <nav className="grid gap-6 text-lg font-medium">
+          <Link
+            to="/home"
+            className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
+          >
+            <Package2 className="h-5 w-5 transition-all group-hover:scale-110" />
+            <span className="sr-only">SoupKnit Inc</span>
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+          >
+            <Home className="h-5 w-5" />
+            All Projects
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-4 px-2.5 text-foreground"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            Orders
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+          >
+            <Package className="h-5 w-5" />
+            Blocks
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+          >
+            <Users2 className="h-5 w-5" />
+            Sharing
+          </Link>
+          <Link
+            href="#"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+          >
+            <LineChart className="h-5 w-5" />
+            Settings
+          </Link>
+        </nav>
+      </SheetContent>
+    </Sheet>
   )
 }
