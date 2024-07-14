@@ -35,7 +35,7 @@ jobs:
         run: |
           chmod +x ./install.sh
           ./install.sh
-      - name: Install Yarn dependencies
+      - name: Install UI dependencies
         run: |
           pnpm install
       - name: Build with PNPM
