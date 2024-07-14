@@ -5868,15 +5868,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pyodide@npm:^0.26.1":
-  version: 0.26.1
-  resolution: "pyodide@npm:0.26.1"
-  dependencies:
-    ws: "npm:^8.5.0"
-  checksum: 10c0/b9189271849f2a3c87f57b95d611b9eefe9aef06e39ecd014dcaf990013c293a9c29bbd17b510290ac59a849d1cc935517973b58814d31f90024bb88e92cf358
-  languageName: node
-  linkType: hard
-
 "queue-microtask@npm:^1.2.2":
   version: 1.2.3
   resolution: "queue-microtask@npm:1.2.3"
@@ -6461,7 +6452,6 @@ __metadata:
     postcss: "npm:8.4.38"
     prettier: "npm:3.3.2"
     prettier-plugin-tailwindcss: "npm:0.6.5"
-    pyodide: "npm:^0.26.1"
     react: "npm:rc"
     react-day-picker: "npm:8.10.1"
     react-dom: "npm:rc"
@@ -7382,7 +7372,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.14.2, ws@npm:^8.5.0":
+"ws@npm:^8.14.2":
   version: 8.18.0
   resolution: "ws@npm:8.18.0"
   peerDependencies:
