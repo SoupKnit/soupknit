@@ -34,10 +34,9 @@ jobs:
       # - name: Build Jupyter Lite Extension
       # run: |
       # pytest
-      - name: Execute install.sh
+      - name: Build Jupyter Lite Extension
         run: |
-          chmod +x ./install.sh
-          ./install.sh
+          pnpm run buildJupyter
       - name: Install UI dependencies
         run: |
           pnpm install
