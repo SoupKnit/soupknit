@@ -9,6 +9,7 @@ pip install -ve .
 pip install jupyterlab
 pip install jupyter
 
+jlpm install
 jlpm run build
 
 cd ../public || exit
