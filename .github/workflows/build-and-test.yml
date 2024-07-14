@@ -37,7 +37,7 @@ jobs:
           ./install.sh
       - name: Install Yarn dependencies
         run: |
-          yarn install
-      - name: Build with Yarn
+          pnpm install
+      - name: Build with PNPM
         run: |
-          yarn build
+          pnpm build
