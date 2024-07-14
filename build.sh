@@ -7,6 +7,7 @@ cd jupyter-lab-ext || exit
 
 pip install -ve .
 pip install jupyterlab
+pip install jupyter
 
 jlpm run build
 
