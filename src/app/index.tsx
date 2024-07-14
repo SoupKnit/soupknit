@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { loadPyodide } from "pyodide"
+
+// import { loadPyodide } from "pyodide"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,12 +27,12 @@ export function Dashboard() {
   const [session, setSession] = useState<Session | null>(null)
 
   useEffect(() => {
-    console.log("Loading Pyodide...")
-    loadPyodide({
-      indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.2/full",
-    }).then((pyodide) => {
-      pyodide.runPython('print("Hello from Python!")')
-    })
+    // console.log("Loading Pyodide...")
+    // loadPyodide({
+    //   indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.2/full",
+    // }).then((pyodide) => {
+    //   pyodide.runPython('print("Hello from Python!")')
+    // })
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
     })

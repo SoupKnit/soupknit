@@ -52,7 +52,6 @@
     "cmdk": "1.0.0",
     "date-fns": "3.6.0",
     "lucide-react": "0.395.0",
-    "pyodide": "^0.26.1",
     "react": "rc",
     "react-day-picker": "8.10.1",
     "react-dom": "rc",

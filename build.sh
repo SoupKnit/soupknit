@@ -1,14 +1,16 @@
+#!/bin/bash
+
 rm -rf public/jupy_lite
 
 # Build the extention project first
-cd jupyter-lab-ext
+cd jupyter-lab-ext || exit
 
 pip install -ve .
 pip install jupyterlab
 
 jlpm run build
 
-cd ../public
+cd ../public || exit
 
 # Create static assets for the jupyter lab ext
 jupyter lite build --output-dir jupy_lite
