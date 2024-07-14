@@ -236,7 +236,7 @@ function RenderCell({ code }: Readonly<{ code: string }>) {
 
 function DataViewerContainer() {
   return (
-    <Tabs defaultValue="week">
+    <Tabs defaultValue="add_cell">
       <div className="flex items-center">
         <TabsList>
           <TabsTrigger value="week">Some View</TabsTrigger>
@@ -436,6 +436,7 @@ function DataViewerContainer() {
           </CardContent>
         </Card>
       </TabsContent>
+      <TabsContent value="add_cell"></TabsContent>
     </Tabs>
   )
 }

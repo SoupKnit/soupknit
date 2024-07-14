@@ -1,14 +1,12 @@
-import React, { useRef } from "react"
+import React, { useCallback, useRef } from "react"
 
 function JupyterEmbedded({ className }: { className?: string }) {
   const iframeRef = useRef(null)
   const [theme, setTheme] = React.useState("Default")
 
-  // Handler to send a message to the iframe
-  const toggleTheme = () => {
-    const iframeWindow = iframeRef?.current?.contentWindow
-    iframeWindow.postMessage({ type: "from-host-to-iframe" }, "*")
-  }
+  const toggle = useCallback(() => {
+    window.frames.jupyterlab.postMessage({ type: "from-host-to-iframe" })
+  }, [])
 
   // Effect to listen for messages from the iframe
   React.useEffect(() => {
@@ -26,13 +24,16 @@ function JupyterEmbedded({ className }: { className?: string }) {
   }, [])
 
   return (
-    <iframe
-      ref={iframeRef}
-      name="jupyterlab"
-      src="/jupy_assets/lab/index.html?kernel=python"
-      className={className}
-      sandbox="allow-scripts allow-same-origin"
-    />
+    <>
+      <button onClick={toggle}>Toggle Theme</button>
+      <iframe
+        ref={iframeRef}
+        name="jupyterlab"
+        src="/jupy_lite/lab/index.html?kernel=python"
+        className={className}
+        sandbox="allow-scripts allow-same-origin"
+      />
+    </>
   )
 }
 
