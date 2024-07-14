@@ -1,11 +1,17 @@
 import React, { useCallback, useRef } from "react"
 
+type WindowWithJupyter = Window & {
+  jupyterlab: {
+    postMessage: (message: { type: string; content: string }) => void
+  }
+}
+
 function JupyterEmbedded({ className }: { className?: string }) {
   const iframeRef = useRef(null)
   const [theme, setTheme] = React.useState("Default")
 
   const toggle = useCallback(() => {
-    window.frames.jupyterlab?.postMessage({
+    ;(window.frames as WindowWithJupyter).jupyterlab?.postMessage({
       type: "add_cell",
       content: `
 # We can insert whatever the fuck we want
@@ -18,7 +24,9 @@ b = a * 2
 
   // Effect to listen for messages from the iframe
   React.useEffect(() => {
-    const handleMessage = (event) => {
+    const handleMessage = (event: {
+      data: { type: string; theme: React.SetStateAction<string> }
+    }) => {
       if (event.data.type === "from-iframe-to-host") {
         setTheme(event.data.theme)
       }

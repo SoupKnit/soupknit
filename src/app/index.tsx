@@ -69,7 +69,7 @@ function Login() {
         password,
       })
       if (error) throw error
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error logging in:", error.message)
       setError(error.message)
     } finally {

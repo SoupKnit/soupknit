@@ -29,7 +29,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleSignUp = async (e) => {
+  const handleSignUp = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     setLoading(true)
     try {
@@ -39,7 +39,7 @@ export function SignupForm() {
       })
 
       if (error) throw error
-    } catch (error) {
+    } catch (error: any) {
       setError(error.message)
     } finally {
       setLoading(false)
