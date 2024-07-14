@@ -14,4 +14,4 @@ cd ../public
 jupyter lite build --output-dir jupy_lite
 
 # Build the UI
-yarn --frozen-lockfile install; yarn build
+yarn --frozen-lockfile install --production; yarn build
