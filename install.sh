@@ -8,6 +8,8 @@ cd jupyter-lab-ext || exit
 pip install -ve .
 pip install jupyterlab
 pip install jupyter
+pip install jupyterlite-core
+pip install jupyterlite-pyodide-kernel
 
 jlpm install
 jlpm run build
