@@ -17,6 +17,7 @@ import {
   Users2,
 } from "lucide-react"
 
+import JupyterEmbedded from "@/components/editor/JupyterEmbedded"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -75,7 +76,25 @@ export function Editor() {
             <DataViewerContainer />
           </div>
           <div className="col-span-3">
-            <SourceContainer />
+            <Tabs defaultValue="jupyter">
+              <TabsList>
+                <TabsTrigger value="native">Native</TabsTrigger>
+                <TabsTrigger value="jupyter">Jupyter</TabsTrigger>
+                {/* <TabsTrigger value="year">Yet Another View</TabsTrigger> */}
+              </TabsList>
+              <div>
+                <TabsContent value="native" className="h-full">
+                  <SourceContainer />
+                </TabsContent>
+                <TabsContent value="jupyter" className="">
+                  <Card>
+                    <CardContent className="flex h-full min-h-[85vh] flex-col items-center justify-center p-2">
+                      <JupyterEmbedded className="padding-none margin-none w-full flex-grow border-none" />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </div>
+            </Tabs>
           </div>
         </main>
       </div>
@@ -133,7 +152,7 @@ model.fit(data)
   ]
   return (
     <Card
-      className="flex min-h-[85vh] flex-col overflow-hidden"
+      className="flex h-full flex-col overflow-hidden"
       x-chunk="dashboard-05-chunk-4"
     >
       <CardHeader className="flex flex-row items-center bg-muted/50">
