@@ -5,7 +5,15 @@ function JupyterEmbedded({ className }: { className?: string }) {
   const [theme, setTheme] = React.useState("Default")
 
   const toggle = useCallback(() => {
-    window.frames.jupyterlab.postMessage({ type: "from-host-to-iframe" })
+    window.frames.jupyterlab?.postMessage({
+      type: "add_cell",
+      content: `
+# We can insert whatever the fuck we want
+print("Hello, world!")
+a = 2 + 3
+b = a * 2
+        `,
+    })
   }, [])
 
   // Effect to listen for messages from the iframe
