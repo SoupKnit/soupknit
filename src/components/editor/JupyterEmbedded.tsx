@@ -7,7 +7,7 @@ type WindowWithJupyter = Window & {
 }
 
 function JupyterEmbedded({ className }: { className?: string }) {
-  const iframeRef = useRef(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const [theme, setTheme] = React.useState("Default")
 
   const toggle = useCallback(() => {
@@ -45,6 +45,7 @@ b = a * 2
       <iframe
         ref={iframeRef}
         name="jupyterlab"
+        id="jupyter-iframe"  // Added id here
         src="/jupy_lite/lab/index.html?kernel=python"
         className={className}
         sandbox="allow-scripts allow-same-origin"
