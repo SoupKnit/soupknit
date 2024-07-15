@@ -56,6 +56,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import ModelGenerator from "../_editor"
 
 // import { Seo } from "@/components/layout/seo"
 
@@ -73,6 +74,7 @@ export function Editor() {
             <div className="mb-4">
               <ActionContainer />
             </div>
+            <ModelGenerator />
             <DataViewerContainer />
           </div>
           <div className="col-span-5">
