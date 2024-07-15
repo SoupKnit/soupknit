@@ -6,13 +6,19 @@ rm -rf public/jupy_lite
 cd jupyter-lab-ext || exit
 
 pip install -ve .
-pip install jupyterlab
+jupyter labextension develop --overwrite .
+
 pip install jupyter
 pip install jupyterlite-core
 pip install jupyterlite-pyodide-kernel
+pip install jupyterlab
 
+jlpm add @jupyterlab/apputils
+jlpm add @jupyterlab/application
 jlpm install
 jlpm run build
+
+jupyter labextension list
 
 cd ../public || exit
 

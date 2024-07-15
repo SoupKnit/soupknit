@@ -1,17 +1,17 @@
-import React, { useCallback, useRef } from "react"
+import { forwardRef, useCallback, useEffect } from "react"
 
-type WindowWithJupyter = Window & {
-  jupyterlab: {
-    postMessage: (message: { type: string; content: string }) => void
-  }
-}
+import type { Ref } from "react"
 
-function JupyterEmbedded({ className }: { className?: string }) {
-  const iframeRef = useRef(null)
-  const [theme, setTheme] = React.useState("Default")
-
-  const toggle = useCallback(() => {
-    ;(window.frames as WindowWithJupyter).jupyterlab?.postMessage({
+function JupyterFrame({
+  className,
+  ref,
+}: {
+  className?: string
+  ref: Ref<HTMLIFrameElement>
+}) {
+  const addCell = useCallback(() => {
+    const jupyterLab = (window.frames as any)?.jupyterlab
+    jupyterLab.postMessage({
       type: "add_cell",
       content: `
 # We can insert whatever the fuck we want
@@ -22,28 +22,11 @@ b = a * 2
     })
   }, [])
 
-  // Effect to listen for messages from the iframe
-  React.useEffect(() => {
-    const handleMessage = (event: {
-      data: { type: string; theme: React.SetStateAction<string> }
-    }) => {
-      if (event.data.type === "from-iframe-to-host") {
-        setTheme(event.data.theme)
-      }
-    }
-
-    window.addEventListener("message", handleMessage)
-
-    return () => {
-      window.removeEventListener("message", handleMessage)
-    }
-  }, [])
-
   return (
     <>
-      <button onClick={toggle}>Toggle Theme</button>
+      <button onClick={addCell}>Add Cell</button>
       <iframe
-        ref={iframeRef}
+        ref={ref}
         name="jupyterlab"
         src="/jupy_lite/lab/index.html?kernel=python"
         className={className}
@@ -53,4 +36,5 @@ b = a * 2
   )
 }
 
+const JupyterEmbedded = forwardRef(JupyterFrame)
 export default JupyterEmbedded
