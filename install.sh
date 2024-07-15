@@ -13,8 +13,6 @@ pip install jupyterlite-core
 pip install jupyterlite-pyodide-kernel
 pip install jupyterlab
 
-jlpm add @jupyterlab/apputils
-jlpm add @jupyterlab/application
 jlpm install
 jlpm run build
 

@@ -1,5 +1,6 @@
 import { Download, ListFilter } from "lucide-react"
 
+import { Skeleton } from "../ui/skeleton"
 import { CellActions } from "./CellActions"
 import { DataViewer } from "./DataViewer"
 import JupyterEmbedded from "./JupyterEmbedded"
@@ -14,10 +15,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export function LeftPanel({
-  jupyter,
+export function ActionsContainer({
+  editorRef,
+  editorLoaded,
 }: {
-  jupyter?: null | React.RefObject<HTMLIFrameElement>
+  editorLoaded: boolean
+  editorRef: React.RefObject<HTMLIFrameElement | null>
 }) {
   return (
     <Tabs defaultValue="add_cell">
@@ -55,7 +58,11 @@ export function LeftPanel({
         <DataViewer />
       </TabsContent>
       <TabsContent value="add_cell">
-        <CellActions jupyter={jupyter} />
+        {editorLoaded ? (
+          <CellActions editorRef={editorRef} />
+        ) : (
+          <Skeleton className="h-96" />
+        )}
       </TabsContent>
     </Tabs>
   )

@@ -1,6 +1,9 @@
 import { useCallback, useEffect } from "react"
 
+import ModelGenerator from "./ModelGenerator"
 import { Button } from "@/components/ui/button"
+
+import type { CodeActionComponent } from "@/lib/model"
 
 type WindowWithJupyter = Window & {
   jupyterlab: {
@@ -8,23 +11,10 @@ type WindowWithJupyter = Window & {
   }
 }
 
-export function CellActions({
-  jupyter,
-}: {
-  jupyter?: React.RefObject<HTMLIFrameElement> | null
-}) {
-  const addCell = useCallback(() => {
-    const jupyterLab = (window.frames as WindowWithJupyter)?.jupyterlab
-    jupyterLab.postMessage({
-      type: "add_cell",
-      content: `
-# We can insert whatever the fuck we want
-print("Hello, world!")
-a = 2 + 3
-b = a * 2
-        `,
-    })
-  }, [])
-
-  return <Button onClick={addCell}>Add Cell</Button>
+export const CellActions: CodeActionComponent = ({ editorRef }) => {
+  return (
+    <>
+      <ModelGenerator editorRef={editorRef} />
+    </>
+  )
 }

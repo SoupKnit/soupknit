@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-export function ActionContainer() {
+export function ActionCallout() {
   return (
     <Card className="sm:col-span-2" x-chunk="dashboard-05-chunk-0">
       <CardHeader className="pb-3">
