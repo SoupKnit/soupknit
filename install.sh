@@ -18,10 +18,8 @@ jlpm run build
 
 jupyter labextension list
 
-cd ../public || exit
-
 # Create static assets for the jupyter lab ext
-jupyter lite build --output-dir jupy_lite
+jupyter lite build --output-dir ../../public/jupy_lite
 
 # Build the UI
 # yarn --frozen-lockfile install; yarn build

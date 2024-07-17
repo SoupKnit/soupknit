@@ -42,43 +42,35 @@ interface ModelConfig {
 
 const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
   const [config, setConfig] = useState<ModelConfig>({
-    task: "classification",
-    model_type: "",
-    data_path: "",
+    task: 'classification',
+    model_type: '',
+    data_path: '',
     X_columns: [],
-    y_column: "",
+    y_column: '',
     scale_features: false,
     test_size: 0.2,
     tune_hyperparameters: false,
     param_grid: {},
-    model_params: {},
-  })
+    model_params: {}
+  });
 
   const models: Record<TaskType, ModelType[]> = {
-    classification: ["KNN", "RandomForestClassifier", "SVM"],
-    regression: [
-      "KNN_Regressor",
-      "LogisticRegression",
-      "LinearRegression",
-      "RandomForest_Regressor",
-      "SVR",
-    ],
-    clustering: ["KMeans"],
-  }
+    classification: ['KNN', 'RandomForestClassifier', 'SVM'],
+    regression: ['KNN_Regressor', 'LogisticRegression', 'LinearRegression', 'RandomForest_Regressor', 'SVR'],
+    clustering: ['KMeans']
+  };
 
   const modelImports: Record<ModelType, string> = {
-    KNN: "from sklearn.neighbors import KNeighborsClassifier",
-    KNN_Regressor: "from sklearn.neighbors import KNeighborsRegressor",
-    LogisticRegression: "from sklearn.linear_model import LogisticRegression",
-    LinearRegression: "from sklearn.linear_model import LinearRegression",
-    RandomForestClassifier:
-      "from sklearn.ensemble import RandomForestClassifier",
-    RandomForest_Regressor:
-      "from sklearn.ensemble import RandomForestRegressor",
-    SVM: "from sklearn.svm import SVC",
-    SVR: "from sklearn.svm import SVR",
-    KMeans: "from sklearn.cluster import KMeans",
-  }
+    'KNN': "from sklearn.neighbors import KNeighborsClassifier",
+    'KNN_Regressor': "from sklearn.neighbors import KNeighborsRegressor",
+    'LogisticRegression': "from sklearn.linear_model import LogisticRegression",
+    'LinearRegression': "from sklearn.linear_model import LinearRegression",
+    'RandomForestClassifier': "from sklearn.ensemble import RandomForestClassifier",
+    'RandomForest_Regressor': "from sklearn.ensemble import RandomForestRegressor",
+    'SVM': "from sklearn.svm import SVC",
+    'SVR': "from sklearn.svm import SVR",
+    'KMeans': "from sklearn.cluster import KMeans"
+  };
 
   const generateImports = (config: ModelConfig): string => {
     const imports = [
@@ -87,20 +79,24 @@ const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
       "import matplotlib.pyplot as plt",
       "from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV",
       "from sklearn.preprocessing import StandardScaler",
-      "from sklearn.metrics import accuracy_score, mean_squared_error, silhouette_score",
-    ]
-
+      "from sklearn.metrics import accuracy_score, mean_squared_error, silhouette_score"
+    ];
+    
     if (config.model_type && config.model_type in modelImports) {
-      imports.push(modelImports[config.model_type])
+      imports.push(modelImports[config.model_type]);
     }
-    return imports.join("\n")
-  }
+    return imports.join("\n");
+  };
 
-  const generateCode = (config: ModelConfig): string => {
-    const codePartsObject = {
-      imports: generateImports(config),
-      task: `\ntask = '${config.task}'`,
-      dataLoading: `
+  const generateCode = (config: ModelConfig): string[] => {
+    const sections = [
+      {
+        title: "Task Definition",
+        code: `# Define the task\ntask = '${config.task}'`
+      },
+      {
+        title: "Load and Preprocess Data",
+        code: `
 # Load and preprocess data
 data = pd.read_csv("${config.data_path}")
 X = data[${JSON.stringify(config.X_columns)}]
@@ -110,15 +106,21 @@ y = data["${config.y_column}"] if "${config.y_column}" in data.columns else None
 if ${config.scale_features}:
     scaler = StandardScaler()
     X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-`,
-      modelCreation: `
+`
+      },
+      {
+        title: "Create Model",
+        code: `
 # Create model
-model = ${config.model_type}(${Object.entries(config.model_params)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(", ")})
-`,
-      hyperparameterTuning: config.tune_hyperparameters
-        ? `
+model = ${config.model_type}(${Object.entries(config.model_params).map(([k, v]) => `${k}=${v}`).join(", ")})
+`
+      }
+    ];
+
+    if (config.tune_hyperparameters) {
+      sections.push({
+        title: "Hyperparameter Tuning",
+        code: `
 # Hyperparameter tuning
 param_grid = ${JSON.stringify(config.param_grid, null, 4)}
 grid_search = GridSearchCV(model, param_grid, cv=5, scoring='accuracy' if task == 'classification' else 'neg_mean_squared_error')
@@ -126,10 +128,13 @@ grid_search.fit(X, y)
 model = grid_search.best_estimator_
 print(f"Best parameters: {grid_search.best_params_}")
 `
-        : "",
-      modelTraining:
-        config.task !== "clustering"
-          ? `
+      });
+    }
+
+    if (config.task !== 'clustering') {
+      sections.push({
+        title: "Train and Evaluate Model",
+        code: `
 # Split data and train model
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=${config.test_size}, random_state=42)
 model.fit(X_train, y_train)
@@ -147,15 +152,22 @@ else:
 cv_scores = cross_val_score(model, X, y, cv=5, scoring='accuracy' if task == 'classification' else 'neg_mean_squared_error')
 print(f"Cross-validation score: {np.mean(cv_scores):.2f}")
 `
-          : `
+      });
+    } else {
+      sections.push({
+        title: "Perform Clustering",
+        code: `
 # Perform clustering
 predictions = model.fit_predict(X)
 score = silhouette_score(X, predictions)
 print(f"Silhouette Score: {score:.2f}")
-`,
-      visualization:
-        config.task !== "clustering"
-          ? `
+`
+      });
+    }
+
+    sections.push({
+      title: "Visualize Results",
+      code: config.task !== 'clustering' ? `
 # Visualize results
 plt.figure(figsize=(10, 6))
 plt.scatter(y_test, predictions, alpha=0.5)
@@ -165,8 +177,7 @@ plt.ylabel('Predicted Values')
 plt.title('Actual vs Predicted Values')
 plt.tight_layout()
 plt.show()
-`
-          : `
+` : `
 # Visualize results
 plt.figure(figsize=(10, 6))
 plt.scatter(X.iloc[:, 0], X.iloc[:, 1], c=predictions, cmap='viridis')
@@ -175,11 +186,11 @@ plt.ylabel('Feature 2')
 plt.title('Clustering Results')
 plt.tight_layout()
 plt.show()
-`,
-    }
+`
+    });
 
-    return Object.values(codePartsObject).join("\n")
-  }
+    return sections.map(section => `# ${section.title}\n${section.code.trim()}`);
+  };
 
   const handleModelSelect = (model: ModelType) => {
     setConfig((prevConfig) => ({ ...prevConfig, model_type: model }))
@@ -189,23 +200,30 @@ plt.show()
     setConfig((prevConfig) => ({ ...prevConfig, task, model_type: "" }))
   }
 
+  const sendToIframe = (content: string) => {
+    const iframe = document.getElementById('jupyter-embedded') as HTMLIFrameElement;
+    if (iframe && iframe.contentWindow) {
+      console.log('Sending message to iframe:', content); // Added debug log
+      iframe.contentWindow.postMessage({ type: 'add_cell', content }, '*');
+    } else {
+      console.error('Iframe or contentWindow not found');
+    }
+  };
+
   const runBlock = () => {
     if (config.model_type) {
-      const generatedCode = generateCode(config)
+      const imports = generateImports(config);
+      const codeSections = generateCode(config);
       try {
-        sendCodeActionEvent(editorRef, {
-          type: "add_cell",
-          content: generatedCode,
-        })
-        // const iframe = document.getElementById(
-        //   "jupyter-embedded",
-        // ) as HTMLIFrameElement
-        // if (iframe && iframe.contentWindow) {
-        //   iframe.contentWindow.postMessage(
-        //     { type: "add_cell", content: generatedCode },
-        //     "*",
-        //   )
-        // }
+
+        // Send imports first
+        sendToIframe(imports);
+        
+        // Then send each code section with a small delay
+        codeSections.forEach((section, index) => {
+          setTimeout(() => sendToIframe(section), (index + 1) * 150);
+        });
+        
       } catch {
         alert("Please select a model before generating code.")
       }

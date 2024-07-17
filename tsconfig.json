@@ -17,7 +17,7 @@
         "src/*"
       ],
       "@/jupyter/*": [
-        "jupyter-lab-ext/src/*"
+        "jupyter-lab-ext/Jupyter-Lab-Ext/src/*"
       ]
     },
     "allowJs": false,
