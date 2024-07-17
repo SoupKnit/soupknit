@@ -5,3 +5,6 @@ dist-ssr
 *.local
 public/jupy_lite
 .env
+yarn.lock
+.yarn/install-state.gz
+public/.jupyterlite.doit.db

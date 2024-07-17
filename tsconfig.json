@@ -1,13 +1,24 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
     "module": "ESNext",
     "moduleResolution": "Node",
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/jupyter/*": [
+        "jupyter-lab-ext/Jupyter-Lab-Ext/src/*"
+      ]
     },
     "allowJs": false,
     "skipLibCheck": true,
@@ -25,8 +36,20 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["src", "typings", "vite.config.ts", ".eslintrc.cjs", "postcss.config.cjs", "prettier.config.mjs", "tailwind.config.ts"],
-  "exclude": ["build", "node_modules", "public"],
+  "include": [
+    "src",
+    "typings",
+    "vite.config.ts",
+    ".eslintrc.cjs",
+    "postcss.config.cjs",
+    "prettier.config.mjs",
+    "tailwind.config.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules",
+    "public"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"
