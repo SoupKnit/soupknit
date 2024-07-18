@@ -8,9 +8,9 @@ cd jupyter-lab-ext || exit
 python3 -m pip install jupyter
 python3 -m pip install jupyterlite-core
 python3 -m pip install jupyterlite-pyodide-kernel
-python3 -m pip install --upgrade jupyterlab
+python3 -m pip install jupyterlab
 
-
+export PATH="$HOME/.local/bin:$PATH"
 jupyter labextension develop --overwrite .
 jlpm install
 python3 -m pip install -ve . --user
