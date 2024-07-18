@@ -5,15 +5,14 @@ rm -rf public/jupy_lite
 # Build the extention project first
 cd jupyter-lab-ext || exit
 
-python3 -m pip install jupyter
-python3 -m pip install jupyterlite-core
-python3 -m pip install jupyterlite-pyodide-kernel
-python3 -m pip install jupyterlab
+pip install jupyter
+pip install jupyterlite-core
+pip install jupyterlite-pyodide-kernel
+pip install jupyterlab
 
-export PATH="$HOME/.local/bin:$PATH"
 jupyter labextension develop --overwrite .
 jlpm install
-python3 -m pip install -ve . --user
+pip install -ve . --user
 jlpm run build
 
 # Create static assets for the jupyter lab ext
