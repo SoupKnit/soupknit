@@ -1,5 +1,6 @@
 import { z } from 'zod';
 export const configSchema = z.object({
+    framework: z.enum(['sklearn', 'pytorch', 'tensorflow']),
     task: z.enum(['classification', 'regression']),
     model_type: z.string(),
     data_path: z.string(),

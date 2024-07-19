@@ -1,17 +1,20 @@
 import { z } from 'zod';
 export declare const configSchema: z.ZodObject<{
+    framework: z.ZodEnum<["sklearn", "pytorch", "tensorflow"]>;
     task: z.ZodEnum<["classification", "regression"]>;
     model_type: z.ZodString;
     data_path: z.ZodString;
     target_column: z.ZodString;
     model_params: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
 }, "strip", z.ZodTypeAny, {
+    framework: "sklearn" | "pytorch" | "tensorflow";
     task: "classification" | "regression";
     model_type: string;
     data_path: string;
     target_column: string;
     model_params?: Record<string, any> | undefined;
 }, {
+    framework: "sklearn" | "pytorch" | "tensorflow";
     task: "classification" | "regression";
     model_type: string;
     data_path: string;

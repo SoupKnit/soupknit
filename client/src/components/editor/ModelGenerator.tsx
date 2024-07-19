@@ -1,75 +1,93 @@
 // src/components/ModelGenerator.tsx
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { generateCode, ModelConfig, TaskType, ModelType, Framework } from "@/lib/mlUtils";
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { generateCode } from "@/lib/mlUtils"
+
+import type { Framework, ModelConfig, ModelType, TaskType } from "@/lib/mlUtils"
 import type { CodeActionComponent } from "@/lib/model"
 
 const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
   const [config, setConfig] = useState<ModelConfig>({
-    task: 'classification',
-    model_type: '',
-    framework: 'sklearn',
-    data_path: '',
+    task: "classification",
+    model_type: "",
+    framework: "sklearn",
+    data_path: "",
     X_columns: [],
-    y_column: '',
+    y_column: "",
     scale_features: false,
     test_size: 0.2,
     tune_hyperparameters: false,
     param_grid: {},
-    model_params: {}
-  });
+    model_params: {},
+  })
 
   const models: Record<TaskType, ModelType[]> = {
-    classification: ['KNN', 'RandomForestClassifier', 'SVM'],
-    regression: ['KNN_Regressor', 'LogisticRegression', 'LinearRegression', 'RandomForest_Regressor', 'SVR'],
-    clustering: ['KMeans']
-  };
+    classification: ["KNN", "RandomForestClassifier", "SVM"],
+    regression: [
+      "KNN_Regressor",
+      "LogisticRegression",
+      "LinearRegression",
+      "RandomForest_Regressor",
+      "SVR",
+    ],
+    clustering: ["KMeans"],
+  }
 
-  const frameworks: Framework[] = ['sklearn', 'tensorflow', 'pytorch'];
+  const frameworks: Framework[] = ["sklearn", "tensorflow", "pytorch"]
 
   const handleModelSelect = (model: ModelType) => {
-    setConfig((prevConfig: ModelConfig) => ({ ...prevConfig, model_type: model }));
-  };
+    setConfig((prevConfig: ModelConfig) => ({
+      ...prevConfig,
+      model_type: model,
+    }))
+  }
 
   const handleTaskSelect = (task: TaskType) => {
-    setConfig((prevConfig: ModelConfig) => ({ ...prevConfig, task, model_type: "" }));
-  };
+    setConfig((prevConfig: ModelConfig) => ({
+      ...prevConfig,
+      task,
+      model_type: "",
+    }))
+  }
 
   const handleFrameworkSelect = (framework: Framework) => {
-    setConfig((prevConfig: ModelConfig) => ({ ...prevConfig, framework }));
-  };
+    setConfig((prevConfig: ModelConfig) => ({ ...prevConfig, framework }))
+  }
 
   const sendToIframe = (content: string) => {
-    const iframe = document.getElementById('jupyter-embedded') as HTMLIFrameElement | null;
+    const iframe = document.getElementById(
+      "jupyter-embedded",
+    ) as HTMLIFrameElement | null
     if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: 'add_cell', content }, '*');
+      iframe.contentWindow.postMessage({ type: "add_cell", content }, "*")
     } else {
-      console.error('Iframe or contentWindow not found');
+      console.error("Iframe or contentWindow not found")
     }
-  };
+  }
 
   const runBlock = () => {
     if (config.model_type) {
-      const codeSections = generateCode(config);
+      const codeSections = generateCode(config)
       try {
         codeSections.forEach((section: string, index: number) => {
-          setTimeout(() => sendToIframe(section), index * 150);
-        });
+          setTimeout(() => sendToIframe(section), index * 150)
+        })
       } catch (error) {
-        alert("An error occurred while generating code.");
-        console.error(error);
+        alert("An error occurred while generating code.")
+        console.error(error)
       }
     }
-  };
+  }
 
   return (
     <div className="p-4">
@@ -79,25 +97,27 @@ const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
           <TabsTrigger value="regression">Regression</TabsTrigger>
           <TabsTrigger value="clustering">Clustering</TabsTrigger>
         </TabsList>
-        {(Object.entries(models) as [TaskType, ModelType[]][]).map(([category, modelList]) => (
-          <TabsContent value={category} key={category}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">Select {category} model</Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {modelList.map((model) => (
-                  <DropdownMenuItem
-                    key={model}
-                    onSelect={() => handleModelSelect(model)}
-                  >
-                    {model}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </TabsContent>
-        ))}
+        {(Object.entries(models) as [TaskType, ModelType[]][]).map(
+          ([category, modelList]) => (
+            <TabsContent value={category} key={category}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">Select {category} model</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  {modelList.map((model) => (
+                    <DropdownMenuItem
+                      key={model}
+                      onSelect={() => handleModelSelect(model)}
+                    >
+                      {model}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TabsContent>
+          ),
+        )}
       </Tabs>
 
       <DropdownMenu>
@@ -116,19 +136,25 @@ const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="grid grid-cols-2 gap-4 mt-4">
+      <div className="mt-4 grid grid-cols-2 gap-4">
         <Input
           placeholder="Data path"
           value={config.data_path}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setConfig((prev: ModelConfig) => ({ ...prev, data_path: e.target.value }))
+            setConfig((prev: ModelConfig) => ({
+              ...prev,
+              data_path: e.target.value,
+            }))
           }
         />
         <Input
           placeholder="Y column"
           value={config.y_column}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setConfig((prev: ModelConfig) => ({ ...prev, y_column: e.target.value }))
+            setConfig((prev: ModelConfig) => ({
+              ...prev,
+              y_column: e.target.value,
+            }))
           }
         />
         <Input
@@ -159,7 +185,7 @@ const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
         Generate and Send Code
       </Button>
     </div>
-  );
-};
+  )
+}
 
-export default ModelGenerator;
+export default ModelGenerator
