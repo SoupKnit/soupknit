@@ -6,7 +6,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      typescript:
+        specifier: ^5.5.3
+        version: 5.5.3
 
   client:
     dependencies:
@@ -328,6 +332,9 @@ importers:
       '@fastify/cors':
         specifier: ^9.0.1
         version: 9.0.1
+      '@soupknit/model':
+        specifier: workspace:*
+        version: link:../packages/model
       fastify:
         specifier: ^4.28.1
         version: 4.28.1
