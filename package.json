@@ -6,6 +6,7 @@
     "server"
   ],
   "scripts": {
+    "buildJupyter": "./install.sh",
     "dev": "pnpm run --parallel -r dev",
     "build": "pnpm -r build"
   },

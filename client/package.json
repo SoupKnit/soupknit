@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc && vite build",
-    "buildJupyter": "./install.sh",
     "preview": "vite preview",
     "lint": "eslint --ext .ts,.tsx src",
     "typecheck": "tsc --noEmit",
