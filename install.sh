@@ -10,9 +10,9 @@ pip install jupyterlite-core
 pip install jupyterlite-pyodide-kernel
 pip install jupyterlab
 
-jupyter labextension develop --overwrite .
 jlpm install
 pip install -ve . --user
+jupyter labextension develop --overwrite .
 jlpm run build
 
 # Create static assets for the jupyter lab ext
