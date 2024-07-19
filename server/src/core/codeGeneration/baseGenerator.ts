@@ -1,5 +1,3 @@
-import { SklearnGenerator, PyTorchGenerator, TensorFlowGenerator } from './modelGenerators';
-
 export interface Config {
   framework?: string;
   task: string;
@@ -37,21 +35,7 @@ export abstract class BaseGenerator {
       data_loading: this.generateDataLoading(),
       model_creation: this.generateModelCreation(),
       model_training: this.generateModelTraining(),
-      evaluation: this.generateEvaluation()
+      evaluation: this.generateEvaluation(),
     };
-  }
-}
-
-export function getGenerator(config: Config): BaseGenerator {
-  const framework = config.framework || 'sklearn';
-  switch (framework) {
-    case 'sklearn':
-      return new SklearnGenerator(config);
-    case 'pytorch':
-      return new PyTorchGenerator(config);
-    case 'tensorflow':
-      return new TensorFlowGenerator(config);
-    default:
-      throw new Error(`Unsupported framework: ${framework}`);
   }
 }

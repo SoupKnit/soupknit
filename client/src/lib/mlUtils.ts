@@ -1,90 +1,81 @@
 // src/lib/mlUtils.ts
-export type ModelType =
-  | "KNN"
-  | "KNN_Regressor"
-  | "LogisticRegression"
-  | "LinearRegression"
-  | "RandomForestClassifier"
-  | "RandomForest_Regressor"
-  | "SVM"
-  | "SVR"
-  | "KMeans";
 
-export type TaskType = "classification" | "regression" | "clustering";
+import type {
+  Framework,
+  ModelConfig,
+  ModelType,
+} from "@soupknit/model/src/codeGeneratorSchemas"
 
-export type Framework = "sklearn" | "tensorflow" | "pytorch";
-
-export interface ModelConfig {
-  task: TaskType;
-  model_type: ModelType | "";
-  framework: Framework;
-  data_path: string;
-  X_columns: string[];
-  y_column: string;
-  scale_features: boolean;
-  test_size: number;
-  tune_hyperparameters: boolean;
-  param_grid: Record<string, (string | number)[]>;
-  model_params: Record<string, any>;
+// remove from client
+const modelImports: Record<Framework, Record<ModelType, string>> = {
+  sklearn: {
+    KNN: "from sklearn.neighbors import KNeighborsClassifier",
+    KNN_Regressor: "from sklearn.neighbors import KNeighborsRegressor",
+    LogisticRegression: "from sklearn.linear_model import LogisticRegression",
+    LinearRegression: "from sklearn.linear_model import LinearRegression",
+    RandomForestClassifier:
+      "from sklearn.ensemble import RandomForestClassifier",
+    RandomForest_Regressor:
+      "from sklearn.ensemble import RandomForestRegressor",
+    SVM: "from sklearn.svm import SVC",
+    SVR: "from sklearn.svm import SVR",
+    KMeans: "from sklearn.cluster import KMeans",
+  },
+  tensorflow: {
+    KNN: "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    KNN_Regressor:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    LogisticRegression:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    LinearRegression:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    RandomForestClassifier:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    RandomForest_Regressor:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    SVM: "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    SVR: "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+    KMeans:
+      "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
+  },
+  pytorch: {
+    KNN: "import torch\nimport torch.nn as nn",
+    KNN_Regressor: "import torch\nimport torch.nn as nn",
+    LogisticRegression: "import torch\nimport torch.nn as nn",
+    LinearRegression: "import torch\nimport torch.nn as nn",
+    RandomForestClassifier: "import torch\nimport torch.nn as nn",
+    RandomForest_Regressor: "import torch\nimport torch.nn as nn",
+    SVM: "import torch\nimport torch.nn as nn",
+    SVR: "import torch\nimport torch.nn as nn",
+    KMeans: "import torch\nimport torch.nn as nn",
+  },
 }
 
-const modelImports: Record<Framework, Record<ModelType, string>> = {
-    sklearn: {
-      'KNN': "from sklearn.neighbors import KNeighborsClassifier",
-      'KNN_Regressor': "from sklearn.neighbors import KNeighborsRegressor",
-      'LogisticRegression': "from sklearn.linear_model import LogisticRegression",
-      'LinearRegression': "from sklearn.linear_model import LinearRegression",
-      'RandomForestClassifier': "from sklearn.ensemble import RandomForestClassifier",
-      'RandomForest_Regressor': "from sklearn.ensemble import RandomForestRegressor",
-      'SVM': "from sklearn.svm import SVC",
-      'SVR': "from sklearn.svm import SVR",
-      'KMeans': "from sklearn.cluster import KMeans"
-    },
-    tensorflow: {
-      'KNN': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'KNN_Regressor': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'LogisticRegression': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'LinearRegression': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'RandomForestClassifier': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'RandomForest_Regressor': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'SVM': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'SVR': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense",
-      'KMeans': "from tensorflow.keras.models import Sequential\nfrom tensorflow.keras.layers import Dense"
-    },
-    pytorch: {
-      'KNN': "import torch\nimport torch.nn as nn",
-      'KNN_Regressor': "import torch\nimport torch.nn as nn",
-      'LogisticRegression': "import torch\nimport torch.nn as nn",
-      'LinearRegression': "import torch\nimport torch.nn as nn",
-      'RandomForestClassifier': "import torch\nimport torch.nn as nn",
-      'RandomForest_Regressor': "import torch\nimport torch.nn as nn",
-      'SVM': "import torch\nimport torch.nn as nn",
-      'SVR': "import torch\nimport torch.nn as nn",
-      'KMeans': "import torch\nimport torch.nn as nn"
-    }
-  };
-  
-  const generateImports = (config: ModelConfig): string => {
-    const imports = [
-      "import pandas as pd",
-      "import numpy as np",
-      "import matplotlib.pyplot as plt",
-      "from sklearn.model_selection import train_test_split",
-      "from sklearn.preprocessing import StandardScaler",
-      "from sklearn.metrics import accuracy_score, mean_squared_error, silhouette_score"
-    ];
-    
-    if (config.model_type) {
-      imports.push(modelImports[config.framework][config.model_type]);
-    }
-    return imports.join("\n");
-  };
+// remove from client
+const generateImports = (config: ModelConfig): string => {
+  const imports = [
+    "import pandas as pd",
+    "import numpy as np",
+    "import matplotlib.pyplot as plt",
+    "from sklearn.model_selection import train_test_split",
+    "from sklearn.preprocessing import StandardScaler",
+    "from sklearn.metrics import accuracy_score, mean_squared_error, silhouette_score",
+  ]
 
+  if (config.model_type) {
+    imports.push(modelImports[config.framework][config.model_type])
+  }
+  return imports.join("\n")
+}
+
+// remove from client
 const generateModelCode = (config: ModelConfig): string => {
   switch (config.framework) {
-    case 'sklearn':
-      return `model = ${config.model_type}(${Object.entries(config.model_params).map(([k, v]) => `${k}=${v}`).join(", ")})`;
-    case 'tensorflow':
+    case "sklearn":
+      return `model = ${config.model_type}(${Object.entries(config.model_params)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(", ")})`
+    case "tensorflow":
       return `
 model = Sequential([
     Dense(64, activation='relu', input_shape=(len(X_columns),)),
@@ -92,8 +83,8 @@ model = Sequential([
     Dense(1, activation='sigmoid' if task == 'classification' else 'linear')
 ])
 model.compile(optimizer='adam', loss='binary_crossentropy' if task == 'classification' else 'mse', metrics=['accuracy' if task == 'classification' else 'mse'])
-      `;
-    case 'pytorch':
+      `
+    case "pytorch":
       return `
 class Net(nn.Module):
     def __init__(self):
@@ -111,25 +102,26 @@ class Net(nn.Module):
 model = Net()
 criterion = nn.BCEWithLogitsLoss() if task == 'classification' else nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters())
-      `;
+      `
     default:
-      throw new Error(`Unsupported framework: ${config.framework}`);
+      throw new Error(`Unsupported framework: ${config.framework}`)
   }
-};
+}
 
-export const generateCode = (config: ModelConfig): string[] => {
-    const sections: {title: string, code: string}[] = [
-      {
-        title: "Imports",
-        code: generateImports(config)
-      },
-      {
-        title: "Task Definition",
-        code: `# Define the task\ntask = '${config.task}'`
-      },
-      {
-        title: "Load and Preprocess Data",
-        code: `
+// remove from client
+export const generateCodeClient = (config: ModelConfig): string[] => {
+  const sections: { title: string; code: string }[] = [
+    {
+      title: "Imports",
+      code: generateImports(config),
+    },
+    {
+      title: "Task Definition",
+      code: `# Define the task\ntask = '${config.task}'`,
+    },
+    {
+      title: "Load and Preprocess Data",
+      code: `
   # Load and preprocess data
   data = pd.read_csv("${config.data_path}")
   X = data[${JSON.stringify(config.X_columns)}]
@@ -142,18 +134,18 @@ export const generateCode = (config: ModelConfig): string[] => {
   
   # Split data
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=${config.test_size}, random_state=42)
-  `
-      },
-      {
-        title: "Create Model",
-        code: generateModelCode(config)
-      }
-    ];
-  
-    if (config.framework === 'sklearn') {
-      sections.push({
-        title: "Train and Evaluate Model",
-        code: `
+  `,
+    },
+    {
+      title: "Create Model",
+      code: generateModelCode(config),
+    },
+  ]
+
+  if (config.framework === "sklearn") {
+    sections.push({
+      title: "Train and Evaluate Model",
+      code: `
   # Train model
   model.fit(X_train, y_train)
   predictions = model.predict(X_test)
@@ -165,24 +157,24 @@ export const generateCode = (config: ModelConfig): string[] => {
   else:
       score = mean_squared_error(y_test, predictions)
       print(f"Mean Squared Error: {score:.2f}")
-  `
-      });
-    } else if (config.framework === 'tensorflow') {
-      sections.push({
-        title: "Train and Evaluate Model",
-        code: `
+  `,
+    })
+  } else if (config.framework === "tensorflow") {
+    sections.push({
+      title: "Train and Evaluate Model",
+      code: `
   # Train model
   history = model.fit(X_train, y_train, epochs=100, validation_split=0.2, verbose=0)
   
   # Evaluate model
   loss, metric = model.evaluate(X_test, y_test)
   print(f"{'Accuracy' if task == 'classification' else 'Mean Squared Error'}: {metric:.2f}")
-  `
-      });
-    } else if (config.framework === 'pytorch') {
-      sections.push({
-        title: "Train and Evaluate Model",
-        code: `
+  `,
+    })
+  } else if (config.framework === "pytorch") {
+    sections.push({
+      title: "Train and Evaluate Model",
+      code: `
   # Train model
   X_train_tensor = torch.FloatTensor(X_train.values)
   y_train_tensor = torch.FloatTensor(y_train.values)
@@ -207,11 +199,10 @@ export const generateCode = (config: ModelConfig): string[] => {
       else:
           score = mean_squared_error(y_test, predictions.numpy())
           print(f"Mean Squared Error: {score:.2f}")
-  `
-      });
-    }
-  
-    // Return the array of code strings
-    return sections.map(section => `# ${section.title}\n${section.code.trim()}`);
-  };
-  
+  `,
+    })
+  }
+
+  // Return the array of code strings
+  return sections.map((section) => `# ${section.title}\n${section.code.trim()}`)
+}

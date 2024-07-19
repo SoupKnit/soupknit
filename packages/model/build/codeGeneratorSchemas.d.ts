@@ -1,25 +1,59 @@
-import { z } from 'zod';
+import { z } from "zod";
+export type ModelType = "KNN" | "KNN_Regressor" | "LogisticRegression" | "LinearRegression" | "RandomForestClassifier" | "RandomForest_Regressor" | "SVM" | "SVR" | "KMeans";
+export type TaskType = "classification" | "regression" | "clustering";
+export type Framework = "sklearn" | "tensorflow" | "pytorch";
+export interface ModelConfig {
+    task: TaskType;
+    model_type: ModelType | "";
+    framework: Framework;
+    data_path: string;
+    X_columns: string[];
+    y_column: string;
+    scale_features: boolean;
+    test_size: number;
+    tune_hyperparameters: boolean;
+    param_grid: Record<string, (string | number)[]>;
+    model_params: Record<string, any>;
+}
 export declare const configSchema: z.ZodObject<{
     framework: z.ZodEnum<["sklearn", "pytorch", "tensorflow"]>;
-    task: z.ZodEnum<["classification", "regression"]>;
-    model_type: z.ZodString;
-    data_path: z.ZodString;
-    target_column: z.ZodString;
-    model_params: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    payload: z.ZodObject<{
+        task: z.ZodEnum<["classification", "regression", "clustering"]>;
+        model_type: z.ZodString;
+        data_path: z.ZodString;
+        target_column: z.ZodString;
+        model_params: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
+    }, "strip", z.ZodTypeAny, {
+        task: "classification" | "regression" | "clustering";
+        model_type: string;
+        data_path: string;
+        target_column: string;
+        model_params?: Record<string, any> | undefined;
+    }, {
+        task: "classification" | "regression" | "clustering";
+        model_type: string;
+        data_path: string;
+        target_column: string;
+        model_params?: Record<string, any> | undefined;
+    }>;
 }, "strip", z.ZodTypeAny, {
     framework: "sklearn" | "pytorch" | "tensorflow";
-    task: "classification" | "regression";
-    model_type: string;
-    data_path: string;
-    target_column: string;
-    model_params?: Record<string, any> | undefined;
+    payload: {
+        task: "classification" | "regression" | "clustering";
+        model_type: string;
+        data_path: string;
+        target_column: string;
+        model_params?: Record<string, any> | undefined;
+    };
 }, {
     framework: "sklearn" | "pytorch" | "tensorflow";
-    task: "classification" | "regression";
-    model_type: string;
-    data_path: string;
-    target_column: string;
-    model_params?: Record<string, any> | undefined;
+    payload: {
+        task: "classification" | "regression" | "clustering";
+        model_type: string;
+        data_path: string;
+        target_column: string;
+        model_params?: Record<string, any> | undefined;
+    };
 }>;
 export type Config = z.infer<typeof configSchema>;
 export declare const generatedCodeSchema: z.ZodObject<{

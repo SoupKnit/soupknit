@@ -1,34 +1,45 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { promises } from "fs";
-import { resolve } from "path";
+import { Config, configSchema } from "@soupknit/model/src/codeGeneratorSchemas";
+import {
+  BaseGenerator,
+  GeneratedCode,
+} from "../core/codeGeneration/baseGenerator";
+import {
+  SklearnGenerator,
+  PyTorchGenerator,
+  TensorFlowGenerator,
+} from "../core/codeGeneration/modelGenerator";
 
-const { readFile } = promises;
-
-export default async function indexController(fastify: FastifyInstance) {
+export default async function appController(fastify: FastifyInstance) {
   // POST /
   fastify.post(
     "/code_gen",
     async function (_request: FastifyRequest, reply: FastifyReply) {
-      const request = _request.body;
-      const framework = request.framework;
-      const payload = request.data;
+      // validate the request
+      const request = configSchema.parse(_request.body);
 
-      let response;
-      switch(framework) {
-        case "pytorch":
-          response = handle_pytorch(payload);
-          break;
-        case "sklearn":
-          response = handle_sklearn(payload);
-          break;
-        case "tensorflow":
-          response = handle_tensorflow(payload);
-          break;
-      }
+      const generator = getGenerator(request.framework, request.payload);
+      const response: GeneratedCode = generator.generateCode();
 
       reply
         .header("Content-Type", "application/json; charset=utf-8")
         .send(response);
-    }
-  )
+    },
+  );
+}
+
+function getGenerator(
+  framework: Config["framework"],
+  payload: Config["payload"],
+): BaseGenerator {
+  switch (framework) {
+    case "sklearn":
+      return new SklearnGenerator(payload);
+    case "pytorch":
+      return new PyTorchGenerator(payload);
+    case "tensorflow":
+      return new TensorFlowGenerator(payload);
+    default:
+      throw new Error(`Unsupported framework: ${framework}`);
+  }
 }

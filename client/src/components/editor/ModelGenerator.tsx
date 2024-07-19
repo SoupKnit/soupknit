@@ -1,6 +1,7 @@
 // src/components/ModelGenerator.tsx
 import React, { useState } from "react"
 
+import { generateCode } from "@/actions/generateCode"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -11,12 +12,18 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { generateCode } from "@/lib/mlUtils"
+import { clientEnvironment } from "@/lib/clientEnvironment"
 
-import type { Framework, ModelConfig, ModelType, TaskType } from "@/lib/mlUtils"
 import type { CodeActionComponent } from "@/lib/model"
+import type {
+  Framework,
+  ModelConfig,
+  ModelType,
+  TaskType,
+} from "@soupknit/model/src/codeGeneratorSchemas"
 
 const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
+  const env = clientEnvironment(import.meta.env.DEV ? "dev" : "prod")
   const [config, setConfig] = useState<ModelConfig>({
     task: "classification",
     model_type: "",
@@ -75,15 +82,18 @@ const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
     }
   }
 
-  const runBlock = () => {
+  const runBlock = async () => {
     if (config.model_type) {
-      const codeSections = generateCode(config)
       try {
-        codeSections.forEach((section: string, index: number) => {
-          setTimeout(() => sendToIframe(section), index * 150)
-        })
+        const response = await generateCode(config, env)
+        if (!response) {
+          throw new Error("Failed to generate code")
+        }
+        console.log(response)
+        // codeSections.forEach((section: string, index: number) => {
+        //   setTimeout(() => sendToIframe(section), index * 150)
+        // })
       } catch (error) {
-        alert("An error occurred while generating code.")
         console.error(error)
       }
     }

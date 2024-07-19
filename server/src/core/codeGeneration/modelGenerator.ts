@@ -1,4 +1,4 @@
-import { BaseGenerator, Config } from './generators';
+import { BaseGenerator } from "./baseGenerator";
 
 export class SklearnGenerator extends BaseGenerator {
   generateImports(): string {
@@ -6,45 +6,48 @@ export class SklearnGenerator extends BaseGenerator {
       "import pandas as pd",
       "import numpy as np",
       "from sklearn.model_selection import train_test_split",
-      "from sklearn.preprocessing import StandardScaler"
+      "from sklearn.preprocessing import StandardScaler",
     ];
 
     const { model_type, task } = this.config;
 
-    if (task === 'classification') {
-      imports.push("from sklearn.metrics import accuracy_score, classification_report");
-    } else if (task === 'regression') {
+    if (task === "classification") {
+      imports.push(
+        "from sklearn.metrics import accuracy_score, classification_report",
+      );
+    } else if (task === "regression") {
       imports.push("from sklearn.metrics import mean_squared_error, r2_score");
     }
 
     const modelImports: Record<string, string | Record<string, string>> = {
-      'RandomForest': {
-        'classification': "from sklearn.ensemble import RandomForestClassifier",
-        'regression': "from sklearn.ensemble import RandomForestRegressor"
+      RandomForest: {
+        classification: "from sklearn.ensemble import RandomForestClassifier",
+        regression: "from sklearn.ensemble import RandomForestRegressor",
       },
-      'LogisticRegression': "from sklearn.linear_model import LogisticRegression",
-      'LinearRegression': "from sklearn.linear_model import LinearRegression",
-      'SVM': {
-        'classification': "from sklearn.svm import SVC",
-        'regression': "from sklearn.svm import SVR"
+      LogisticRegression: "from sklearn.linear_model import LogisticRegression",
+      LinearRegression: "from sklearn.linear_model import LinearRegression",
+      SVM: {
+        classification: "from sklearn.svm import SVC",
+        regression: "from sklearn.svm import SVR",
       },
-      'KNeighbors': {
-        'classification': "from sklearn.neighbors import KNeighborsClassifier",
-        'regression': "from sklearn.neighbors import KNeighborsRegressor"
+      KNeighbors: {
+        classification: "from sklearn.neighbors import KNeighborsClassifier",
+        regression: "from sklearn.neighbors import KNeighborsRegressor",
       },
-      'DecisionTree': {
-        'classification': "from sklearn.tree import DecisionTreeClassifier",
-        'regression': "from sklearn.tree import DecisionTreeRegressor"
+      DecisionTree: {
+        classification: "from sklearn.tree import DecisionTreeClassifier",
+        regression: "from sklearn.tree import DecisionTreeRegressor",
       },
-      'GradientBoosting': {
-        'classification': "from sklearn.ensemble import GradientBoostingClassifier",
-        'regression': "from sklearn.ensemble import GradientBoostingRegressor"
-      }
+      GradientBoosting: {
+        classification:
+          "from sklearn.ensemble import GradientBoostingClassifier",
+        regression: "from sklearn.ensemble import GradientBoostingRegressor",
+      },
     };
 
     if (model_type in modelImports) {
       const importStatement = modelImports[model_type];
-      if (typeof importStatement === 'object') {
+      if (typeof importStatement === "object") {
         imports.push(importStatement[task]);
       } else {
         imports.push(importStatement);
@@ -93,7 +96,7 @@ model.fit(X_train, y_train)
   }
 
   generateEvaluation(): string {
-    if (this.config.task === 'classification') {
+    if (this.config.task === "classification") {
       return `
 # Evaluate the model
 y_pred = model.predict(X_test)
@@ -102,7 +105,7 @@ print(f"Accuracy: {accuracy:.2f}")
 print("\\nClassification Report:")
 print(classification_report(y_test, y_pred))
 `;
-    } else if (this.config.task === 'regression') {
+    } else if (this.config.task === "regression") {
       return `
 # Evaluate the model
 y_pred = model.predict(X_test)
@@ -117,18 +120,30 @@ print(f"R-squared Score: {r2:.2f}")
 
   private getModelClass(modelType: string, task: string): string {
     const modelClasses: Record<string, string | Record<string, string>> = {
-      'RandomForest': {'classification': 'RandomForestClassifier', 'regression': 'RandomForestRegressor'},
-      'LogisticRegression': 'LogisticRegression',
-      'LinearRegression': 'LinearRegression',
-      'SVM': {'classification': 'SVC', 'regression': 'SVR'},
-      'KNeighbors': {'classification': 'KNeighborsClassifier', 'regression': 'KNeighborsRegressor'},
-      'DecisionTree': {'classification': 'DecisionTreeClassifier', 'regression': 'DecisionTreeRegressor'},
-      'GradientBoosting': {'classification': 'GradientBoostingClassifier', 'regression': 'GradientBoostingRegressor'}
+      RandomForest: {
+        classification: "RandomForestClassifier",
+        regression: "RandomForestRegressor",
+      },
+      LogisticRegression: "LogisticRegression",
+      LinearRegression: "LinearRegression",
+      SVM: { classification: "SVC", regression: "SVR" },
+      KNeighbors: {
+        classification: "KNeighborsClassifier",
+        regression: "KNeighborsRegressor",
+      },
+      DecisionTree: {
+        classification: "DecisionTreeClassifier",
+        regression: "DecisionTreeRegressor",
+      },
+      GradientBoosting: {
+        classification: "GradientBoostingClassifier",
+        regression: "GradientBoostingRegressor",
+      },
     };
 
     if (modelType in modelClasses) {
       const modelClass = modelClasses[modelType];
-      if (typeof modelClass === 'object') {
+      if (typeof modelClass === "object") {
         return modelClass[task];
       }
       return modelClass;
@@ -179,8 +194,8 @@ train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
   generateModelCreation(): string {
     const { task } = this.config;
-    const outputSize = task === 'classification' ? 'len(np.unique(y))' : '1';
-    
+    const outputSize = task === "classification" ? "len(np.unique(y))" : "1";
+
     return `
 # Define the neural network
 class Net(nn.Module):
@@ -197,7 +212,7 @@ class Net(nn.Module):
         return x
 
 model = Net(input_size=X_train.shape[1])
-criterion = nn.${task === 'classification' ? 'CrossEntropyLoss' : 'MSELoss'}()
+criterion = nn.${task === "classification" ? "CrossEntropyLoss" : "MSELoss"}()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 `;
   }
@@ -210,7 +225,7 @@ for epoch in range(num_epochs):
     for inputs, targets in train_loader:
         optimizer.zero_grad()
         outputs = model(inputs)
-        loss = criterion(outputs, targets${this.config.task === 'classification' ? '.long()' : ''})
+        loss = criterion(outputs, targets${this.config.task === "classification" ? ".long()" : ""})
         loss.backward()
         optimizer.step()
     
@@ -220,7 +235,7 @@ for epoch in range(num_epochs):
   }
 
   generateEvaluation(): string {
-    if (this.config.task === 'classification') {
+    if (this.config.task === "classification") {
       return `
 # Evaluate the model
 model.eval()
@@ -230,7 +245,7 @@ with torch.no_grad():
     accuracy = (predicted == y_test_tensor).sum().item() / y_test_tensor.size(0)
     print(f'Accuracy: {accuracy:.2f}')
 `;
-    } else if (this.config.task === 'regression') {
+    } else if (this.config.task === "regression") {
       return `
 # Evaluate the model
 model.eval()
@@ -275,9 +290,9 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 
   generateModelCreation(): string {
     const { task } = this.config;
-    const outputUnits = task === 'classification' ? 'len(np.unique(y))' : '1';
-    const outputActivation = task === 'classification' ? 'softmax' : 'linear';
-    
+    const outputUnits = task === "classification" ? "len(np.unique(y))" : "1";
+    const outputActivation = task === "classification" ? "softmax" : "linear";
+
     return `
 # Define the model
 model = Sequential([
@@ -287,8 +302,8 @@ model = Sequential([
 ])
 
 model.compile(optimizer='adam', 
-              loss='${task === 'classification' ? 'sparse_categorical_crossentropy' : 'mse'}',
-              metrics=['${task === 'classification' ? 'accuracy' : 'mse'}'])
+              loss='${task === "classification" ? "sparse_categorical_crossentropy" : "mse"}',
+              metrics=['${task === "classification" ? "accuracy" : "mse"}'])
 `;
   }
 
@@ -304,13 +319,13 @@ history = model.fit(X_train, y_train,
   }
 
   generateEvaluation(): string {
-    if (this.config.task === 'classification') {
+    if (this.config.task === "classification") {
       return `
 # Evaluate the model
 test_loss, test_accuracy = model.evaluate(X_test, y_test, verbose=0)
 print(f'Test accuracy: {test_accuracy:.2f}')
 `;
-    } else if (this.config.task === 'regression') {
+    } else if (this.config.task === "regression") {
       return `
 # Evaluate the model
 test_loss, test_mse = model.evaluate(X_test, y_test, verbose=0)
