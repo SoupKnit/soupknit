@@ -3,7 +3,8 @@
 rm -rf client/public/jupy_lite
 
 # Build the extention project first
-cd jupyter-lab-ext || exit
+cd packages/jupyter-lab-ext || exit
+OUTDIR="../../client/public/jupy_lite"
 
 pip install jupyter
 pip install jupyterlite-core
@@ -16,10 +17,10 @@ pip install -ve . --user
 jlpm run build
 
 # Create static assets for the jupyter lab ext
-jupyter lite build --output-dir ../client/public/jupy_lite
+jupyter lite build --output-dir $OUTDIR 
 
 # Modify jupyter-lite.json to include exposeAppInBrowser
-JUPYTER_LITE_JSON="../client/public/jupy_lite/jupyter-lite.json"
+JUPYTER_LITE_JSON="$OUTDIR/jupyter-lite.json"
 if [ -f "$JUPYTER_LITE_JSON" ]; then
     # Use Python to modify the JSON file
     python3 - <<EOF
