@@ -1,0 +1,20 @@
+{
+  "name": "@soupknit/model",
+  "private": true,
+  "description": "Shared types for the frontend and backend.",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "clean": "rm -rf build tsconfig.tsbuildinfo",
+    "build": "tsc --incremental",
+    "dev": "tsc -w --incremental"
+  },
+  "keywords": [],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  }
+}

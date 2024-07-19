@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf public/jupy_lite
+rm -rf client/public/jupy_lite
 
 # Build the extention project first
 cd jupyter-lab-ext || exit
@@ -16,10 +16,10 @@ pip install -ve . --user
 jlpm run build
 
 # Create static assets for the jupyter lab ext
-jupyter lite build --output-dir ../public/jupy_lite
+jupyter lite build --output-dir ../client/public/jupy_lite
 
 # Modify jupyter-lite.json to include exposeAppInBrowser
-JUPYTER_LITE_JSON="../public/jupy_lite/jupyter-lite.json"
+JUPYTER_LITE_JSON="../client/public/jupy_lite/jupyter-lite.json"
 if [ -f "$JUPYTER_LITE_JSON" ]; then
     # Use Python to modify the JSON file
     python3 - <<EOF
@@ -37,6 +37,3 @@ else
 fi
 
 jupyter labextension list
-
-# Build the UI
-# yarn --frozen-lockfile install; yarn build

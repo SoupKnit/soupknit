@@ -1,0 +1,8 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+public/jupy_lite
+.env
+public/.jupyterlite.doit.db

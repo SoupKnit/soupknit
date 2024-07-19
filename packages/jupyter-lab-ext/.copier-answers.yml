@@ -1,0 +1,13 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: v4.3.3
+_src_path: https://github.com/jupyterlab/extension-template
+author_email: pratik@soupknit.com
+author_name: Soupknit
+has_binder: false
+has_settings: false
+kind: frontend
+labextension_name: soupknit-jupyter-messagebus
+project_short_description: A JupyterLab extension.
+python_name: add-cell
+repository: https://github.com/SoupKnit
+test: true
