@@ -1,3 +1,0 @@
-[submodule "jupyter-lab-ext"]
-	path = packages/jupyter-lab-ext
-	url = git@github.com:SoupKnit/Jupyter-Lab-Ext.git

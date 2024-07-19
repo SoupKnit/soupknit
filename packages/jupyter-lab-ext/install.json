@@ -1,5 +1,0 @@
-{
-  "packageManager": "python",
-  "packageName": "soupknit_jupyer_messagebus",
-  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package soupknit_jupyer_messagebus"
-}
