@@ -87,3 +87,10 @@
     @apply bg-background font-sans tracking-tight text-foreground;
   }
 }
+
+@layer components {
+  /* styling for codemirror */
+  /* .cm-editor {
+    @apply rounded-lg;
+  } */
+}

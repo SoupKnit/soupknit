@@ -1,3 +1,9 @@
+import { javascript } from "@codemirror/lang-javascript"
+import { python } from "@codemirror/lang-python"
+import { githubLight } from "@uiw/codemirror-theme-github"
+import { okaidia } from "@uiw/codemirror-theme-okaidia"
+import CodeMirror from "@uiw/react-codemirror"
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -6,14 +12,15 @@ import {
   PlayIcon,
 } from "lucide-react"
 
-import { Button } from "../ui/button"
+import { Button } from "../../ui/button"
 import {
   Card,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../ui/card"
+} from "../../ui/card"
+import { EditorCell } from "./EditorCell"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,40 +34,77 @@ import {
   PaginationItem,
 } from "@/components/ui/pagination"
 
-export function NativeEditor() {
-  const cells = [
-    {
-      id: "1",
-      content: {
-        type: "code",
-        value: `import pandas as pd
+const cells = [
+  {
+    id: "1",
+    content: {
+      type: "code",
+      value: `import pandas as pd
 import numpy as np
 import scikit-learn as sk
 `,
-      },
     },
-    {
-      id: "2",
-      content: {
-        type: "code",
-        value: `data = pd.read_csv("data.csv")
+  },
+  {
+    id: "2",
+    content: {
+      type: "code",
+      value: `data = pd.read_csv("data.csv")
 data.head()
 `,
-      },
     },
-    {
-      id: "3",
-      content: {
-        type: "code",
-        value: `model = sk.LinearRegression()
+  },
+  {
+    id: "3",
+    content: {
+      type: "code",
+      value: `model = sk.LinearRegression()
 model.fit(data)
 `,
-      },
     },
-  ]
+  },
+]
+export function NativeEditor() {
+  return (
+    <EditorControls>
+      {cells.map((c, i) => (
+        <div className="mb-4 bg-gray-100 px-2" key={c.id}>
+          {/* <RenderCell index={i} code={c.content.value} /> */}
+          {/* <EditorCell index={i} initCode={c.content.value} /> */}
+          <div className="rounded-lg bg-white p-1 transition-all duration-150 hover:shadow-md">
+            {/** 
+              Vanilla CodeMirror 
+            */}
+            <p className="m-2 text-sm">Vanilla CodeMirror</p>
+            <EditorCell index={i} initCode={c.content.value} />
+
+            {/** 
+              React CodeMirror 
+            */}
+            <p className="m-2 text-sm">React CodeMirror</p>
+            <CodeMirror
+              theme={okaidia}
+              basicSetup={{
+                lineNumbers: false,
+                // lineWrapping: true,
+              }}
+              className="border-0"
+              value={c.content.value}
+              height="auto"
+              extensions={[python()]}
+              // onChange={}
+            />
+          </div>
+        </div>
+      ))}
+    </EditorControls>
+  )
+}
+
+export function EditorControls({ children }: { children: React.ReactNode }) {
   return (
     <Card
-      className="flex h-full flex-col overflow-hidden"
+      className="flex h-full flex-col overflow-hidden bg-gray-100"
       x-chunk="dashboard-05-chunk-4"
     >
       <CardHeader className="flex flex-row items-center bg-muted/50">
@@ -100,12 +144,8 @@ model.fit(data)
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow p-6 text-sm">
-        {cells.map((c) => (
-          <div className="mb-4" key={c.id}>
-            <RenderCell code={c.content.value} />
-          </div>
-        ))}
+      <CardContent className="flex-grow bg-gray-100 p-0">
+        {children}
       </CardContent>
       <CardFooter className="flex flex-row items-center border-t bg-muted/50 px-6 py-3">
         <div className="text-xs text-muted-foreground">
@@ -129,14 +169,5 @@ model.fit(data)
         </Pagination>
       </CardFooter>
     </Card>
-  )
-}
-function RenderCell({ code }: Readonly<{ code: string }>) {
-  return (
-    <div className="relative">
-      <pre className="overflow-x-auto rounded-lg bg-background p-4 text-sm">
-        <code>{code}</code>
-      </pre>
-    </div>
   )
 }

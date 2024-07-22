@@ -8,10 +8,11 @@
     "strictFunctionTypes": true,
     "noImplicitThis": true,
     "esModuleInterop": true,
+    "target": "ES2021",
     "lib": [
       "es2021"
     ],
-    "module": "esnext",
+    "module": "CommonJS",
     "moduleResolution": "node",
     "noUnusedParameters": true,
     "noImplicitReturns": true,

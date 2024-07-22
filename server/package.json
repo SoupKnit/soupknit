@@ -1,13 +1,12 @@
 {
   "name": "server",
   "version": "4.1.0",
-  "type": "module",
   "main": "index.js",
   "description": "Soupknit Server",
   "scripts": {
     "watch": "tsc --watch --preserveWatchOutput --pretty",
     "format": "prettier --write \"src/**/*.ts\"",
-    "dev": "tsnd --respawn src/index.ts",
+    "dev": "nodemon",
     "build": "tsc -p tsconfig.json"
   },
   "author": "Chaitanya Bhagwat <chait@chaitb.xyz>",
