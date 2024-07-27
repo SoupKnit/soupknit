@@ -16,10 +16,10 @@ import { Route as rootRoute } from "./app/__root"
 import { Route as SignupImport } from "./app/signup"
 import { Route as IndexImport } from "./app/index"
 import { Route as HomeFrontImport } from "./app/home/_front"
-import { Route as AppBlocksImport } from "./app/app/blocks"
 import { Route as AppEditorImport } from "./app/app/_editor"
 import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
+import { Route as AppEditorBlocksImport } from "./app/app/_editor/blocks"
 import { Route as HomeFrontBlogPostsImport } from "./app/home/_front/blog/_posts"
 import { Route as HomeFrontBlogPostsIndexImport } from "./app/home/_front/blog/_posts.index"
 import { Route as HomeFrontBlogPostIdPostImport } from "./app/home/_front/blog/$postId/_post"
@@ -59,11 +59,6 @@ const HomeFrontRoute = HomeFrontImport.update({
   getParentRoute: () => HomeRoute,
 } as any)
 
-const AppBlocksRoute = AppBlocksImport.update({
-  path: "/blocks",
-  getParentRoute: () => AppRoute,
-} as any)
-
 const AppEditorRoute = AppEditorImport.update({
   id: "/_editor",
   getParentRoute: () => AppRoute,
@@ -81,6 +76,11 @@ const HomeFrontIndexRoute = HomeFrontIndexImport.update({
 
 const AppEditorIndexRoute = AppEditorIndexImport.update({
   path: "/",
+  getParentRoute: () => AppEditorRoute,
+} as any)
+
+const AppEditorBlocksRoute = AppEditorBlocksImport.update({
+  path: "/blocks",
   getParentRoute: () => AppEditorRoute,
 } as any)
 
@@ -142,13 +142,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppEditorImport
       parentRoute: typeof AppRoute
     }
-    "/app/blocks": {
-      id: "/app/blocks"
-      path: "/blocks"
-      fullPath: "/app/blocks"
-      preLoaderRoute: typeof AppBlocksImport
-      parentRoute: typeof AppImport
-    }
     "/home": {
       id: "/home"
       path: "/home"
@@ -162,6 +155,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/home"
       preLoaderRoute: typeof HomeFrontImport
       parentRoute: typeof HomeRoute
+    }
+    "/app/_editor/blocks": {
+      id: "/app/_editor/blocks"
+      path: "/blocks"
+      fullPath: "/app/blocks"
+      preLoaderRoute: typeof AppEditorBlocksImport
+      parentRoute: typeof AppEditorImport
     }
     "/app/_editor/": {
       id: "/app/_editor/"
@@ -228,8 +228,10 @@ export const routeTree = rootRoute.addChildren({
   IndexRoute,
   SignupRoute,
   AppRoute: AppRoute.addChildren({
-    AppEditorRoute: AppEditorRoute.addChildren({ AppEditorIndexRoute }),
-    AppBlocksRoute,
+    AppEditorRoute: AppEditorRoute.addChildren({
+      AppEditorBlocksRoute,
+      AppEditorIndexRoute,
+    }),
   }),
   HomeRoute: HomeRoute.addChildren({
     HomeFrontRoute: HomeFrontRoute.addChildren({
@@ -272,20 +274,16 @@ export const routeTree = rootRoute.addChildren({
     "/app": {
       "filePath": "app",
       "children": [
-        "/app/_editor",
-        "/app/blocks"
+        "/app/_editor"
       ]
     },
     "/app/_editor": {
       "filePath": "app/_editor.tsx",
       "parent": "/app",
       "children": [
+        "/app/_editor/blocks",
         "/app/_editor/"
       ]
-    },
-    "/app/blocks": {
-      "filePath": "app/blocks.tsx",
-      "parent": "/app"
     },
     "/home": {
       "filePath": "home",
@@ -300,6 +298,10 @@ export const routeTree = rootRoute.addChildren({
         "/home/_front/",
         "/home/_front/blog"
       ]
+    },
+    "/app/_editor/blocks": {
+      "filePath": "app/_editor/blocks.tsx",
+      "parent": "/app/_editor"
     },
     "/app/_editor/": {
       "filePath": "app/_editor/index.tsx",

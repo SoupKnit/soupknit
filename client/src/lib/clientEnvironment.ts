@@ -2,7 +2,7 @@ export type ClientEnvironment = {
   serverUrl: string
 }
 
-export function clientEnvironment(env: "dev" | "prod") {
+export function useEnv(env: "dev" | "prod") {
   if (env === "prod") {
     return {
       // todo: change this later

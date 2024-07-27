@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router"
 
 import { EditorHeaderAndSidebar } from "@/components/editor/Controls"
+import { Sidebar } from "@/components/editor/EditorSidebar"
 import { StatusBar } from "@/components/editor/StatusBar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -20,7 +21,12 @@ function BaseLayout() {
           type="scroll"
         >
           <main className="flex flex-1 overflow-x-hidden">
-            <Outlet />
+            <div className="flex min-h-screen w-full flex-col bg-muted/40">
+              <Sidebar />
+              <div className="ml-12">
+                <Outlet />
+              </div>
+            </div>
           </main>
         </ScrollArea>
         <StatusBar />

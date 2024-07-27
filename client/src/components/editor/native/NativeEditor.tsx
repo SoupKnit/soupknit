@@ -81,7 +81,7 @@ export function NativeEditor() {
             {/** 
               React CodeMirror 
             */}
-            <p className="m-2 text-sm">React CodeMirror</p>
+            {/* <p className="m-2 text-sm">React CodeMirror</p>
             <CodeMirror
               theme={okaidia}
               basicSetup={{
@@ -93,7 +93,7 @@ export function NativeEditor() {
               height="auto"
               extensions={[python()]}
               // onChange={}
-            />
+            /> */}
           </div>
         </div>
       ))}

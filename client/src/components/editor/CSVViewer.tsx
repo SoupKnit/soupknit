@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react"
-import axios from "axios"
+// import { useQuery } from "@tanstack/react-query"
 import { openDB } from "idb"
 import Papa from "papaparse"
-import { loadPyodide } from "pyodide"
 
 import {
   ArrowUpDown,
@@ -14,6 +13,7 @@ import {
   Upload,
 } from "lucide-react"
 
+import { upload } from "@/actions/upload"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -31,9 +31,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { useEnv } from "@/lib/clientEnvironment"
 
 import type { IDBPDatabase } from "idb"
-import type { PyodideInterface } from "pyodide"
+import type { loadPyodide, PyodideInterface } from "pyodide"
 
 type ColumnAction =
   | "sort"
@@ -55,11 +56,9 @@ interface ColumnState {
 
 declare global {
   interface Window {
-    loadPyodide: (config: any) => Promise<any>
+    loadPyodide: typeof loadPyodide
   }
 }
-
-type PyodideInterface = any
 
 export function CSVViewer() {
   const [csvData, setCSVData] = useState<string[][]>([])
@@ -143,14 +142,14 @@ export function CSVViewer() {
         `)
 
         const columnTypesJson = pyodide.globals.get("column_types_json")
-        const columnTypes = JSON.parse(columnTypesJson)
+        const columnTypes = JSON.parse(columnTypesJson) as any
         const headers = pyodide.globals.get("headers").toJs()
         const data = pyodide.globals.get("data").toJs()
 
         setHeaders(headers)
         setCSVData(data.slice(0, 15))
         setColumnStates(
-          headers.map((header) => ({
+          headers.map((header: any) => ({
             name: header,
             type:
               columnTypes[header].includes("float") ||
@@ -256,6 +255,8 @@ export function CSVViewer() {
     )
   }
 
+  const env = useEnv(import.meta.env.DEV ? "dev" : "prod")
+
   const uploadToServer = async () => {
     if (!db) return
 
@@ -272,16 +273,7 @@ export function CSVViewer() {
     formData.append("file", file)
 
     try {
-      const response = await axios.post(
-        "http://localhost:5000/upload",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      )
-      console.log("Server response:", response.data)
+      await upload(env, formData)
     } catch (error) {
       console.error("Error uploading preprocessed file:", error)
     }

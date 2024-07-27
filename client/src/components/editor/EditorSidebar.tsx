@@ -42,14 +42,14 @@ export function Sidebar() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              href="#"
+              to="/app"
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-accent-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
             >
               <ShoppingCart className="h-5 w-5" />
-              <span className="sr-only">Orders</span>
+              <span className="sr-only">Editor</span>
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">Orders</TooltipContent>
+          <TooltipContent side="right">Editor</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>

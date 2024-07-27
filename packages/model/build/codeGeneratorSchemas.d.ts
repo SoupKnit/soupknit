@@ -24,35 +24,35 @@ export declare const configSchema: z.ZodObject<{
         target_column: z.ZodString;
         model_params: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodAny>>;
     }, "strip", z.ZodTypeAny, {
-        task: "classification" | "regression" | "clustering";
-        model_type: string;
-        data_path: string;
-        target_column: string;
-        model_params?: Record<string, any> | undefined;
+        task?: "classification" | "regression" | "clustering";
+        model_type?: string;
+        data_path?: string;
+        target_column?: string;
+        model_params?: Record<string, any>;
     }, {
-        task: "classification" | "regression" | "clustering";
-        model_type: string;
-        data_path: string;
-        target_column: string;
-        model_params?: Record<string, any> | undefined;
+        task?: "classification" | "regression" | "clustering";
+        model_type?: string;
+        data_path?: string;
+        target_column?: string;
+        model_params?: Record<string, any>;
     }>;
 }, "strip", z.ZodTypeAny, {
-    framework: "sklearn" | "pytorch" | "tensorflow";
-    payload: {
-        task: "classification" | "regression" | "clustering";
-        model_type: string;
-        data_path: string;
-        target_column: string;
-        model_params?: Record<string, any> | undefined;
+    framework?: "sklearn" | "tensorflow" | "pytorch";
+    payload?: {
+        task?: "classification" | "regression" | "clustering";
+        model_type?: string;
+        data_path?: string;
+        target_column?: string;
+        model_params?: Record<string, any>;
     };
 }, {
-    framework: "sklearn" | "pytorch" | "tensorflow";
-    payload: {
-        task: "classification" | "regression" | "clustering";
-        model_type: string;
-        data_path: string;
-        target_column: string;
-        model_params?: Record<string, any> | undefined;
+    framework?: "sklearn" | "tensorflow" | "pytorch";
+    payload?: {
+        task?: "classification" | "regression" | "clustering";
+        model_type?: string;
+        data_path?: string;
+        target_column?: string;
+        model_params?: Record<string, any>;
     };
 }>;
 export type Config = z.infer<typeof configSchema>;
@@ -63,17 +63,17 @@ export declare const generatedCodeSchema: z.ZodObject<{
     model_training: z.ZodString;
     evaluation: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    imports: string;
-    data_loading: string;
-    model_creation: string;
-    model_training: string;
-    evaluation: string;
+    imports?: string;
+    data_loading?: string;
+    model_creation?: string;
+    model_training?: string;
+    evaluation?: string;
 }, {
-    imports: string;
-    data_loading: string;
-    model_creation: string;
-    model_training: string;
-    evaluation: string;
+    imports?: string;
+    data_loading?: string;
+    model_creation?: string;
+    model_training?: string;
+    evaluation?: string;
 }>;
 export declare const responseSchema: z.ZodObject<{
     generated_code: z.ZodObject<{
@@ -83,33 +83,33 @@ export declare const responseSchema: z.ZodObject<{
         model_training: z.ZodString;
         evaluation: z.ZodString;
     }, "strip", z.ZodTypeAny, {
-        imports: string;
-        data_loading: string;
-        model_creation: string;
-        model_training: string;
-        evaluation: string;
+        imports?: string;
+        data_loading?: string;
+        model_creation?: string;
+        model_training?: string;
+        evaluation?: string;
     }, {
-        imports: string;
-        data_loading: string;
-        model_creation: string;
-        model_training: string;
-        evaluation: string;
+        imports?: string;
+        data_loading?: string;
+        model_creation?: string;
+        model_training?: string;
+        evaluation?: string;
     }>;
 }, "strip", z.ZodTypeAny, {
-    generated_code: {
-        imports: string;
-        data_loading: string;
-        model_creation: string;
-        model_training: string;
-        evaluation: string;
+    generated_code?: {
+        imports?: string;
+        data_loading?: string;
+        model_creation?: string;
+        model_training?: string;
+        evaluation?: string;
     };
 }, {
-    generated_code: {
-        imports: string;
-        data_loading: string;
-        model_creation: string;
-        model_training: string;
-        evaluation: string;
+    generated_code?: {
+        imports?: string;
+        data_loading?: string;
+        model_creation?: string;
+        model_training?: string;
+        evaluation?: string;
     };
 }>;
 export type GeneratedCode = z.infer<typeof generatedCodeSchema>;

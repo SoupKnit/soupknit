@@ -31,41 +31,38 @@ export function Editor() {
     }
   }, [])
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <Sidebar />
-      <main
-        className={`${layout === "focused" ? "container max-w-screen-lg" : "grid"} flex flex-col items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-8`}
-      >
-        <div className="my-2">
-          <ActionCallout />
+    <main
+      className={`${layout === "focused" ? "container max-w-screen-lg" : "grid"} flex flex-col items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-8`}
+    >
+      <div className="my-2">
+        <ActionCallout />
+      </div>
+      <div className="order-last col-span-3 w-full">
+        <ActionsContainer editorRef={editorRef} editorLoaded={editorLoaded} />
+      </div>
+      <Tabs className="col-span-5 w-full" defaultValue="native">
+        <TabsList>
+          <TabsTrigger value="native">Native</TabsTrigger>
+          <TabsTrigger value="jupyter">Jupyter</TabsTrigger>
+          {/* <TabsTrigger value="year">Yet Another View</TabsTrigger> */}
+        </TabsList>
+        <div>
+          <TabsContent value="native" className="h-full">
+            <NativeEditor />
+          </TabsContent>
+          <TabsContent value="jupyter" className="">
+            <Card>
+              <CardContent className="flex h-full min-h-[85vh] flex-col items-center justify-center p-2">
+                <JupyterEmbedded
+                  ref={editorRef}
+                  className="padding-none margin-none w-full flex-grow border-none"
+                  onLoad={() => setEditorLoaded(true)}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </div>
-        <div className="order-last col-span-3 w-full">
-          <ActionsContainer editorRef={editorRef} editorLoaded={editorLoaded} />
-        </div>
-        <Tabs className="col-span-5 w-full" defaultValue="native">
-          <TabsList>
-            <TabsTrigger value="native">Native</TabsTrigger>
-            <TabsTrigger value="jupyter">Jupyter</TabsTrigger>
-            {/* <TabsTrigger value="year">Yet Another View</TabsTrigger> */}
-          </TabsList>
-          <div>
-            <TabsContent value="native" className="h-full">
-              <NativeEditor />
-            </TabsContent>
-            <TabsContent value="jupyter" className="">
-              <Card>
-                <CardContent className="flex h-full min-h-[85vh] flex-col items-center justify-center p-2">
-                  <JupyterEmbedded
-                    ref={editorRef}
-                    className="padding-none margin-none w-full flex-grow border-none"
-                    onLoad={() => setEditorLoaded(true)}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </div>
-        </Tabs>
-      </main>
-    </div>
+      </Tabs>
+    </main>
   )
 }

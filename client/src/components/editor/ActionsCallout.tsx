@@ -20,10 +20,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { clientEnvironment } from "@/lib/clientEnvironment"
+import { useEnv } from "@/lib/clientEnvironment"
 
 export function ActionCallout() {
-  const env = clientEnvironment(import.meta.env.DEV ? "dev" : "prod")
+  const env = useEnv(import.meta.env.DEV ? "dev" : "prod")
   const [reply, setReply] = useState<string | null>(null)
   return (
     <Card className="sm:col-span-2" x-chunk="dashboard-05-chunk-0">

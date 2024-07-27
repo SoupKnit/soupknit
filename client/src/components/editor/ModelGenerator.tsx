@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { clientEnvironment } from "@/lib/clientEnvironment"
+import { useEnv } from "@/lib/clientEnvironment"
 
-import type { CodeActionComponent } from "@/lib/model"
+import type { CodeActionComponent } from "@/lib/commonTypes"
 import type {
   Framework,
   ModelConfig,
@@ -23,7 +23,7 @@ import type {
 } from "@soupknit/model/src/codeGeneratorSchemas"
 
 const ModelGenerator: CodeActionComponent = ({ editorRef }) => {
-  const env = clientEnvironment(import.meta.env.DEV ? "dev" : "prod")
+  const env = useEnv(import.meta.env.DEV ? "dev" : "prod")
   const [config, setConfig] = useState<ModelConfig>({
     task: "classification",
     model_type: "",
