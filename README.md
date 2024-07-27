@@ -12,6 +12,9 @@ This repository contains the source code for a web application built with React,
 - **Shadcn**: A lightweight state management library.
 - **TanStack Router**: A flexible and efficient router for React.
 - **TanStack Query**: A powerful and flexible querying library for React.
+- **Fastify**: A fast and low overhead web framework for Node.js.
+- **Zod**: A TypeScript-first schema declaration and validation library.
+- **Supabase**: An open-source Postgres database with real-time capabilities and authentication.
 
 ## Setup
 
@@ -25,96 +28,131 @@ To get started with this project, you'll need to have Node.js installed on your 
    ```bash
    cd <project-name>
    ```
-3. Install dependencies with Yarn:
+3. Install dependencies with PNPM:
    ```bash
-   yarn install
+   pnpm install
    ```
 4. Start the development server:
    ```bash
-   yarn dev
+   pnpm dev
    ```
 
-## Folder Structure
-
-Here is the updated folder structure, focusing on the `app` part and reducing the `ui` directory:
+## Project Structure
 
 ```
-src
-├── app
-│   ├── __root.tsx
-│   ├── app
-│   │   ├── _editor.tsx
-│   │   └── index.tsx
-│   ├── globals.css
-│   ├── home
-│   │   ├── _front.tsx
-│   │   └── index.tsx
-│   └── index.tsx
-├── assets
-│   └── logo.svg
-├── components
-│   ├── layout
-│   │   └── seo.tsx
-│   └── ui
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── input.tsx
-│       ├── modal.tsx
-│       ├── toast.tsx
-│       └── ....tsx
-├── lib
-│   ├── consts.ts
-│   └── utils.ts
-├── main.tsx
-├── queries
-│   ├── errors.ts
-│   ├── fetch-post.ts
-│   └── fetch-posts.ts
-└── routes.gen.ts
+├── README.md
+├── client
+│   ├── components.json
+│   ├── fonts
+│   │   ├── geist-mono
+│   │   └── geist-sans
+│   ├── index.html
+│   ├── package.json
+│   ├── pnpm-lock.yaml
+│   ├── postcss.config.js
+│   ├── prettier.config.js
+│   ├── public
+│   │   ├── images
+│   │   └── robots.txt
+│   ├── src
+│   │   ├── actions
+│   │   ├── app
+│   │   ├── assets
+│   │   ├── components
+│   │   ├── lib
+│   │   ├── main.tsx
+│   │   ├── queries
+│   │   └── routes.gen.ts
+│   ├── ssl
+│   │   └── README.md
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── typings
+│   │   ├── env.d.ts
+│   │   ├── reset.d.ts
+│   │   └── svg.d.ts
+│   ├── vercel.json
+│   └── vite.config.ts
+├── install.sh
+├── package.json
+├── packages
+│   ├── jupyter-lab-ext
+│   │   ├── CHANGELOG.md
+│   │   ├── LICENSE
+│   │   ├── README.md
+│   │   ├── RELEASE.md
+│   │   ├── examples
+│   │   ├── index.html
+│   │   ├── install.json
+│   │   ├── package.json
+│   │   ├── pyproject.toml
+│   │   ├── setup.py
+│   │   ├── soupknit_jupyer_messagebus
+│   │   ├── src
+│   │   ├── style
+│   │   └── tsconfig.json
+│   ├── model
+│   │   ├── build
+│   │   ├── package.json
+│   │   ├── src
+│   │   ├── tsconfig.json
+│   │   └── tsconfig.tsbuildinfo
+│   └── shared-ui
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+└── server
+    ├── README.md
+    ├── dist
+    │   ├── app.js
+    │   ├── app.js.map
+    │   ├── controller
+    │   ├── index.js
+    │   ├── index.js.map
+    │   ├── router.js
+    │   └── router.js.map
+    ├── nodemon.json
+    ├── package.json
+    ├── pnpm-lock.yaml
+    ├── src
+    │   ├── app.ts
+    │   ├── controller
+    │   ├── index.ts
+    │   └── router.ts
+    ├── static
+    │   └── index.html
+    └── tsconfig.json
 ```
 
-### Explanation:
+This project is organized into multiple directories, each serving a specific function in the application's architecture. We leverage `pnpm workspaces` to manage dependencies across these directories efficiently, promoting a clean and modular structure.
 
-#### `app` directory:
+### Directory Layout
 
-- **\_\_root.tsx**: Entry point for the app.
-- **app/\_editor.tsx**: Editor layout for `/app` related routes.
-- **app/index.tsx**: Main file for the `/app` route.
-- **globals.css**: Global styles.
-- **home/\_front.tsx**: Front page layout for the `/home` routes.
-- **home/index.tsx**: Main file for the `/home` route.
-- **index.tsx**: Main file for the `/` route (login).
+- `/client`: Contains all client-side code, assets, and configuration. This includes HTML entry points, TypeScript configurations, and React components.
+  - `/dist`: Compiled and bundled assets ready for deployment.
+  - `/node_modules`: Client-specific dependencies managed by `pnpm`.
+- `/server`: Houses the Fastify server codebase, including all backend logic, controllers, and routing mechanisms.
+  - `/dist`: Server-side compiled JavaScript files.
+  - `/node_modules`: Server-specific dependencies.
+- `/packages`: This directory contains shared resources and modular packages that can be used across the client and server.
+  - `/model`: Contains common types and interfaces used throughout the project.
+  - `/shared-ui`: UI components shared between different parts of the project.
+  - `/jupyter-lab-ext`: Extensions and customizations specific to Jupyter Lab.
 
-#### `assets` directory:
+### pnpm Workspaces
 
-- **logo.svg**: Logo asset.
+The project utilizes `pnpm workspaces` to link packages and manage node dependencies efficiently across the workspace. This setup allows us to:
 
-#### `components` directory:
+- Install node modules only once at the root, reducing duplication and speeding up installations.
+- Seamlessly link packages within the workspace, simplifying the development of packages that depend on each other.
+- Enforce consistent dependency versions across the entire project to avoid conflicts and reduce bugs.
 
-- **layout/seo.tsx**: SEO component.
-- **ui/---.tsx**: Shadcn components.
+Running modules separately
 
-ShadCN is a utility-first CSS framework that provides pre-built, customizable components for building modern web applications. The components stored in the ui directory are designed to be reusable and follow consistent design principles.
+```bash
+pnpm dev --filter client # Run only the client module
+pnpm dev --filter server # Run only the server module
 
-https://ui.shadcn.com/docs/components
-
-#### `lib` directory:
-
-- **consts.ts**: Constants.
-- **utils.ts**: Utility functions.
-
-#### `queries` directory:
-
-- **errors.ts**: Error handling.
-- **fetch-post.ts**: Fetch single post.
-- **fetch-posts.ts**: Fetch multiple posts.
-
-#### Other files:
-
-- **main.tsx**: Main entry point for the application.
-- **routes.gen.ts**: Generated routes file tanstack-router.
-
-## Development Notes
-
-- Ensure that the `node_modules` directory is properly ignored in your `.gitignore` to prevent version control bloating.
-- Regularly update dependencies to mitigate potential security vulnerabilities and ensure compatibility with new features.
+pnpm build --filter client # Build only the client module
+# ...and so on
+```

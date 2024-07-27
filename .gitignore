@@ -1,10 +1,4 @@
 node_modules
 .DS_Store
-dist
-dist-ssr
 *.local
-public/jupy_lite
 .env
-yarn.lock
-.yarn/install-state.gz
-public/.jupyterlite.doit.db
