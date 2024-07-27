@@ -16,6 +16,7 @@ import { Route as rootRoute } from "./app/__root"
 import { Route as SignupImport } from "./app/signup"
 import { Route as IndexImport } from "./app/index"
 import { Route as HomeFrontImport } from "./app/home/_front"
+import { Route as AppBlocksImport } from "./app/app/blocks"
 import { Route as AppEditorImport } from "./app/app/_editor"
 import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
@@ -56,6 +57,11 @@ const IndexRoute = IndexImport.update({
 const HomeFrontRoute = HomeFrontImport.update({
   id: "/_front",
   getParentRoute: () => HomeRoute,
+} as any)
+
+const AppBlocksRoute = AppBlocksImport.update({
+  path: "/blocks",
+  getParentRoute: () => AppRoute,
 } as any)
 
 const AppEditorRoute = AppEditorImport.update({
@@ -135,6 +141,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/app"
       preLoaderRoute: typeof AppEditorImport
       parentRoute: typeof AppRoute
+    }
+    "/app/blocks": {
+      id: "/app/blocks"
+      path: "/blocks"
+      fullPath: "/app/blocks"
+      preLoaderRoute: typeof AppBlocksImport
+      parentRoute: typeof AppImport
     }
     "/home": {
       id: "/home"
@@ -216,6 +229,7 @@ export const routeTree = rootRoute.addChildren({
   SignupRoute,
   AppRoute: AppRoute.addChildren({
     AppEditorRoute: AppEditorRoute.addChildren({ AppEditorIndexRoute }),
+    AppBlocksRoute,
   }),
   HomeRoute: HomeRoute.addChildren({
     HomeFrontRoute: HomeFrontRoute.addChildren({
@@ -258,7 +272,8 @@ export const routeTree = rootRoute.addChildren({
     "/app": {
       "filePath": "app",
       "children": [
-        "/app/_editor"
+        "/app/_editor",
+        "/app/blocks"
       ]
     },
     "/app/_editor": {
@@ -267,6 +282,10 @@ export const routeTree = rootRoute.addChildren({
       "children": [
         "/app/_editor/"
       ]
+    },
+    "/app/blocks": {
+      "filePath": "app/blocks.tsx",
+      "parent": "/app"
     },
     "/home": {
       "filePath": "home",
