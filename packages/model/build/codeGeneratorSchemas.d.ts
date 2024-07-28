@@ -15,7 +15,7 @@ export interface ModelConfig {
     param_grid: Record<string, (string | number)[]>;
     model_params: Record<string, any>;
 }
-export declare const configSchema: z.ZodObject<{
+export declare const CodeGenerationConfigSchema: z.ZodObject<{
     framework: z.ZodEnum<["sklearn", "pytorch", "tensorflow"]>;
     payload: z.ZodObject<{
         task: z.ZodEnum<["classification", "regression", "clustering"]>;
@@ -37,7 +37,7 @@ export declare const configSchema: z.ZodObject<{
         model_params?: Record<string, any>;
     }>;
 }, "strip", z.ZodTypeAny, {
-    framework?: "sklearn" | "tensorflow" | "pytorch";
+    framework?: "sklearn" | "pytorch" | "tensorflow";
     payload?: {
         task?: "classification" | "regression" | "clustering";
         model_type?: string;
@@ -46,7 +46,7 @@ export declare const configSchema: z.ZodObject<{
         model_params?: Record<string, any>;
     };
 }, {
-    framework?: "sklearn" | "tensorflow" | "pytorch";
+    framework?: "sklearn" | "pytorch" | "tensorflow";
     payload?: {
         task?: "classification" | "regression" | "clustering";
         model_type?: string;
@@ -55,7 +55,7 @@ export declare const configSchema: z.ZodObject<{
         model_params?: Record<string, any>;
     };
 }>;
-export type Config = z.infer<typeof configSchema>;
+export type CodeGenerationRequestConfig = z.infer<typeof CodeGenerationConfigSchema>;
 export declare const generatedCodeSchema: z.ZodObject<{
     imports: z.ZodString;
     data_loading: z.ZodString;

@@ -13,7 +13,7 @@ import {
   Upload,
 } from "lucide-react"
 
-import { upload } from "@/actions/upload"
+import { upload } from "@/actions/uploadActions"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

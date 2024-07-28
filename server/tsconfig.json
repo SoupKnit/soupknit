@@ -6,6 +6,7 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "strictFunctionTypes": true,
+    "strict": false,
     "noImplicitThis": true,
     "esModuleInterop": true,
     "target": "ES2021",

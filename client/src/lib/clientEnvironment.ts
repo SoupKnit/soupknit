@@ -2,7 +2,10 @@ export type ClientEnvironment = {
   serverUrl: string
 }
 
-export function useEnv(env: "dev" | "prod") {
+const defaultEnv = import.meta.env.DEV ? "dev" : "prod"
+
+export function useEnv(overrideEnv?: "dev" | "prod") {
+  const env = overrideEnv ?? defaultEnv
   if (env === "prod") {
     return {
       // todo: change this later
