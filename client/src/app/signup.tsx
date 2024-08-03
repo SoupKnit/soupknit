@@ -1,5 +1,4 @@
 import { useState } from "react"
-import { createClient } from "@supabase/supabase-js"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { Button } from "@/components/ui/button"
@@ -12,10 +11,10 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useEnv } from "@/lib/clientEnvironment"
+import supabase from "@/lib/supabaseClient"
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_CLIENT_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_API_KEY
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+import type { OrgSetupRequest } from "@soupknit/model/src/userAndOrgSchemas"
 
 export const Route = createFileRoute("/signup")({
   component: SignupForm,
@@ -29,16 +28,35 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const env = useEnv()
+
   const handleSignUp = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       })
 
       if (error) throw error
+
+      const userId = data.user?.id
+      const orgName = `${firstName}'s Team`
+      if (!userId) throw new Error("User ID not found")
+
+      // Create the org from server
+      const payload: OrgSetupRequest = {
+        orgId: userId,
+        orgName: `${data}`,
+      }
+      await fetch(`${env.serverUrl}/org/setup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
     } catch (error: any) {
       setError(error.message)
     } finally {

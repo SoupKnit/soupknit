@@ -1,3 +1,5 @@
+import supabase from "@/lib/supabaseClient"
+
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 
 export async function upload(
@@ -12,9 +14,21 @@ export async function upload(
   return response.json()
 }
 
+// TODO: format for the filePath
+// data input: org/data/fileName
+// model output: org/models/workbookId/modelName
 export async function uploadFile(
   clientEnvironment: ClientEnvironment,
-  file: any,
+  filePath: string,
+  file: File,
 ) {
+  console.log("uploadFile", filePath, file)
+  const { data, error } = await supabase.storage
+    .from("avatars")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+    })
   // upload to supabase storage
+  return { data, error }
 }

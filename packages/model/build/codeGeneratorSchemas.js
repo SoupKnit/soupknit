@@ -1,5 +1,5 @@
 import { z } from "zod";
-export const configSchema = z.object({
+export const CodeGenerationConfigSchema = z.object({
     framework: z.enum(["sklearn", "pytorch", "tensorflow"]),
     payload: z.object({
         task: z.enum(["classification", "regression", "clustering"]),

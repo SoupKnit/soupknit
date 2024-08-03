@@ -1,5 +1,8 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { Config, configSchema } from "@soupknit/model/src/codeGeneratorSchemas";
+import {
+  CodeGenerationRequestConfig,
+  CodeGenerationConfigSchema,
+} from "@soupknit/model/src/codeGeneratorSchemas";
 import {
   BaseGenerator,
   GeneratedCode,
@@ -16,7 +19,7 @@ export default async function appController(fastify: FastifyInstance) {
     "/code_gen",
     async function (_request: FastifyRequest, reply: FastifyReply) {
       // validate the request
-      const request = configSchema.parse(_request.body);
+      const request = CodeGenerationConfigSchema.parse(_request.body);
 
       const generator = getGenerator(request.framework, request.payload);
       const response: GeneratedCode = generator.generateCode();
@@ -29,8 +32,8 @@ export default async function appController(fastify: FastifyInstance) {
 }
 
 function getGenerator(
-  framework: Config["framework"],
-  payload: Config["payload"],
+  framework: CodeGenerationRequestConfig["framework"],
+  payload: CodeGenerationRequestConfig["payload"],
 ): BaseGenerator {
   switch (framework) {
     case "sklearn":

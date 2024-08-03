@@ -1,7 +1,7 @@
 // src/components/ModelGenerator.tsx
 import React, { useState } from "react"
 
-import { generateCode } from "@/actions/generateCode"
+import { generateCode } from "@/actions/codeGenerationActions"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {

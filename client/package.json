@@ -49,7 +49,7 @@
     "@soupknit/model": "workspace:*",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/supabase-js": "^2.44.3",
+    "@supabase/supabase-js": "^2.44.4",
     "@tailwindcss/container-queries": "0.1.1",
     "@tailwindcss/typography": "0.5.13",
     "@tanstack/react-query": "5.45.1",

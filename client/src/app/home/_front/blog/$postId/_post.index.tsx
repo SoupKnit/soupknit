@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { z } from "zod"
 
+import { fetchPost } from "@/api/fetch-post.example"
 import { Seo } from "@/components/layout/seo"
 import { Skeleton } from "@/components/ui/skeleton"
-import { fetchPost } from "@/queries/fetch-post"
 
 export const Route = createFileRoute("/home/_front/blog/$postId/_post/")({
   parseParams: (params) =>

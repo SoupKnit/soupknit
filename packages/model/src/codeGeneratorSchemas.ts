@@ -29,7 +29,7 @@ export interface ModelConfig {
   model_params: Record<string, any>;
 }
 
-export const configSchema = z.object({
+export const CodeGenerationConfigSchema = z.object({
   framework: z.enum(["sklearn", "pytorch", "tensorflow"]),
   payload: z.object({
     task: z.enum(["classification", "regression", "clustering"]),
@@ -40,7 +40,9 @@ export const configSchema = z.object({
   }),
 });
 
-export type Config = z.infer<typeof configSchema>;
+export type CodeGenerationRequestConfig = z.infer<
+  typeof CodeGenerationConfigSchema
+>;
 
 export const generatedCodeSchema = z.object({
   imports: z.string(),
