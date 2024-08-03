@@ -60,6 +60,6 @@ export default defineConfig(({ mode }) => ({
       typescript: true,
       overlay: false,
     }),
-    eslintPlugin({ cache: false, include: ["src/**/*.ts", "src/**/*.tsx"] }),
+    // eslintPlugin({ cache: false, include: ["src/**/*.ts", "src/**/*.tsx"] }),
   ],
 }))

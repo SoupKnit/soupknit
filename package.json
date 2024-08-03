@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev": "pnpm run --parallel -r dev",
-    "build": "pnpm build",
+    "build": "pnpm run --parallel -r build",
     "typecheck": "pnpm run -r typecheck",
     "prepare": "husky"
   },

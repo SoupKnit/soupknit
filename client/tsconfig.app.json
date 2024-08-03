@@ -45,7 +45,6 @@
         "src",
         "typings",
         "vite.config.ts",
-        ".eslintrc.cjs",
         "postcss.config.cjs",
         "prettier.config.mjs",
         "tailwind.config.ts"
