@@ -7,7 +7,8 @@
     "watch": "tsc --watch --preserveWatchOutput --pretty",
     "format": "prettier --write \"src/**/*.ts\"",
     "dev": "nodemon",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
   },
   "author": "Chaitanya Bhagwat <chait@chaitb.xyz>",
   "license": "MIT",

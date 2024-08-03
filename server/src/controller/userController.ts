@@ -43,7 +43,7 @@ export default async function userController(fastify: FastifyInstance) {
         reply.code(400).send("orgName is required");
         return;
       }
-      const { data, error } = await createOrg(request.data.orgName);
+      const { data: _data, error } = await createOrg(request.data.orgName);
       if (error) {
         reply.code(500).send(error.message);
         return;
