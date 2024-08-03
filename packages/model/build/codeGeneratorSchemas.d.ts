@@ -37,7 +37,7 @@ export declare const CodeGenerationConfigSchema: z.ZodObject<{
         model_params?: Record<string, any>;
     }>;
 }, "strip", z.ZodTypeAny, {
-    framework?: "sklearn" | "pytorch" | "tensorflow";
+    framework?: "sklearn" | "tensorflow" | "pytorch";
     payload?: {
         task?: "classification" | "regression" | "clustering";
         model_type?: string;
@@ -46,7 +46,7 @@ export declare const CodeGenerationConfigSchema: z.ZodObject<{
         model_params?: Record<string, any>;
     };
 }, {
-    framework?: "sklearn" | "pytorch" | "tensorflow";
+    framework?: "sklearn" | "tensorflow" | "pytorch";
     payload?: {
         task?: "classification" | "regression" | "clustering";
         model_type?: string;

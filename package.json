@@ -6,12 +6,13 @@
     "server"
   ],
   "scripts": {
-    "buildJupyter": "./install.sh",
     "dev": "pnpm run --parallel -r dev",
-    "build": "pnpm --filter=!soupknit-jupyer-messagebus build"
+    "build": "pnpm run --parallel -r build",
+    "typecheck": "pnpm run -r typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.4",
     "typescript": "^5.5.3"
-  },
-  "dependencies": {}
+  }
 }
