@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from "react"
+import { Link, useNavigate } from "@tanstack/react-router"
 
 import { ActionCallout } from "./ActionsCallout"
 import { Sidebar } from "./EditorSidebar"
 import { ActionsContainer } from "./LeftPanel"
 import { NativeEditor } from "./native/NativeEditor"
 import JupyterEmbedded from "@/components/editor/JupyterEmbedded"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import supa from "@/lib/supabaseClient"
 
 export function Editor() {
   const [theme, setTheme] = useState("light")
@@ -37,6 +40,8 @@ export function Editor() {
       <div className="my-2">
         <ActionCallout />
       </div>
+      <h1> Projects</h1>
+      <Projects />
       <div className="order-last col-span-3 w-full">
         <ActionsContainer editorRef={editorRef} editorLoaded={editorLoaded} />
       </div>
@@ -64,5 +69,46 @@ export function Editor() {
         </div>
       </Tabs>
     </main>
+  )
+}
+
+export function Projects() {
+  const [projects, setProjects] = useState<any>([])
+  const navigate = useNavigate({ from: "/app/$projectId" })
+  const createNewProject = async () => {
+    const { data, error } = await supa
+      .from("Projects")
+      .insert([
+        {
+          title: "",
+        },
+      ])
+      .select()
+    if (error) {
+      console.log(error)
+    } else {
+      navigate({ to: "/app/$projectId", params: { projectId: data[0].id } })
+    }
+  }
+  const loadProjects = async () => {
+    let { data, error } = await supa.from("Projects").select("title, id")
+    if (!data) {
+      setProjects([])
+    } else {
+      setProjects(data)
+    }
+  }
+  useEffect(() => {
+    loadProjects()
+  })
+
+  return (
+    <div>
+      <Button onClick={createNewProject}>Create Project</Button>
+      {projects.map((project: any) => (
+        <Link to={"/app/" + project.id}>{project.title}</Link>
+      ))}
+      {projects.length}
+    </div>
   )
 }

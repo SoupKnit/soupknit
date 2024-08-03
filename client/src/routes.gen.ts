@@ -20,6 +20,7 @@ import { Route as AppEditorImport } from "./app/app/_editor"
 import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
 import { Route as AppEditorBlocksImport } from "./app/app/_editor/blocks"
+import { Route as AppEditorProjectIdImport } from "./app/app/_editor/$projectId"
 import { Route as HomeFrontBlogPostsImport } from "./app/home/_front/blog/_posts"
 import { Route as HomeFrontBlogPostsIndexImport } from "./app/home/_front/blog/_posts.index"
 import { Route as HomeFrontBlogPostIdPostImport } from "./app/home/_front/blog/$postId/_post"
@@ -81,6 +82,11 @@ const AppEditorIndexRoute = AppEditorIndexImport.update({
 
 const AppEditorBlocksRoute = AppEditorBlocksImport.update({
   path: "/blocks",
+  getParentRoute: () => AppEditorRoute,
+} as any)
+
+const AppEditorProjectIdRoute = AppEditorProjectIdImport.update({
+  path: "/$projectId",
   getParentRoute: () => AppEditorRoute,
 } as any)
 
@@ -156,6 +162,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof HomeFrontImport
       parentRoute: typeof HomeRoute
     }
+    "/app/_editor/$projectId": {
+      id: "/app/_editor/$projectId"
+      path: "/$projectId"
+      fullPath: "/app/$projectId"
+      preLoaderRoute: typeof AppEditorProjectIdImport
+      parentRoute: typeof AppEditorImport
+    }
     "/app/_editor/blocks": {
       id: "/app/_editor/blocks"
       path: "/blocks"
@@ -229,6 +242,7 @@ export const routeTree = rootRoute.addChildren({
   SignupRoute,
   AppRoute: AppRoute.addChildren({
     AppEditorRoute: AppEditorRoute.addChildren({
+      AppEditorProjectIdRoute,
       AppEditorBlocksRoute,
       AppEditorIndexRoute,
     }),
@@ -281,6 +295,7 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "app/_editor.tsx",
       "parent": "/app",
       "children": [
+        "/app/_editor/$projectId",
         "/app/_editor/blocks",
         "/app/_editor/"
       ]
@@ -298,6 +313,10 @@ export const routeTree = rootRoute.addChildren({
         "/home/_front/",
         "/home/_front/blog"
       ]
+    },
+    "/app/_editor/$projectId": {
+      "filePath": "app/_editor/$projectId.tsx",
+      "parent": "/app/_editor"
     },
     "/app/_editor/blocks": {
       "filePath": "app/_editor/blocks.tsx",
