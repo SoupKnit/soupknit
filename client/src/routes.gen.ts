@@ -14,12 +14,14 @@ import { createFileRoute } from "@tanstack/react-router"
 
 import { Route as rootRoute } from "./app/__root"
 import { Route as SignupImport } from "./app/signup"
+import { Route as SigninImport } from "./app/signin"
 import { Route as IndexImport } from "./app/index"
 import { Route as HomeFrontImport } from "./app/home/_front"
 import { Route as AppEditorImport } from "./app/app/_editor"
 import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
 import { Route as AppEditorBlocksImport } from "./app/app/_editor/blocks"
+import { Route as AppEditorProjectIdImport } from "./app/app/_editor/$projectId"
 import { Route as HomeFrontBlogPostsImport } from "./app/home/_front/blog/_posts"
 import { Route as HomeFrontBlogPostsIndexImport } from "./app/home/_front/blog/_posts.index"
 import { Route as HomeFrontBlogPostIdPostImport } from "./app/home/_front/blog/$postId/_post"
@@ -46,6 +48,11 @@ const AppRoute = AppImport.update({
 
 const SignupRoute = SignupImport.update({
   path: "/signup",
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SigninRoute = SigninImport.update({
+  path: "/signin",
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -81,6 +88,11 @@ const AppEditorIndexRoute = AppEditorIndexImport.update({
 
 const AppEditorBlocksRoute = AppEditorBlocksImport.update({
   path: "/blocks",
+  getParentRoute: () => AppEditorRoute,
+} as any)
+
+const AppEditorProjectIdRoute = AppEditorProjectIdImport.update({
+  path: "/$projectId",
   getParentRoute: () => AppEditorRoute,
 } as any)
 
@@ -121,6 +133,13 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    "/signin": {
+      id: "/signin"
+      path: "/signin"
+      fullPath: "/signin"
+      preLoaderRoute: typeof SigninImport
+      parentRoute: typeof rootRoute
+    }
     "/signup": {
       id: "/signup"
       path: "/signup"
@@ -155,6 +174,13 @@ declare module "@tanstack/react-router" {
       fullPath: "/home"
       preLoaderRoute: typeof HomeFrontImport
       parentRoute: typeof HomeRoute
+    }
+    "/app/_editor/$projectId": {
+      id: "/app/_editor/$projectId"
+      path: "/$projectId"
+      fullPath: "/app/$projectId"
+      preLoaderRoute: typeof AppEditorProjectIdImport
+      parentRoute: typeof AppEditorImport
     }
     "/app/_editor/blocks": {
       id: "/app/_editor/blocks"
@@ -226,9 +252,11 @@ declare module "@tanstack/react-router" {
 
 export const routeTree = rootRoute.addChildren({
   IndexRoute,
+  SigninRoute,
   SignupRoute,
   AppRoute: AppRoute.addChildren({
     AppEditorRoute: AppEditorRoute.addChildren({
+      AppEditorProjectIdRoute,
       AppEditorBlocksRoute,
       AppEditorIndexRoute,
     }),
@@ -260,6 +288,7 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/signin",
         "/signup",
         "/app",
         "/home"
@@ -267,6 +296,9 @@ export const routeTree = rootRoute.addChildren({
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/signin": {
+      "filePath": "signin.tsx"
     },
     "/signup": {
       "filePath": "signup.tsx"
@@ -281,6 +313,7 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "app/_editor.tsx",
       "parent": "/app",
       "children": [
+        "/app/_editor/$projectId",
         "/app/_editor/blocks",
         "/app/_editor/"
       ]
@@ -298,6 +331,10 @@ export const routeTree = rootRoute.addChildren({
         "/home/_front/",
         "/home/_front/blog"
       ]
+    },
+    "/app/_editor/$projectId": {
+      "filePath": "app/_editor/$projectId.tsx",
+      "parent": "/app/_editor"
     },
     "/app/_editor/blocks": {
       "filePath": "app/_editor/blocks.tsx",
