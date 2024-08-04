@@ -75,6 +75,7 @@ export default {
       fontFamily: {
         sans: ["Geist", ...fontFamily.sans],
         mono: ["Geist-Mono", ...fontFamily.mono],
+        headline: ["Lexend", ...fontFamily.sans],
       },
       keyframes: {
         "accordion-down": {
