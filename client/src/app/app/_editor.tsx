@@ -1,13 +1,24 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router"
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 
 import { EditorHeaderAndSidebar } from "@/components/editor/Controls"
 import { Sidebar } from "@/components/editor/EditorSidebar"
 import { StatusBar } from "@/components/editor/StatusBar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { isAuthenticated } from "@/lib/auth"
 
 export const Route = createFileRoute("/app/_editor")({
   component: BaseLayout,
+  beforeLoad: async () => {
+    if (!(await isAuthenticated())) {
+      throw redirect({
+        to: "/signin",
+        search: {
+          redirect: "/app",
+        },
+      })
+    }
+  },
 })
 
 function BaseLayout() {
