@@ -1,4 +1,4 @@
-import { orgSetupApi } from "@/api/orgSetupApi"
+import { orgSetupApi } from "./orgSetupApi"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 import type { OrgSetupRequest } from "@soupknit/model/src/userAndOrgSchemas"
