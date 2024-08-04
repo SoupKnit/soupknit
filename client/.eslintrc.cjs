@@ -1,12 +1,12 @@
-// @ts-check
-
 /** @type {import("eslint").Linter.Config} */
 module.exports = {
   parser: "@typescript-eslint/parser",
+  env: { browser: true, es2020: true },
   parserOptions: {
-    project: "./tsconfig.json",
+    project: "./tsconfig.app.json",
     tsconfigRootDir: __dirname,
   },
+  ignorePatterns: ["dist", ".eslintrc.cjs"],
   settings: {
     react: {
       version: "detect",
@@ -20,12 +20,14 @@ module.exports = {
     "react-refresh",
   ],
   extends: [
-    "plugin:@typescript-eslint/strict",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
     "plugin:@tanstack/eslint-plugin-query/recommended",
     "plugin:react/recommended",
     "plugin:react-hooks/recommended",
   ],
   rules: {
+    "@typescript-eslint/no-explicit-any": "off",
     "react/react-in-jsx-scope": "off",
     "react/prop-types": "off",
     "react-refresh/only-export-components": "warn",
@@ -47,8 +49,6 @@ module.exports = {
         varsIgnorePattern: "^_",
       },
     ],
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-empty-interface": "off",
     "@typescript-eslint/no-misused-promises": [
       2,
       {
