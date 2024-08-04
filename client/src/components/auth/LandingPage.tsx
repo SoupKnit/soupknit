@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <header className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#fef2f225] to-[#fef3c720]">
+      <header className="container mx-auto max-w-screen-lg px-4 py-8">
         <nav className="flex items-center justify-between">
           <div className="text-2xl font-bold text-indigo-600">Soupknit</div>
           <div className="space-x-4">
@@ -22,14 +22,18 @@ export function LandingPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-4 py-16">
-        <section className="mb-16 text-center">
-          <h1 className="mb-6 text-5xl font-bold text-gray-800">
-            No-Code Machine Learning for Everyone
+      <main className="container mx-auto max-w-screen-lg px-4 py-16">
+        <section className="mb-16 text-left">
+          <h1 className="font-headline mb-6 text-8xl font-semibold leading-none text-gray-700">
+            <span>No-Code</span>
+            <br />
+            <span>Machine Learning</span>
+            <br />
+            <span className="">for Everyone</span>
           </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-xl text-gray-600">
-            Soupknit empowers you to build, train, and deploy machine learning
-            models without writing a single line of code.
+          <p className="mb-8 max-w-2xl text-3xl text-gray-600">
+            Build, train, and deploy machine learning models without writing a
+            single line of code.
           </p>
           <Link to="/signup">
             <Button size="lg" className="px-8 py-6 text-lg">
@@ -65,16 +69,18 @@ export function LandingPage() {
                 "Work together seamlessly with your team on ML projects.",
             },
           ].map((feature, index) => (
-            <div key={index} className="rounded-lg bg-white p-6 shadow-md">
+            <FeatureCard
+              key={index}
+              title={feature.title}
+              description={feature.description}
+            >
               <feature.icon className="mb-4 h-12 w-12 text-indigo-500" />
-              <h3 className="mb-2 text-xl font-semibold">{feature.title}</h3>
-              <p className="text-gray-600">{feature.description}</p>
-            </div>
+            </FeatureCard>
           ))}
         </section>
 
-        <section className="mb-16 rounded-lg bg-white p-8 shadow-md">
-          <h2 className="mb-6 text-center text-3xl font-bold">How It Works</h2>
+        <FeatureCard>
+          <h2 className="mb-6 text-3xl font-bold">How It Works</h2>
           <ol className="list-inside list-decimal space-y-4">
             <li className="text-lg text-gray-700">
               Upload your data or connect to your data source
@@ -94,9 +100,9 @@ export function LandingPage() {
               applications
             </li>
           </ol>
-        </section>
+        </FeatureCard>
 
-        <section className="text-center">
+        <section className="mt-20">
           <h2 className="mb-6 text-3xl font-bold">
             Ready to Transform Your Data?
           </h2>
@@ -118,6 +124,24 @@ export function LandingPage() {
           <p>&copy; 2024 Soupknit. All rights reserved.</p>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function FeatureCard({
+  title,
+  description,
+  children,
+}: {
+  title?: string
+  description?: string
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="rounded-lg border-2 border-black bg-[#e8ece528] p-6 shadow-[8px_8px_1px] shadow-zinc-500">
+      {children}
+      <h3 className="mb-2 text-xl font-semibold">{title}</h3>
+      <p className="text-gray-600">{description}</p>
     </div>
   )
 }
