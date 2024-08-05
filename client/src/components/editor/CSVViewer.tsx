@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "@tanstack/react-router"
 import { openDB } from "idb"
 import Papa from "papaparse"
 
-import { Check, Upload } from "lucide-react"
+import { Check, Trash2, Upload } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -95,11 +96,27 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
   const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const { history } = useRouter()
+
+  const getUserId = async () => {
+    const {
+      data: { user },
+    } = await supa.auth.getUser()
+    return user?.id
+  }
 
   useEffect(() => {
     if (projectId) {
       loadExistingWorkbook()
     }
+    const fetchUserId = async () => {
+      const id = await getUserId()
+      setUserId(id)
+    }
+    fetchUserId()
   }, [projectId])
 
   const loadExistingWorkbook = async () => {
@@ -153,6 +170,70 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     }
   }
 
+  const deleteProject = async () => {
+    if (!projectId) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    console.log("Attempting to delete project with ID:", projectId)
+
+    try {
+      // Check if the project exists
+      const { data: projectData, error: projectError } = await supa
+        .from("Projects")
+        .select("*")
+        .eq("id", parseInt(projectId))
+        .single()
+
+      if (projectError) throw projectError
+
+      if (!projectData) {
+        throw new Error(
+          `Project with ID ${projectId} does not exist in the database.`,
+        )
+      }
+
+      console.log("Project data before deletion:", projectData)
+
+      // Attempt to delete the project
+      const { data, error: transactionError } = await supa.rpc(
+        "delete_project",
+        {
+          input_project_id: parseInt(projectId),
+        },
+      )
+
+      if (transactionError) throw transactionError
+
+      console.log("Deletion results:", data)
+
+      if (data[0].projects_deleted === 0) {
+        throw new Error(
+          `No project was deleted. The project with ID ${projectId} may not exist or couldn't be deleted.`,
+        )
+      }
+
+      console.log("Successfully deleted project")
+    } catch (err) {
+      console.error("Error deleting project:", err)
+      setDeleteError(`Failed to delete project: ${err.message}`)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this project? This action cannot be undone.",
+      )
+    ) {
+      await deleteProject()
+      history.go(-1)
+    }
+  }
+
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -165,10 +246,17 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     try {
       console.log("Starting file upload process")
 
-      // 1. Upload file to Supabase storage
+      if (!userId) {
+        throw new Error("User ID not available")
+      }
+
+      // Create the file path with the new folder structure
+      const filePath = `${userId}/project-${projectId}/${Date.now()}_${file.name}`
+
+      // 1. Upload file to Supabase storage with the new path
       const { data: uploadData, error: uploadError } = await supa.storage
         .from("workbook-files")
-        .upload(`${projectId}/${Date.now()}_${file.name}`, file)
+        .upload(filePath, file)
 
       if (uploadError) throw uploadError
       console.log("File uploaded successfully:", uploadData)
@@ -321,6 +409,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     <div className="p-4">
       <div className="mt-8">
         <h3 className="mb-4 text-xl font-bold">Workbook Data</h3>
+
         {error && <div className="mb-4 text-red-500">{error}</div>}
         <Input
           type="file"
@@ -566,6 +655,15 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
           </Table>
         </div>
       </div>
+      <Button
+        onClick={handleDelete}
+        disabled={isDeleting}
+        variant="destructive"
+      >
+        {isDeleting ? "Deleting..." : "Delete Project"}
+        <Trash2 className="ml-2 h-4 w-4" />
+      </Button>
+      {deleteError && <div className="mb-4 text-red-500">{deleteError}</div>}
     </div>
   )
 }
