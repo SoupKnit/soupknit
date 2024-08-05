@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 
 import { Trash2 } from "lucide-react"
 
-import { deleteProject } from "@/api/preprocessing"
+import { deleteProject, fetchPreprocessingConfig } from "@/api/preprocessing"
 import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
 import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
 import { Button } from "@/components/ui/button"
@@ -21,12 +21,15 @@ import {
 } from "@/components/ui/table"
 import { usePreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
+import { useSupa } from "@/lib/supabaseClient"
 
 interface CSVViewerProps {
   projectId: string
 }
 
 export function CSVViewer({ projectId }: CSVViewerProps) {
+  const supa = useSupa()
+
   const {
     csvData,
     headers,
@@ -39,12 +42,18 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     fetchFirstRows,
   } = useWorkbook(projectId)
 
+  const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
+    useQuery({
+      queryKey: ["preprocessingConfig"],
+      queryFn: fetchPreprocessingConfig(supa),
+    })
+
   const {
     preprocessingConfig,
     handleGlobalPreprocessingChange,
     handleColumnTypeChange,
     handleColumnPreprocessingChange,
-  } = usePreprocessing(headers)
+  } = usePreprocessing(headers, fetchedPreprocessingConfig)
 
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -59,7 +68,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
       setIsDeleting(true)
       setDeleteError(null)
       try {
-        await deleteProject(projectId)
+        await deleteProject(supa, projectId)
         history.go(-1)
       } catch (err) {
         console.error("Error deleting project:", err)
@@ -92,6 +101,10 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
         ))}
       </TableRow>
     ))
+  }
+
+  if (isConfigLoading) {
+    return <div>Loading preprocessing config...</div>
   }
 
   return (

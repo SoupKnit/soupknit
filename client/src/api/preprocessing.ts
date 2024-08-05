@@ -1,4 +1,6 @@
-import supa from "@/lib/supabaseClient"
+import { SupabaseClient } from "@supabase/supabase-js"
+
+import { useSupa } from "@/lib/supabaseClient"
 import { PreprocessingConfig } from "@/types/preprocessing"
 
 export const fetchPreprocessingConfig =
@@ -29,16 +31,17 @@ export const fetchPreprocessingConfig =
     }
   }
 
-export const deleteProject = async (projectId: string): Promise<void> => {
+export const deleteProject = async (
+  supa: SupabaseClient,
+  projectId: string,
+): Promise<void> => {
   try {
     console.log(`Starting deletion process for project with ID: ${projectId}`)
-
     // 1. Fetch the workbooks associated with this project
     const { data: workbooks, error: workbooksError } = await supa
       .from("workbooks")
       .select("id, file_url")
       .eq("project_id", projectId)
-
     if (workbooksError) throw workbooksError
 
     // 2. Delete files from storage
@@ -52,7 +55,6 @@ export const deleteProject = async (projectId: string): Promise<void> => {
           const { error: deleteFileError } = await supa.storage
             .from("workbook-files")
             .remove([filePath])
-
           if (deleteFileError) {
             console.error(
               `Failed to delete file for workbook ${workbook.id}:`,
@@ -73,9 +75,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
         "workbook_id",
         workbooks.map((w) => w.id),
       )
-
     if (workbookDataError) throw workbookDataError
-
     console.log("Deleted associated workbook data")
 
     // 4. Delete workbooks
@@ -83,9 +83,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
       .from("workbooks")
       .delete()
       .eq("project_id", projectId)
-
     if (workbooksDeleteError) throw workbooksDeleteError
-
     console.log("Deleted associated workbooks")
 
     // 5. Delete the project
@@ -93,9 +91,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
       .from("Projects")
       .delete()
       .eq("id", projectId)
-
     if (projectDeleteError) throw projectDeleteError
-
     console.log(
       `Successfully deleted project ${projectId} and all associated data`,
     )

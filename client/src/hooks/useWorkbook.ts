@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import Papa from "papaparse"
 
-import supa from "@/lib/supabaseClient"
+import { useSupa } from "@/lib/supabaseClient"
 
 export function useWorkbook(projectId: string) {
   const [csvData, setCSVData] = useState<Record<string, any>[]>([])
@@ -12,6 +12,7 @@ export function useWorkbook(projectId: string) {
   const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const supa = useSupa()
 
   useEffect(() => {
     if (projectId) {
