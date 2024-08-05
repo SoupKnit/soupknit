@@ -20,7 +20,6 @@ interface Project {
 }
 
 const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
-
   console.log(projectId)
   const [title, setTitle] = useState<string>("")
   const [description, setDescription] = useState<string>("")
@@ -69,16 +68,12 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
     }
   }, [project, isLoading])
 
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
-  const [focusDescription, setFocusDescription] = useState<boolean>(false)
-
   useEffect(() => {
     if (focusDescription && descriptionInputRef.current) {
       descriptionInputRef.current.focus()
       setFocusDescription(false)
     }
   }, [focusDescription])
-
 
   const titleMutation = useMutation({
     mutationFn: async (title: string) =>
@@ -104,7 +99,6 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
 
   if (isLoading || !project) {
     return <div>Loading...</div>
-
   }
 
   if (loading) {
@@ -112,7 +106,6 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
   }
 
   return (
-
     <div className="container mx-auto my-24">
       {/* <h2 className="mb-4 text-2xl font-bold">Project Details</h2> */}
       <div className="">
