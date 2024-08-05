@@ -179,46 +179,52 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     try {
       console.log("Attempting to delete project with ID:", projectId)
 
-      // 1. Fetch the workbook associated with this project
+      // 1. Fetch the workbook associated with this project to get the file URL
       const { data: workbook, error: workbookError } = await supa
         .from("workbooks")
-        .select("id, file_url")
+        .select("file_url")
         .eq("project_id", parseInt(projectId))
         .single()
 
-      if (workbookError) throw workbookError
+      if (workbookError && workbookError.code !== "PGRST116")
+        throw workbookError
 
-      console.log("Fetched workbook:", workbook)
+      const fileUrl = workbook?.file_url
 
-      if (!workbook) {
-        throw new Error("No workbook found for this project")
-      }
+      // 2. Delete the project using the SQL function
+      const { data, error: deleteError } = await supa.rpc("delete_project", {
+        input_project_id: parseInt(projectId),
+      })
 
-      // 2. Delete the project (and associated workbook) from the database
-      const { data, error: transactionError } = await supa.rpc(
-        "delete_project",
-        {
-          input_project_id: parseInt(projectId),
-        },
-      )
-
-      if (transactionError) throw transactionError
+      if (deleteError) throw deleteError
 
       console.log("Deletion results:", data)
 
-      if (data[0].projects_deleted === 0) {
-        throw new Error(
-          `No project was deleted. The project with ID ${projectId} may not exist or couldn't be deleted.`,
-        )
+      if (!data || data.length === 0) {
+        console.log("No deletion results returned. The project may not exist.")
+        return
       }
 
-      console.log("Successfully deleted project from database")
+      const { workbook_data_deleted, workbooks_deleted, projects_deleted } =
+        data[0]
 
-      // 3. Delete the associated file from storage
-      if (workbook.file_url) {
-        console.log("File URL to delete:", workbook.file_url)
+      if (projects_deleted === 0) {
+        console.log(
+          "No project was deleted. It may not exist or couldn't be deleted.",
+        )
+        return
+      }
 
-        const url = new URL(workbook.file_url)
+      console.log(`Successfully deleted from database: 
+        Workbook data: ${workbook_data_deleted}, 
+        Workbooks: ${workbooks_deleted}, 
+        Projects: ${projects_deleted}`)
+
+      // 3. Delete the associated file if it exists
+      if (fileUrl) {
+        console.log("File URL to check/delete:", fileUrl)
+
+        const url = new URL(fileUrl)
         const pathSegments = url.pathname.split("/")
         const bucketName = pathSegments[pathSegments.indexOf("public") + 1]
         const filePath = pathSegments
@@ -230,31 +236,48 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
 
         if (filePath) {
           try {
-            const { data: deleteData, error: storageError } = await supa.storage
+            // Check if the file exists
+            const { data: fileList, error: listError } = await supa.storage
               .from(bucketName)
-              .remove([filePath])
+              .list(filePath.split("/").slice(0, -1).join("/"), {
+                limit: 1,
+                offset: 0,
+                sortBy: { column: "name", order: "asc" },
+                search: filePath.split("/").pop(),
+              })
 
-            if (storageError) {
-              console.error("Error deleting file from storage:", storageError)
-              throw storageError
-            } else {
-              console.log("Storage deletion response:", deleteData)
-              if (
-                deleteData &&
-                deleteData.length > 0 &&
-                deleteData[0] === filePath
-              ) {
-                console.log("Successfully deleted associated file from storage")
+            if (listError) {
+              console.error("Error checking file existence:", listError)
+            } else if (fileList && fileList.length > 0) {
+              console.log("File exists, proceeding with deletion")
+
+              const { data: deleteData, error: storageError } =
+                await supa.storage.from(bucketName).remove([filePath])
+
+              if (storageError) {
+                console.error("Error deleting file from storage:", storageError)
               } else {
-                console.log(
-                  "File may not have been deleted. Deletion response:",
-                  deleteData,
-                )
+                console.log("Storage deletion response:", deleteData)
+                if (
+                  deleteData &&
+                  deleteData.length > 0 &&
+                  deleteData[0] === filePath
+                ) {
+                  console.log(
+                    "Successfully deleted associated file from storage",
+                  )
+                } else {
+                  console.log(
+                    "File may not have been deleted. Deletion response:",
+                    deleteData,
+                  )
+                }
               }
+            } else {
+              console.log("File does not exist in storage, skipping deletion")
             }
           } catch (fileError) {
-            console.error("Error during file deletion:", fileError)
-            throw fileError
+            console.error("Error during file check/deletion:", fileError)
           }
         } else {
           console.log("Could not extract file path from file URL")
