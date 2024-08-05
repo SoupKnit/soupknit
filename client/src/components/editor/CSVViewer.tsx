@@ -27,8 +27,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import supa from "@/lib/supabaseClient"
 
 import type { IDBPDatabase } from "idb"
+
+interface CSVViewerProps {
+  projectId: number
+}
 
 type GlobalPreprocessingOption =
   | "drop_missing"
@@ -81,11 +86,214 @@ const fetchPreprocessingConfig = async (): Promise<PreprocessingConfig> => {
   }
 }
 
-export function CSVViewer() {
-  const [csvData, setCSVData] = useState<string[][]>([])
+export function CSVViewer({ projectId }: CSVViewerProps) {
+  const [csvData, setCSVData] = useState<Record<string, any>[]>([])
   const [headers, setHeaders] = useState<string[]>([])
-  const [db, setDb] = useState<IDBPDatabase | null>(null)
   const [loading, setLoading] = useState(false)
+  const [workbookId, setWorkbookId] = useState<string | null>(null)
+  const [workbookName, setWorkbookName] = useState<string | null>(null)
+  const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    checkUser()
+    loadProjectWorkbook()
+  }, [projectId])
+
+  const checkUser = async () => {
+    const {
+      data: { user },
+    } = await supa.auth.getUser()
+    setUser(user)
+    console.log("Current user:", user)
+  }
+
+  const fetchFirstRows = async (workbookId: string) => {
+    setLoading(true)
+
+    try {
+      console.log("Fetching first 15 rows for workbook:", workbookId)
+
+      // Fetch the first 15 rows using our custom function
+      const { data, error } = await supa.rpc("get_first_15_rows", {
+        workbook_id: workbookId,
+      })
+
+      if (error) {
+        console.error("Error fetching rows:", error)
+        throw error
+      }
+
+      console.log("Fetched data:", data)
+
+      if (data && data.length > 0) {
+        console.log("First row data:", data[0])
+        setHeaders(Object.keys(data[0].data))
+        setCSVData(data.map((row) => row.data))
+        setWorkbookName(data[0].workbook_name)
+        setWorkbookFileType(data[0].workbook_file_type)
+      } else {
+        console.log("No data returned from get_first_15_rows")
+        setHeaders([])
+        setCSVData([])
+
+        // Additional debugging: fetch workbook details
+        const { data: workbook, error: workbookError } = await supa
+          .from("workbooks")
+          .select("*")
+          .eq("id", workbookId)
+          .single()
+
+        if (workbookError) {
+          console.error("Error fetching workbook details:", workbookError)
+        } else {
+          console.log("Workbook details:", workbook)
+        }
+
+        // Check if workbook_data exists
+        const { data: workbookData, error: workbookDataError } = await supa
+          .from("workbook_data")
+          .select("id")
+          .eq("workbook_id", workbookId)
+          .limit(1)
+
+        if (workbookDataError) {
+          console.error("Error checking workbook_data:", workbookDataError)
+        } else {
+          console.log("Workbook data exists:", workbookData.length > 0)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching rows:", error)
+      setError(`Error fetching rows: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadProjectWorkbook = async () => {
+    if (!projectId) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // Fetch the workbook associated with the project
+      const { data: workbooks, error: fetchError } = await supa
+        .from("workbooks")
+        .select("*")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+
+      if (fetchError) throw fetchError
+
+      if (workbooks && workbooks.length > 0) {
+        const workbook = workbooks[0]
+        setWorkbookId(workbook.id)
+        setWorkbookName(workbook.name)
+        setWorkbookFileType(workbook.file_type)
+
+        // Fetch the data for this workbook
+        await fetchFirstRows(workbook.id)
+      } else {
+        console.log("No workbook found for this project")
+        setError("No workbook found for this project. Please upload a file.")
+        setHeaders([])
+        setCSVData([])
+      }
+    } catch (error) {
+      console.error("Error loading project workbook:", error)
+      setError(`Error loading project workbook: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      console.log("Starting file upload process")
+
+      // 1. Upload file to Supabase storage
+      const { data: uploadData, error: uploadError } = await supa.storage
+        .from("workbook-files")
+        .upload(`${projectId}/${Date.now()}_${file.name}`, file)
+
+      if (uploadError) throw uploadError
+      console.log("File uploaded successfully:", uploadData)
+
+      // 2. Get the public URL for the uploaded file
+      const {
+        data: { publicUrl },
+        error: urlError,
+      } = supa.storage.from("workbook-files").getPublicUrl(uploadData.path)
+
+      if (urlError) throw urlError
+      console.log("Public URL:", publicUrl)
+
+      // 3. Create a new workbook entry
+      const { data: workbook, error: workbookError } = await supa
+        .from("workbooks")
+        .insert({
+          name: file.name,
+          file_url: publicUrl,
+          file_type: file.name.split(".").pop(),
+          status: "draft",
+          project_id: projectId,
+        })
+        .select()
+        .single()
+
+      if (workbookError) throw workbookError
+      console.log("Workbook created successfully:", workbook)
+
+      // 4. Parse the CSV file and insert data into workbook_data table
+      const text = await file.text()
+      const { data: parsedData } = Papa.parse(text, { header: true })
+      console.log("Parsed data (first 3 rows):", parsedData.slice(0, 3))
+
+      const workbookData = parsedData.map((row, index) => ({
+        workbook_id: workbook.id,
+        row_number: index + 1,
+        data: row,
+        file_path: uploadData.path, // Add this line
+      }))
+
+      console.log(
+        "Prepared workbook data (first 3 rows):",
+        workbookData.slice(0, 3),
+      )
+
+      const { error: insertError } = await supa
+        .from("workbook_data")
+        .insert(workbookData)
+
+      if (insertError) throw insertError
+      console.log("Data inserted successfully")
+
+      // 5. Fetch the first 15 rows
+      await fetchFirstRows(workbook.id)
+
+      setWorkbookId(workbook.id)
+      setWorkbookName(workbook.name)
+      setWorkbookFileType(workbook.file_type)
+    } catch (error) {
+      console.error("Error processing file:", error)
+      setError(`Error processing file: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const [preprocessingConfig, setPreprocessingConfig] =
     useState<PreprocessingConfig>({
       global_preprocessing: [],
@@ -116,33 +324,6 @@ export function CSVViewer() {
     }
   }, [fetchedConfig, headers])
 
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0]
-    if (file && db) {
-      setLoading(true)
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const text = e.target?.result as string
-        const result = Papa.parse(text, { header: true })
-        const headers = result.meta.fields ?? []
-        const data = result.data
-          .slice(0, 15)
-          .map((row: any) => headers.map((header) => row[header]))
-
-        setHeaders(headers)
-        setCSVData(data)
-
-        if (db) {
-          await db.put("csvFiles", { headers, data }, "currentFile")
-        }
-        setLoading(false)
-      }
-      reader.readAsText(file)
-    }
-  }
-
   const renderTableContent = () => {
     if (loading) {
       return Array.from({ length: 15 }).map((_, rowIndex) => (
@@ -158,9 +339,9 @@ export function CSVViewer() {
 
     return csvData.map((row, rowIndex) => (
       <TableRow key={rowIndex}>
-        {row.map((cell, cellIndex) => (
+        {headers.map((header, cellIndex) => (
           <TableCell key={cellIndex} className="px-2">
-            {cell}
+            {row[header]}
           </TableCell>
         ))}
       </TableRow>
@@ -216,30 +397,67 @@ export function CSVViewer() {
 
   return (
     <div className="p-4">
-      <Input
-        type="file"
-        accept=".csv"
-        onChange={handleFileSelect}
-        className="mb-4"
-      />
-      <div className="mb-4 rounded-md border">
-        <ScrollArea className="h-[400px]">
-          <div className="min-w-full max-w-lg overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {headers.map((header, index) => (
-                    <TableHead key={index} className="px-2">
-                      {header}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>{renderTableContent()}</TableBody>
-            </Table>
-          </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+      <div className="p-4">
+        {error && <div className="mb-4 text-red-500">{error}</div>}
+        {user ? (
+          <>
+            <Input
+              type="file"
+              accept=".csv,.xlsx,.xls,.xlsm"
+              onChange={handleFileSelect}
+              className="mb-4"
+            />
+            <Button
+              onClick={() => workbookId && fetchFirstRows(workbookId)}
+              disabled={loading}
+              className="mb-4 ml-4"
+            >
+              Refresh Data
+            </Button>
+            {workbookName && (
+              <div className="mb-4">
+                Current Workbook: {workbookName} ({workbookFileType})
+              </div>
+            )}
+            {loading ? (
+              <div>Loading...</div>
+            ) : csvData.length > 0 ? (
+              <div className="mb-4 rounded-md border">
+                <ScrollArea className="h-[400px]">
+                  <div className="min-w-full max-w-lg overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {headers.map((header, index) => (
+                            <TableHead key={index} className="px-2">
+                              {header}
+                            </TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {csvData.map((row, rowIndex) => (
+                          <TableRow key={rowIndex}>
+                            {headers.map((header, cellIndex) => (
+                              <TableCell key={cellIndex} className="px-2">
+                                {row[header]}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+              </div>
+            ) : (
+              <div>No data available</div>
+            )}
+          </>
+        ) : (
+          <div>Please log in to upload and view files.</div>
+        )}
       </div>
       <div>
         <div className="mb-4">

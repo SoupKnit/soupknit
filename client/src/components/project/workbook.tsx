@@ -145,7 +145,7 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
           rows={4}
         />
       </div>
-      <CSVViewer />
+      <CSVViewer projectId={projectId} />
     </div>
   )
 }
