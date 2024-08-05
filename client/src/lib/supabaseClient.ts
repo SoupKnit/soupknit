@@ -1,10 +1,22 @@
+import { useMemo } from "react"
 import { createClient } from "@supabase/supabase-js"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_CLIENT_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_API_KEY
-const supa = createClient(supabaseUrl, supabaseAnonKey)
+let supa: ReturnType<typeof createClient>
 
-export default supa
+export const getSupabaseClient = () => {
+  if (supa) {
+    return supa
+  } else {
+    supa = createClient(supabaseUrl, supabaseAnonKey)
+  }
+
+  return supa
+}
+
+// useMemo to prevent re-creating the client on every render
+export const useSupa = () => useMemo(getSupabaseClient, [])
 
 export async function getSupabaseAccessToken() {
   const session = await supa.auth.getSession()

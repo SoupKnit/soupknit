@@ -1,4 +1,4 @@
-import supabase from "@/lib/supabaseClient"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 
@@ -23,7 +23,8 @@ export async function uploadFile(
   file: File,
 ) {
   console.log("uploadFile", filePath, file)
-  const { data, error } = await supabase.storage
+  const supa = getSupabaseClient()
+  const { data, error } = await supa.storage
     .from("avatars")
     .upload(filePath, file, {
       cacheControl: "3600",

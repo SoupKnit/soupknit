@@ -101,4 +101,7 @@
   /* .cm-editor {
     @apply rounded-lg;
   } */
+  .input-invisible {
+    @apply w-full bg-transparent pb-2 outline-none;
+  }
 }

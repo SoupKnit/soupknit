@@ -54,7 +54,6 @@ interface PreprocessingConfig {
   columns: ColumnPreprocessing[]
 }
 
-// Simulated API call
 const fetchPreprocessingConfig = async (): Promise<PreprocessingConfig> => {
   // This is our hardcoded JSON for now
   return {
