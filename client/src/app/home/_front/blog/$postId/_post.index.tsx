@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { z } from "zod"
 
-import { fetchPost } from "@/api/fetch-post.example"
+import { fetchPost } from "@/actions/fetch-post.example"
 import { Seo } from "@/components/layout/seo"
 import { Skeleton } from "@/components/ui/skeleton"
 

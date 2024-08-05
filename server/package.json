@@ -6,7 +6,7 @@
   "scripts": {
     "watch": "tsc --watch --preserveWatchOutput --pretty",
     "format": "prettier --write \"src/**/*.ts\"",
-    "dev": "nodemon",
+    "dev": "tsx --watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit"
   },

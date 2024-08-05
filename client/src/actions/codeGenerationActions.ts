@@ -1,4 +1,4 @@
-import { generateCodeApi } from "@/api/generateCodeApi"
+import { generateCodeApi } from "./generateCodeApi"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 import type { ModelConfig } from "@soupknit/model/src/codeGeneratorSchemas"

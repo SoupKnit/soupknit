@@ -3,6 +3,14 @@
 @tailwind utilities;
 
 @layer base {
+  @font-face {
+    font-family: "Lexend";
+    src: url("https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap");
+  }
+  @font-face {
+    font-family: "Roboto";
+    src: url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap");
+  }
   :root {
     --background: 0 0% 97%;
     --foreground: 224 71.4% 4.1%;
@@ -93,4 +101,7 @@
   /* .cm-editor {
     @apply rounded-lg;
   } */
+  .input-invisible {
+    @apply w-full bg-transparent pb-2 outline-none;
+  }
 }

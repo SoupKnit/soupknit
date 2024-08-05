@@ -1,4 +1,5 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+
 import { fontFamily } from "tailwindcss/defaultTheme"
 // @ts-ignore
 import flattenColorPalette from "tailwindcss/lib/util/flattenColorPalette"
@@ -75,6 +76,7 @@ export default {
       fontFamily: {
         sans: ["Geist", ...fontFamily.sans],
         mono: ["Geist-Mono", ...fontFamily.mono],
+        headline: ["Lexend", ...fontFamily.sans],
       },
       keyframes: {
         "accordion-down": {

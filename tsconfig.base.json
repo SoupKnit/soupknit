@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        /* Linting */
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": false,
+        "noImplicitThis": false,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "strictNullChecks": true,
+        /* Base options */
+        "allowJs": false,
+        "pretty": true,
+        "forceConsistentCasingInFileNames": true,
+        "removeComments": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "target": "esnext",
+        "skipLibCheck": true
+    }
+}

@@ -48,9 +48,9 @@ export class SklearnGenerator extends BaseGenerator {
     if (model_type in modelImports) {
       const importStatement = modelImports[model_type];
       if (typeof importStatement === "object") {
-        imports.push(importStatement[task]);
+        imports.push(importStatement[task] || "");
       } else {
-        imports.push(importStatement);
+        imports.push(importStatement || "");
       }
     } else {
       throw new Error(`Unsupported model type: ${model_type}`);
@@ -144,9 +144,9 @@ print(f"R-squared Score: {r2:.2f}")
     if (modelType in modelClasses) {
       const modelClass = modelClasses[modelType];
       if (typeof modelClass === "object") {
-        return modelClass[task];
+        return modelClass[task] || "";
       }
-      return modelClass;
+      return modelClass || "";
     }
     throw new Error(`Unsupported model type: ${modelType}`);
   }

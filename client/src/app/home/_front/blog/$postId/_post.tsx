@@ -2,7 +2,7 @@ import { Suspense } from "react"
 import { Await, createFileRoute, defer, Outlet } from "@tanstack/react-router"
 import { z } from "zod"
 
-import { fetchPost } from "@/api/fetch-post.example"
+import { fetchPost } from "@/actions/fetch-post.example"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const Route = createFileRoute("/home/_front/blog/$postId/_post")({
