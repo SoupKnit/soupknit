@@ -10,10 +10,15 @@ import {
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
-import { runWorkbookQuery } from "@/actions/workbookActions"
+import { runProjectAction } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
+import { useEnv } from "@/lib/clientEnvironment"
 import { useSupa } from "@/lib/supabaseClient"
-import { projectDetailsStore, workbookStore } from "@/store/workbookStore"
+import {
+  activeProject,
+  projectDetailsStore,
+  workbookStore,
+} from "@/store/workbookStore"
 
 import type { Workbook } from "@soupknit/model/src/workbookSchemas"
 
@@ -29,6 +34,7 @@ interface Project {
 
 const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
   const supa = useSupa()
+  const env = useEnv()
   const [workbook] = useAtom(workbookStore)
 
   const { isLoading, data: project = null } = useQuery({
@@ -84,7 +90,10 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
       if (!workbook) {
         throw new Error("No workbook to run")
       }
-      return runWorkbookQuery(workbook)
+      return runProjectAction(env, {
+        workbook,
+        project: activeProject,
+      })
     },
     onError: (error) => {
       console.error("Error running workbook:", error)
