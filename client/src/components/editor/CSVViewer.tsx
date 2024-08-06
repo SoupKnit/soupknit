@@ -1,23 +1,15 @@
-import React, { useEffect, useState } from "react"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { openDB } from "idb"
-import Papa from "papaparse"
+import { useRouter } from "@tanstack/react-router"
 
-import { Check, Upload } from "lucide-react"
+import { Trash2 } from "lucide-react"
 
+import { deleteProject, fetchPreprocessingConfig } from "@/api/preprocessing"
+import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
+import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -27,118 +19,63 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { usePreprocessing } from "@/hooks/usePreprocessing"
+import { useWorkbook } from "@/hooks/useWorkbook"
+import { useSupa } from "@/lib/supabaseClient"
 
-import type { IDBPDatabase } from "idb"
-
-type GlobalPreprocessingOption =
-  | "drop_missing"
-  | "drop_constant"
-  | "drop_duplicate"
-  | "pca"
-type NumericImputationMethod = "none" | "mean" | "median" | "constant" | "knn"
-type NumericScalingMethod = "none" | "standard" | "minmax" | "robust"
-type CategoricalEncodingMethod = "none" | "onehot" | "label" | "ordinal"
-
-interface ColumnPreprocessing {
-  name: string
-  type: "numeric" | "categorical"
-  imputation?: NumericImputationMethod
-  scaling?: NumericScalingMethod
-  encoding?: CategoricalEncodingMethod
-  params: Record<string, any>
+interface CSVViewerProps {
+  projectId: string
 }
 
-interface PreprocessingConfig {
-  global_preprocessing: GlobalPreprocessingOption[]
-  global_params: Record<string, any>
-  columns: ColumnPreprocessing[]
-}
+export function CSVViewer({ projectId }: CSVViewerProps) {
+  const supa = useSupa()
 
-const fetchPreprocessingConfig = async (): Promise<PreprocessingConfig> => {
-  // This is our hardcoded JSON for now
-  return {
-    global_preprocessing: ["drop_missing", "pca"],
-    global_params: {
-      n_components: 0.95,
-    },
-    columns: [
-      {
-        name: "Column1",
-        type: "numeric",
-        imputation: "mean",
-        scaling: "standard",
-        params: {},
-      },
-      {
-        name: "Column2",
-        type: "categorical",
-        encoding: "onehot",
-        params: {},
-      },
-      // Add more columns as needed
-    ],
-  }
-}
+  const {
+    csvData,
+    headers,
+    loading,
+    error,
+    workbookId,
+    workbookName,
+    workbookFileType,
+    handleFileSelect,
+    fetchFirstRows,
+  } = useWorkbook(projectId)
 
-export function CSVViewer() {
-  const [csvData, setCSVData] = useState<string[][]>([])
-  const [headers, setHeaders] = useState<string[]>([])
-  const [db, setDb] = useState<IDBPDatabase | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [preprocessingConfig, setPreprocessingConfig] =
-    useState<PreprocessingConfig>({
-      global_preprocessing: [],
-      global_params: {},
-      columns: [],
+  const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
+    useQuery({
+      queryKey: ["preprocessingConfig"],
+      queryFn: fetchPreprocessingConfig(supa),
     })
 
-  const { data: fetchedConfig } = useQuery<PreprocessingConfig>({
-    queryKey: ["preprocessingConfig"],
-    queryFn: fetchPreprocessingConfig,
-  })
+  const {
+    preprocessingConfig,
+    handleGlobalPreprocessingChange,
+    handleColumnTypeChange,
+    handleColumnPreprocessingChange,
+  } = usePreprocessing(headers, fetchedPreprocessingConfig)
 
-  useEffect(() => {
-    const initDb = async () => {
-      const database = await openDB("CSVDatabase", 1, {
-        upgrade(db) {
-          db.createObjectStore("csvFiles")
-        },
-      })
-      setDb(database)
-    }
-    initDb()
-  }, [])
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const { history } = useRouter()
 
-  useEffect(() => {
-    if (fetchedConfig && headers.length > 0) {
-      setPreprocessingConfig(fetchedConfig)
-    }
-  }, [fetchedConfig, headers])
-
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0]
-    if (file && db) {
-      setLoading(true)
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const text = e.target?.result as string
-        const result = Papa.parse(text, { header: true })
-        const headers = result.meta.fields ?? []
-        const data = result.data
-          .slice(0, 15)
-          .map((row: any) => headers.map((header) => row[header]))
-
-        setHeaders(headers)
-        setCSVData(data)
-
-        if (db) {
-          await db.put("csvFiles", { headers, data }, "currentFile")
-        }
-        setLoading(false)
+  const handleDelete = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this project? This action cannot be undone.",
+      )
+    ) {
+      setIsDeleting(true)
+      setDeleteError(null)
+      try {
+        await deleteProject(supa, projectId)
+        history.go(-1)
+      } catch (err) {
+        console.error("Error deleting project:", err)
+        setDeleteError(`Failed to delete project: ${err.message}`)
+      } finally {
+        setIsDeleting(false)
       }
-      reader.readAsText(file)
     }
   }
 
@@ -157,277 +94,91 @@ export function CSVViewer() {
 
     return csvData.map((row, rowIndex) => (
       <TableRow key={rowIndex}>
-        {row.map((cell, cellIndex) => (
+        {headers.map((header, cellIndex) => (
           <TableCell key={cellIndex} className="px-2">
-            {cell}
+            {row[header]}
           </TableCell>
         ))}
       </TableRow>
     ))
   }
 
-  const handleGlobalPreprocessingChange = (
-    option: GlobalPreprocessingOption,
-  ) => {
-    setPreprocessingConfig((prev) => ({
-      ...prev,
-      global_preprocessing: prev.global_preprocessing.includes(option)
-        ? prev.global_preprocessing.filter((item) => item !== option)
-        : [...prev.global_preprocessing, option],
-    }))
-  }
-
-  const handleColumnTypeChange = (
-    columnName: string,
-    type: "numeric" | "categorical",
-  ) => {
-    setPreprocessingConfig((prev) => ({
-      ...prev,
-      columns: prev.columns.map((col) =>
-        col.name === columnName
-          ? {
-              ...col,
-              type,
-              imputation: undefined,
-              scaling: undefined,
-              encoding: undefined,
-            }
-          : col,
-      ),
-    }))
-  }
-
-  const handleColumnPreprocessingChange = (
-    columnName: string,
-    preprocessingType: "imputation" | "scaling" | "encoding",
-    value:
-      | NumericImputationMethod
-      | NumericScalingMethod
-      | CategoricalEncodingMethod,
-  ) => {
-    setPreprocessingConfig((prev) => ({
-      ...prev,
-      columns: prev.columns.map((col) =>
-        col.name === columnName ? { ...col, [preprocessingType]: value } : col,
-      ),
-    }))
+  if (isConfigLoading) {
+    return <div>Loading preprocessing config...</div>
   }
 
   return (
     <div className="p-4">
-      <Input
-        type="file"
-        accept=".csv"
-        onChange={handleFileSelect}
-        className="mb-4"
-      />
-      <div className="mb-4 rounded-md border">
-        <ScrollArea className="h-[400px]">
-          <div className="min-w-full max-w-lg overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {headers.map((header, index) => (
-                    <TableHead key={index} className="px-2">
-                      {header}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>{renderTableContent()}</TableBody>
-            </Table>
+      <div className="mt-8">
+        <h3 className="mb-4 text-xl font-bold">Workbook Data</h3>
+
+        {error && <div className="mb-4 text-red-500">{error}</div>}
+        <Input
+          type="file"
+          accept=".csv,.xlsx,.xls,.xlsm"
+          onChange={handleFileSelect}
+          className="mb-4"
+        />
+        {workbookId && (
+          <Button
+            onClick={() => fetchFirstRows(workbookId)}
+            disabled={loading}
+            className="mb-4 ml-4"
+          >
+            Refresh Data
+          </Button>
+        )}
+        {workbookName && (
+          <div className="mb-4">
+            Current Workbook: {workbookName} ({workbookFileType})
           </div>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        )}
+        {loading ? (
+          <div>Loading...</div>
+        ) : csvData.length > 0 ? (
+          <div className="mb-4 rounded-md border">
+            <ScrollArea className="h-[400px]">
+              <div className="min-w-full max-w-lg overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {headers.map((header, index) => (
+                        <TableHead key={index} className="px-2">
+                          {header}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>{renderTableContent()}</TableBody>
+                </Table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
+          </div>
+        ) : (
+          <div>No data available</div>
+        )}
       </div>
       <div>
-        <div className="mb-4">
-          <h3 className="mb-2 text-lg font-semibold">Global Preprocessing</h3>
-          <div className="flex flex-wrap gap-4">
-            {["drop_missing", "drop_constant", "drop_duplicate", "pca"].map(
-              (option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={option}
-                    checked={preprocessingConfig.global_preprocessing.includes(
-                      option as GlobalPreprocessingOption,
-                    )}
-                    onCheckedChange={() =>
-                      handleGlobalPreprocessingChange(
-                        option as GlobalPreprocessingOption,
-                      )
-                    }
-                  />
-                  <Label htmlFor={option}>{option.replace("_", " ")}</Label>
-                </div>
-              ),
-            )}
-          </div>
-          {preprocessingConfig.global_preprocessing.includes("pca") && (
-            <div className="mt-2">
-              <Label htmlFor="n_components">PCA components</Label>
-              <Input
-                id="n_components"
-                type="number"
-                value={preprocessingConfig.global_params.n_components ?? ""}
-                onChange={(e) =>
-                  setPreprocessingConfig((prev) => ({
-                    ...prev,
-                    global_params: {
-                      ...prev.global_params,
-                      n_components: parseFloat(e.target.value),
-                    },
-                  }))
-                }
-                className="ml-2 w-24"
-              />
-            </div>
-          )}
-        </div>
-        <div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Column</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Preprocessing</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {preprocessingConfig.columns.map((column) => (
-                <TableRow key={column.name}>
-                  <TableCell>{column.name}</TableCell>
-                  <TableCell>
-                    <Select
-                      value={column.type}
-                      onValueChange={(value: "numeric" | "categorical") =>
-                        handleColumnTypeChange(column.name, value)
-                      }
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="numeric">Numeric</SelectItem>
-                        <SelectItem value="categorical">Categorical</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    {column.type === "numeric" ? (
-                      <div className="space-y-2">
-                        <div>
-                          <Label className="font-semibold">Imputation</Label>
-                          <RadioGroup
-                            value={column.imputation ?? "none"}
-                            onValueChange={(value) =>
-                              handleColumnPreprocessingChange(
-                                column.name,
-                                "imputation",
-                                value as NumericImputationMethod,
-                              )
-                            }
-                          >
-                            {(
-                              [
-                                "none",
-                                "mean",
-                                "median",
-                                "constant",
-                                "knn",
-                              ] as const
-                            ).map((method) => (
-                              <div
-                                key={method}
-                                className="flex items-center space-x-2"
-                              >
-                                <RadioGroupItem
-                                  value={method}
-                                  id={`${column.name}-imputation-${method}`}
-                                />
-                                <Label
-                                  htmlFor={`${column.name}-imputation-${method}`}
-                                >
-                                  {method}
-                                </Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </div>
-                        <div>
-                          <Label className="font-semibold">Scaling</Label>
-                          <RadioGroup
-                            value={column.scaling ?? "none"}
-                            onValueChange={(value) =>
-                              handleColumnPreprocessingChange(
-                                column.name,
-                                "scaling",
-                                value as NumericScalingMethod,
-                              )
-                            }
-                          >
-                            {(
-                              ["none", "standard", "minmax", "robust"] as const
-                            ).map((method) => (
-                              <div
-                                key={method}
-                                className="flex items-center space-x-2"
-                              >
-                                <RadioGroupItem
-                                  value={method}
-                                  id={`${column.name}-scaling-${method}`}
-                                />
-                                <Label
-                                  htmlFor={`${column.name}-scaling-${method}`}
-                                >
-                                  {method}
-                                </Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <Label className="font-semibold">Encoding</Label>
-                        <RadioGroup
-                          value={column.encoding ?? "none"}
-                          onValueChange={(value) =>
-                            handleColumnPreprocessingChange(
-                              column.name,
-                              "encoding",
-                              value as CategoricalEncodingMethod,
-                            )
-                          }
-                        >
-                          {(
-                            ["none", "onehot", "label", "ordinal"] as const
-                          ).map((method) => (
-                            <div
-                              key={method}
-                              className="flex items-center space-x-2"
-                            >
-                              <RadioGroupItem
-                                value={method}
-                                id={`${column.name}-encoding-${method}`}
-                              />
-                              <Label
-                                htmlFor={`${column.name}-encoding-${method}`}
-                              >
-                                {method}
-                              </Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <GlobalPreprocessing
+          preprocessingConfig={preprocessingConfig}
+          handleGlobalPreprocessingChange={handleGlobalPreprocessingChange}
+        />
+        <ColumnPreprocessing
+          preprocessingConfig={preprocessingConfig}
+          handleColumnTypeChange={handleColumnTypeChange}
+          handleColumnPreprocessingChange={handleColumnPreprocessingChange}
+        />
       </div>
+      <Button
+        onClick={handleDelete}
+        disabled={isDeleting}
+        variant="destructive"
+      >
+        {isDeleting ? "Deleting..." : "Delete Project"}
+        <Trash2 className="ml-2 h-4 w-4" />
+      </Button>
+      {deleteError && <div className="mb-4 text-red-500">{deleteError}</div>}
     </div>
   )
 }

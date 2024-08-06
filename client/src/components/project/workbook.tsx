@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react"
+import { createClient } from "@supabase/supabase-js"
 import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { CSVViewer } from "../editor/CSVViewer"
 import {
-  loadProject,
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
@@ -19,26 +19,65 @@ interface Project {
   description: string
 }
 
+const loadProject = async (
+  supa: ReturnType<typeof createClient>,
+  projectId: string | number,
+): Promise<Project> => {
+  console.log("loadProject called with projectId:", projectId)
+  try {
+    console.log("Fetching project from Supabase...")
+    const { data, error: supaError } = await supa
+      .from("Projects")
+      .select("title, id, description")
+      .eq("id", typeof projectId === "string" ? parseInt(projectId) : projectId)
+      .single()
+
+    console.log("Supabase response:", { data, supaError })
+
+    if (supaError) throw supaError
+
+    if (data) {
+      console.log("Project data found:", data)
+      return {
+        title: data.title || "",
+        description: data.description || "",
+        id: data.id,
+      }
+    } else {
+      console.log("Project not found")
+      throw new Error("Project not found")
+    }
+  } catch (error) {
+    console.error("Error loading project:", error)
+    throw error
+  }
+}
+
 const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
+  const [title, setTitle] = useState<string>("")
+  const [description, setDescription] = useState<string>("")
+  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
+  const [focusDescription, setFocusDescription] = useState<boolean>(false)
+
   const supa = useSupa()
 
-  const { isLoading, data: project = null } = useQuery({
+  const {
+    isLoading,
+    isError,
+    data: project,
+    error,
+  } = useQuery({
     queryKey: ["project", projectId, supa],
-    queryFn: async () => loadProject(supa, projectId),
+    queryFn: () => loadProject(supa, projectId),
+    retry: false,
   })
 
-  const [title, setTitle] = useState<string>(project?.title)
-  const [description, setDescription] = useState<string>(project?.description)
-
   useEffect(() => {
-    if (isLoading === false && project) {
+    if (project) {
       setTitle(project.title)
       setDescription(project.description)
     }
-  }, [project, isLoading])
-
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
-  const [focusDescription, setFocusDescription] = useState<boolean>(false)
+  }, [project])
 
   useEffect(() => {
     if (focusDescription && descriptionInputRef.current) {
@@ -69,13 +108,24 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
     },
   })
 
-  if (isLoading || !project) {
-    return <div>Loading...</div>
+  if (isLoading) {
+    return <div className="mt-8 text-center">Loading project details...</div>
+  }
+
+  if (isError) {
+    return (
+      <div className="mt-8 text-center">
+        Error: {error?.message || "An error occurred"}
+      </div>
+    )
+  }
+
+  if (!project) {
+    return <div className="mt-8 text-center">No project found</div>
   }
 
   return (
     <div className="container mx-auto my-24">
-      {/* <h2 className="mb-4 text-2xl font-bold">Project Details</h2> */}
       <div className="">
         <input
           type="text"
@@ -113,7 +163,7 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
           rows={4}
         />
       </div>
-      <CSVViewer />
+      <CSVViewer projectId={projectId} />
     </div>
   )
 }
