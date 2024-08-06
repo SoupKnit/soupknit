@@ -12,7 +12,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         brutal:
-          "rounded-sm bg-white font-bold text-gray-600 shadow-[4px_4px_0px] shadow-zinc-500 hover:shadow-zinc-700",
+          "rounded-sm p-4 bg-white font-bold text-gray-600 shadow-[4px_4px_0px] hover:shadow-[6px_6px_0px] shadow-zinc-500 hover:shadow-zinc-700 border-black border-2 transition-transform duration-100 ease-in-out hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-zinc-700",
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",

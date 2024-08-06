@@ -10,9 +10,12 @@ import {
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
+import { runWorkbookQuery } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
-import { projectDetailsStore } from "@/store/workbookStore"
+import { projectDetailsStore, workbookStore } from "@/store/workbookStore"
+
+import type { Workbook } from "@soupknit/model/src/workbookSchemas"
 
 interface WorkbookProps {
   projectId: string
@@ -24,8 +27,9 @@ interface Project {
   description: string
 }
 
-const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
+const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
   const supa = useSupa()
+  const [workbook] = useAtom(workbookStore)
 
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, supa],
@@ -74,6 +78,19 @@ const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
     },
   })
 
+  const runAction = useMutation({
+    mutationFn: async (workbook: Workbook | null) => {
+      console.log("Running workbook:", workbook)
+      if (!workbook) {
+        throw new Error("No workbook to run")
+      }
+      return runWorkbookQuery(workbook)
+    },
+    onError: (error) => {
+      console.error("Error running workbook:", error)
+    },
+  })
+
   if (isLoading || !project) {
     return <div>Loading...</div>
   }
@@ -114,11 +131,12 @@ const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
           }}
         />
       </div>
-      {/* TODO: Fix this, both have uploads */}
+      {/* TODO: Fix this, these 2 components do the same thing */}
       {/* <DatasetPreview /> */}
       <CSVViewer projectId={projectId} />
       <div className="mt-4 flex justify-end">
         <Button
+          onClick={() => runAction.mutate(workbook)}
           variant={"brutal"}
           className="bg-purple-300 font-mono hover:bg-purple-400"
         >
@@ -129,4 +147,4 @@ const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
   )
 }
 
-export default Workbook
+export default ProjectWorkbook

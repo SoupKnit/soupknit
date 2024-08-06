@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import Workbook from "@/components/project/workbook"
+import ProjectWorkbook from "@/components/project/workbook"
 
 export const Route = createFileRoute("/app/_editor/$projectId")({
   component: WorkbookProject,
@@ -8,5 +8,5 @@ export const Route = createFileRoute("/app/_editor/$projectId")({
 
 function WorkbookProject() {
   const { projectId } = Route.useParams()
-  return <Workbook projectId={projectId} />
+  return <ProjectWorkbook projectId={projectId} />
 }

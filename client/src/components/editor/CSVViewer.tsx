@@ -47,7 +47,7 @@ interface CSVViewerProps {
   projectId: string
 }
 
-export function CSVViewer({ projectId }: CSVViewerProps) {
+export function CSVViewer({ projectId }: Readonly<CSVViewerProps>) {
   const supa = useSupa()
 
   const {
@@ -63,18 +63,14 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     deleteProject,
   } = useWorkbook(projectId)
 
-  const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
-    useQuery({
-      queryKey: ["preprocessingConfig"],
-      queryFn: fetchPreprocessingConfig(supa),
-    })
+  // const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
 
   const {
     preprocessingConfig,
     handleGlobalPreprocessingChange,
     handleColumnTypeChange,
     handleColumnPreprocessingChange,
-  } = usePreprocessing(headers, fetchedPreprocessingConfig)
+  } = usePreprocessing(headers)
 
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -91,7 +87,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
       try {
         await deleteProject(supa, projectId)
         history.go(-1)
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error deleting project:", err)
         setDeleteError(`Failed to delete project: ${err.message}`)
       } finally {
@@ -124,10 +120,6 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     ))
   }
 
-  if (isConfigLoading) {
-    return <div>Loading preprocessing config...</div>
-  }
-
   return (
     <div className="">
       <Tabs defaultValue="Preprocessing" className="w-auto">
@@ -156,7 +148,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
               )}
               {workbookName && (
                 <div className="mb-4">
-                  Current Workbook: {workbookName} ({workbookFileType})
+                  Dataset: {workbookName} ({workbookFileType})
                 </div>
               )}
               {loading ? (
@@ -212,7 +204,8 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
             <CardHeader>
               <CardTitle>Account</CardTitle>
               <CardDescription>
-                Make changes to your account here. Click save when you're done.
+                Make changes to your account here. Click save when you&amp;re
+                done.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -235,7 +228,8 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
             <CardHeader>
               <CardTitle>Account</CardTitle>
               <CardDescription>
-                Make changes to your account here. Click save when you're done.
+                Make changes to your account here. Click save when you&apm;re
+                done.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -278,7 +272,7 @@ export function Model() {
         <CardTitle>ML Project Setup</CardTitle>
         <CardDescription>
           Configure your machine learning project settings here. Click save when
-          you're done.
+          you&apm;re done.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
