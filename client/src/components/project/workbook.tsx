@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 
+import { CSVViewer } from "../editor/CSVViewer"
 import { DatasetPreview } from "../editor/DatasetPreview"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import {
@@ -9,6 +10,7 @@ import {
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
+import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
 import { projectDetailsStore } from "@/store/workbookStore"
 
@@ -101,9 +103,9 @@ const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
         onBlur={() => titleMutation.mutate(title)}
         placeholder="Untitled"
       />
-      <div className="mt-4">
+      <div className="my-4">
         <MultiLineTextInput
-          className="outline-none"
+          className="input-invisible min-h-12 rounded-md p-2 text-lg text-gray-700 focus:outline-2 focus:outline-gray-200"
           value={description}
           onChange={(value) => {
             console.log("Setting description to:", value)
@@ -112,7 +114,17 @@ const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
           }}
         />
       </div>
-      <DatasetPreview />
+      {/* TODO: Fix this, both have uploads */}
+      {/* <DatasetPreview /> */}
+      <CSVViewer projectId={projectId} />
+      <div className="mt-4 flex justify-end">
+        <Button
+          variant={"brutal"}
+          className="bg-purple-300 font-mono hover:bg-purple-400"
+        >
+          RUN WORKBOOK
+        </Button>
+      </div>
     </div>
   )
 }

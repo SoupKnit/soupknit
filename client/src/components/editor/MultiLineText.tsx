@@ -1,8 +1,12 @@
+import { cn } from "@/lib/utils"
+
 interface MultiLineTextInputProps {
   className?: string
   value: string
   onChange: (value: string) => void
 }
+
+const placeHolder = "Add description"
 
 export const MultiLineTextInput = (props: MultiLineTextInputProps) => {
   const handleInput = (event: any) => {
@@ -14,13 +18,16 @@ export const MultiLineTextInput = (props: MultiLineTextInputProps) => {
   return (
     <div
       contentEditable
+      role="textbox"
       onBlur={handleInput}
-      className="custom-textarea"
-      dangerouslySetInnerHTML={{ __html: addLineBreaks(props.value) }}
+      className={props.className || ""}
+      dangerouslySetInnerHTML={{
+        __html: withLineBreaks(props.value || placeHolder),
+      }}
     />
   )
 }
 
-function addLineBreaks(text: string) {
+export function withLineBreaks(text: string) {
   return text?.replace(/(?:\r\n|\r|\n)/g, "<br>") || ""
 }

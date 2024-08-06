@@ -4,6 +4,8 @@ import { useRouter } from "@tanstack/react-router"
 
 import { Trash2 } from "lucide-react"
 
+import { Hide } from "../util/ConditionalShow"
+import { FileInputArea } from "./DatasetPreview"
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
 import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
@@ -127,7 +129,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
   }
 
   return (
-    <div className="p-4">
+    <div className="">
       <Tabs defaultValue="Preprocessing" className="w-auto">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="Preprocessing">Preprocessing</TabsTrigger>
@@ -137,17 +139,12 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
         </TabsList>
         <TabsContent value="Preprocessing">
           <Card>
-            <CardHeader>
-              <CardTitle>Workbook Data</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="mt-4 space-y-2">
               {error && <div className="mb-4 text-red-500">{error}</div>}
-              <Input
-                type="file"
-                accept=".csv,.xlsx,.xls,.xlsm"
-                onChange={handleFileSelect}
-                className="mb-4"
-              />
+
+              <Hide when={headers.length > 0}>
+                <FileInputArea fileUpload={handleFileSelect} />
+              </Hide>
               {workbookId && (
                 <Button
                   onClick={() => fetchFirstRows(workbookId)}

@@ -3,6 +3,8 @@ import { Link, useNavigate } from "@tanstack/react-router"
 
 import { Folder, PlusCircle } from "lucide-react"
 
+import { Card } from "../ui/card"
+import { withLineBreaks } from "./MultiLineText"
 import { createNewProject, loadProjects } from "@/actions/projectsActions"
 import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
@@ -10,6 +12,7 @@ import { useSupa } from "@/lib/supabaseClient"
 interface Project {
   id: string
   title: string
+  description: string
 }
 
 export function ProjectList() {
@@ -45,24 +48,9 @@ export function ProjectList() {
   }
 
   return (
-    <div className="w-full bg-white shadow-md">
-      <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto w-full p-6">
+      <div className="flex justify-between">
         <h2 className="mb-6 text-2xl font-bold text-gray-800">Your Projects</h2>
-        <div className="mb-6 space-y-3">
-          {!isError &&
-            projects.map((project: Project) => (
-              <Link
-                key={project.id}
-                to={`/app/${project.id}`}
-                className="flex items-center rounded-md bg-gray-50 p-4 transition-colors duration-200 hover:bg-gray-100"
-              >
-                <Folder className="mr-3 h-5 w-5 flex-shrink-0 text-blue-500" />
-                <span className="truncate font-medium text-gray-700">
-                  {project.title}
-                </span>
-              </Link>
-            ))}
-        </div>
         <Button
           onClick={() => createProject.mutate()}
           className="w-full sm:w-auto"
@@ -71,7 +59,41 @@ export function ProjectList() {
           Create New Project
         </Button>
       </div>
+      <div className="my-6 space-y-8">
+        {!isError &&
+          projects.map((project: Project) => (
+            <Card
+              hoverable
+              key={project.id}
+              className="p-8 transition-colors duration-200 hover:bg-gray-100"
+            >
+              <Link to={`/app/${project.id}`}>
+                <div className="flex">
+                  {/* <Folder className="mr-3 mt-1 h-8 w-8 flex-shrink-0 text-gray-500" /> */}
+                  <div>
+                    <div className="truncate text-2xl font-semibold text-gray-800">
+                      {project.title}
+                    </div>
+                    <div className="mt-2">
+                      <AddLineBreaks text={project.description} />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            </Card>
+          ))}
+      </div>
     </div>
+  )
+}
+
+function AddLineBreaks({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line) => (
+        <div key={line}>{line}</div>
+      ))}
+    </>
   )
 }
 

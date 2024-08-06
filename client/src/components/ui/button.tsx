@@ -11,6 +11,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
+        brutal:
+          "rounded-sm bg-white font-bold text-gray-600 shadow-[4px_4px_0px] shadow-zinc-500 hover:shadow-zinc-700",
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
