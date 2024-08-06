@@ -6,9 +6,9 @@ export const updateProjectTitle = async (
   projectId: string,
 ) => {
   return await supa
-    .from("Projects")
+    .from("projects")
     .update({ title })
-    .eq("id", parseInt(projectId))
+    .eq("id", projectId)
     .select("title")
     .throwOnError()
     .then((r) => r.data)
@@ -20,18 +20,18 @@ export const updateProjectDescription = async (
   projectId: string,
 ) => {
   return await supa
-    .from("Projects")
+    .from("projects")
     .update({ description })
-    .eq("id", parseInt(projectId))
+    .eq("id", projectId)
     .throwOnError()
     .then((r) => r.data)
 }
 
 export const loadProject = async (supa: SupabaseClient, projectId: string) => {
   const { data, error } = await supa
-    .from("Projects")
+    .from("projects")
     .select("title, id, description")
-    .eq("id", parseInt(projectId))
+    .eq("id", projectId)
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (error || !data || !data.length) {
@@ -44,7 +44,7 @@ export const loadProject = async (supa: SupabaseClient, projectId: string) => {
 export const createNewProject = async (supa: SupabaseClient) => {
   try {
     const data = await supa
-      .from("Projects")
+      .from("projects")
       .insert([
         {
           title: "",
@@ -64,7 +64,7 @@ export const createNewProject = async (supa: SupabaseClient) => {
 
 export const loadProjects = async (supa: SupabaseClient) => {
   return await supa
-    .from("Projects")
+    .from("projects")
     .select("title, id, description")
     .throwOnError()
     .then((r) => r.data)
