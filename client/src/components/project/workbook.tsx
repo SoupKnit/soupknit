@@ -160,7 +160,7 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
           onBlur={() => descriptionMutation.mutate(description)}
           className="input-invisible resize-none text-xl"
           placeholder="Description"
-          rows={4}
+          rows={3}
         />
       </div>
       <CSVViewer projectId={projectId} />
