@@ -1,8 +1,20 @@
 import { useEffect, useState } from "react"
 import Papa from "papaparse"
 
+import * as workbookActions from "@/actions/workbookActions"
 import { useSupa } from "@/lib/supabaseClient"
+import { workbookStore } from "@/store/workbookStore"
 
+/**
+ * TODO: refactor needed here
+ *   - This needs to tie in with the Workbook store, and jotai global state
+ *   - This hook should also interface with react-query to keep the workbook state synced with the database
+ *   - Split this hook into smaller hooks and functions. Only state management should be here
+ *   - All other logic should be moved to actions/stores
+ *
+ * {@link workbookStore}
+ * {@link workbookActions}
+ */
 export function useWorkbook(projectId: string) {
   const [csvData, setCSVData] = useState<Record<string, any>[]>([])
   const [headers, setHeaders] = useState<string[]>([])

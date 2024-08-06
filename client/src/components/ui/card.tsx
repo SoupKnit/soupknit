@@ -5,16 +5,19 @@ import { cn } from "@/lib/utils"
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asChild?: boolean
+  hoverable?: boolean
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, asChild, ...props }, ref) => {
+  ({ className, asChild, hoverable = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "div"
     return (
       <Comp
         ref={ref}
         className={cn(
-          "rounded-lg border bg-card text-card-foreground shadow-sm",
+          "rounded-sm border-2 border-black bg-card text-card-foreground shadow-[4px_4px_0px] shadow-zinc-500",
+          hoverable &&
+            "transition-transform duration-200 ease-in-out hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-zinc-700",
           className,
         )}
         {...props}

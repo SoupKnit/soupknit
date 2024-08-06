@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { CSVViewer } from "@/components/editor/CSVViewer"
+import { DatasetPreview } from "@/components/editor/DatasetPreview"
 
 export const Route = createFileRoute("/app/_editor/blocks")({
   component: BaseLayout,
 })
 
 function BaseLayout() {
-  return <CSVViewer />
+  return <DatasetPreview />
 }

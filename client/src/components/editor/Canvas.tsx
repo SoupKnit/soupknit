@@ -36,7 +36,7 @@ export function Editor() {
   }, [])
   return (
     <main
-      className={`${layout === "focused" ? "container max-w-screen-lg" : "grid"} flex flex-col items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-8`}
+      className={`${layout === "focused" ? "container max-w-screen-xl" : "grid"} flex flex-col items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8 lg:grid-cols-8`}
     >
       {/* <div className="my-2">
         <ActionCallout />

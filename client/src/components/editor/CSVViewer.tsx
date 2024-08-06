@@ -4,6 +4,8 @@ import { useRouter } from "@tanstack/react-router"
 
 import { Trash2 } from "lucide-react"
 
+import { Hide } from "../util/ConditionalShow"
+import { FileInputArea } from "./DatasetPreview"
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
 import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
@@ -45,7 +47,7 @@ interface CSVViewerProps {
   projectId: string
 }
 
-export function CSVViewer({ projectId }: CSVViewerProps) {
+export function CSVViewer({ projectId }: Readonly<CSVViewerProps>) {
   const supa = useSupa()
 
   const {
@@ -61,18 +63,14 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     deleteProject,
   } = useWorkbook(projectId)
 
-  const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
-    useQuery({
-      queryKey: ["preprocessingConfig"],
-      queryFn: fetchPreprocessingConfig(supa),
-    })
+  // const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
 
   const {
     preprocessingConfig,
     handleGlobalPreprocessingChange,
     handleColumnTypeChange,
     handleColumnPreprocessingChange,
-  } = usePreprocessing(headers, fetchedPreprocessingConfig)
+  } = usePreprocessing(headers)
 
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -89,7 +87,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
       try {
         await deleteProject(supa, projectId)
         history.go(-1)
-      } catch (err) {
+      } catch (err: any) {
         console.error("Error deleting project:", err)
         setDeleteError(`Failed to delete project: ${err.message}`)
       } finally {
@@ -122,12 +120,8 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
     ))
   }
 
-  if (isConfigLoading) {
-    return <div>Loading preprocessing config...</div>
-  }
-
   return (
-    <div className="p-4">
+    <div className="">
       <Tabs defaultValue="Preprocessing" className="w-auto">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="Preprocessing">Preprocessing</TabsTrigger>
@@ -137,17 +131,12 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
         </TabsList>
         <TabsContent value="Preprocessing">
           <Card>
-            <CardHeader>
-              <CardTitle>Workbook Data</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="mt-4 space-y-2">
               {error && <div className="mb-4 text-red-500">{error}</div>}
-              <Input
-                type="file"
-                accept=".csv,.xlsx,.xls,.xlsm"
-                onChange={handleFileSelect}
-                className="mb-4"
-              />
+
+              <Hide when={headers.length > 0}>
+                <FileInputArea fileUpload={handleFileSelect} />
+              </Hide>
               {workbookId && (
                 <Button
                   onClick={() => fetchFirstRows(workbookId)}
@@ -159,7 +148,7 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
               )}
               {workbookName && (
                 <div className="mb-4">
-                  Current Workbook: {workbookName} ({workbookFileType})
+                  Dataset: {workbookName} ({workbookFileType})
                 </div>
               )}
               {loading ? (
@@ -215,7 +204,8 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
             <CardHeader>
               <CardTitle>Account</CardTitle>
               <CardDescription>
-                Make changes to your account here. Click save when you're done.
+                Make changes to your account here. Click save when you&amp;re
+                done.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -238,7 +228,8 @@ export function CSVViewer({ projectId }: CSVViewerProps) {
             <CardHeader>
               <CardTitle>Account</CardTitle>
               <CardDescription>
-                Make changes to your account here. Click save when you're done.
+                Make changes to your account here. Click save when you&apm;re
+                done.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -281,7 +272,7 @@ export function Model() {
         <CardTitle>ML Project Setup</CardTitle>
         <CardDescription>
           Configure your machine learning project settings here. Click save when
-          you're done.
+          you&apm;re done.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

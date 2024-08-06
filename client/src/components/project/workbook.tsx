@@ -1,15 +1,23 @@
 import React, { useEffect, useRef, useState } from "react"
-import { createClient } from "@supabase/supabase-js"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { useAtom } from "jotai"
 
 import { CSVViewer } from "../editor/CSVViewer"
+import { DatasetPreview } from "../editor/DatasetPreview"
+import { MultiLineTextInput } from "../editor/MultiLineText"
 import {
+  loadProject,
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
+import { runWorkbookQuery } from "@/actions/workbookActions"
+import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
+import { projectDetailsStore, workbookStore } from "@/store/workbookStore"
 
-interface ProjectDetailsFormProps {
+import type { Workbook } from "@soupknit/model/src/workbookSchemas"
+
+interface WorkbookProps {
   projectId: string
 }
 
@@ -19,65 +27,27 @@ interface Project {
   description: string
 }
 
-const loadProject = async (
-  supa: ReturnType<typeof createClient>,
-  projectId: string,
-): Promise<Project> => {
-  console.log("loadProject called with projectId:", projectId)
-  try {
-    console.log("Fetching project from Supabase...")
-    const { data, error: supaError } = await supa
-      .from("projects")
-      .select("title, id, description")
-      .eq("id", projectId)
-      .single()
-
-    console.log("Supabase response:", { data, supaError })
-
-    if (supaError) throw supaError
-
-    if (data) {
-      console.log("Project data found:", data)
-      return {
-        title: data.title || "",
-        description: data.description || "",
-        id: data.id,
-      }
-    } else {
-      console.log("Project not found")
-      throw new Error("Project not found")
-    }
-  } catch (error) {
-    console.error("Error loading project:", error)
-    throw error
-  }
-}
-
-const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
-  const [title, setTitle] = useState<string>("")
-  const [description, setDescription] = useState<string>("")
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
-  const [focusDescription, setFocusDescription] = useState<boolean>(false)
-
+const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
   const supa = useSupa()
+  const [workbook] = useAtom(workbookStore)
 
-  const {
-    isLoading,
-    isError,
-    data: project,
-    error,
-  } = useQuery({
+  const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, supa],
-    queryFn: () => loadProject(supa, projectId),
-    retry: false,
+    queryFn: async () => loadProject(supa, projectId),
   })
 
+  const [title, setTitle] = useState<string>(project?.title)
+  const [description, setDescription] = useState<string>(project?.description)
+
   useEffect(() => {
-    if (project) {
+    if (isLoading === false && project) {
       setTitle(project.title)
       setDescription(project.description)
     }
-  }, [project])
+  }, [project, isLoading])
+
+  const descriptionInputRef = useRef<HTMLDivElement>(null)
+  const [focusDescription, setFocusDescription] = useState<boolean>(false)
 
   useEffect(() => {
     if (focusDescription && descriptionInputRef.current) {
@@ -108,64 +78,73 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
     },
   })
 
-  if (isLoading) {
-    return <div className="mt-8 text-center">Loading project details...</div>
-  }
+  const runAction = useMutation({
+    mutationFn: async (workbook: Workbook | null) => {
+      console.log("Running workbook:", workbook)
+      if (!workbook) {
+        throw new Error("No workbook to run")
+      }
+      return runWorkbookQuery(workbook)
+    },
+    onError: (error) => {
+      console.error("Error running workbook:", error)
+    },
+  })
 
-  if (isError) {
-    return (
-      <div className="mt-8 text-center">
-        Error: {error?.message || "An error occurred"}
-      </div>
-    )
-  }
-
-  if (!project) {
-    return <div className="mt-8 text-center">No project found</div>
+  if (isLoading || !project) {
+    return <div>Loading...</div>
   }
 
   return (
     <div className="container mx-auto my-24">
-      <div className="">
-        <input
-          type="text"
-          className="input-invisible text-5xl font-semibold"
-          value={title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setTitle(e.target.value)
+      {/* <h2 className="mb-4 text-2xl font-bold">Project Details</h2> */}
+      <input
+        type="text"
+        className="input-invisible text-5xl font-semibold"
+        value={title}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setTitle(e.target.value)
+        }
+        onKeyDown={(e) => {
+          if (
+            e.key === "Enter" ||
+            e.key === "Escape" ||
+            e.key === "Tab" ||
+            e.key === "ArrowDown"
+          ) {
+            e.preventDefault()
+            setFocusDescription(true)
+            titleMutation.mutate(title)
           }
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" ||
-              e.key === "Escape" ||
-              e.key === "Tab" ||
-              e.key === "ArrowDown"
-            ) {
-              e.preventDefault()
-              setFocusDescription(true)
-              titleMutation.mutate(title)
-            }
-          }}
-          onBlur={() => titleMutation.mutate(title)}
-          placeholder="Untitled"
-        />
-      </div>
-      <div className="mt-4">
-        <textarea
-          ref={descriptionInputRef}
+        }}
+        onBlur={() => titleMutation.mutate(title)}
+        placeholder="Untitled"
+      />
+      <div className="my-4">
+        <MultiLineTextInput
+          className="input-invisible min-h-12 rounded-md p-2 text-lg text-gray-700 focus:outline-2 focus:outline-gray-200"
           value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            setDescription(e.target.value)
-          }
-          onBlur={() => descriptionMutation.mutate(description)}
-          className="input-invisible resize-none text-xl"
-          placeholder="Description"
-          rows={3}
+          onChange={(value) => {
+            console.log("Setting description to:", value)
+            descriptionMutation.mutate(value)
+            setDescription(value)
+          }}
         />
       </div>
+      {/* TODO: Fix this, these 2 components do the same thing */}
+      {/* <DatasetPreview /> */}
       <CSVViewer projectId={projectId} />
+      <div className="mt-4 flex justify-end">
+        <Button
+          onClick={() => runAction.mutate(workbook)}
+          variant={"brutal"}
+          className="bg-purple-300 font-mono hover:bg-purple-400"
+        >
+          RUN WORKBOOK
+        </Button>
+      </div>
     </div>
   )
 }
 
-export default Workbook
+export default ProjectWorkbook

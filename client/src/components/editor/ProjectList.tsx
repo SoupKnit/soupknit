@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 
 import { Folder, PlusCircle } from "lucide-react"
 
+import { Card } from "../ui/card"
+import { withLineBreaks } from "./MultiLineText"
 import { createNewProject, loadProjects } from "@/actions/projectsActions"
 import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
@@ -11,6 +12,8 @@ import { useSupa } from "@/lib/supabaseClient"
 interface Project {
   id: string
   title: string
+  description: string
+  updated_at: string
 }
 
 export function ProjectList() {
@@ -46,33 +49,57 @@ export function ProjectList() {
   }
 
   return (
-    <div className="w-full bg-white shadow-md">
-      <div className="mx-auto max-w-7xl p-6">
-        <h2 className="mb-6 text-2xl font-bold text-gray-800">Your Projects</h2>
-        <div className="mb-6 space-y-3">
-          {!isError &&
-            projects.map((project: Project) => (
-              <Link
-                key={project.id}
-                to={`/app/${project.id}`}
-                className="flex items-center rounded-md bg-gray-50 p-4 transition-colors duration-200 hover:bg-gray-100"
-              >
-                <Folder className="mr-3 h-5 w-5 flex-shrink-0 text-blue-500" />
-                <span className="truncate font-medium text-gray-700">
-                  {project.title}
-                </span>
-              </Link>
-            ))}
-        </div>
+    <div className="mx-auto mt-12 w-full p-6">
+      <div className="flex justify-between">
+        <h2 className="font-headline text-3xl font-bold text-gray-700">
+          Your Projects
+        </h2>
         <Button
+          variant={"brutal"}
           onClick={() => createProject.mutate()}
-          className="w-full sm:w-auto"
+          className="text-md w-full bg-orange-300 font-bold hover:bg-orange-400 sm:w-auto"
         >
-          <PlusCircle className="mr-2 h-5 w-5" />
-          Create New Project
+          <PlusCircle className="mr-2 h-6 w-6" />
+          NEW PROJECT
         </Button>
       </div>
+      <div className="my-8 flex gap-8">
+        {!isError &&
+          projects.map((project: Project) => (
+            <Card
+              hoverable
+              key={project.id}
+              className="w-1/3 rounded-md p-8 transition-colors duration-200 hover:bg-gray-100"
+            >
+              <Link to={`/app/${project.id}`}>
+                <div className="flex h-full flex-col">
+                  {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
+                  <div className="text-2xl font-semibold text-gray-800">
+                    {project.title}
+                  </div>
+                  <div className="mt-2 h-full flex-grow">
+                    <AddLineBreaks text={project.description} />
+                  </div>
+                  <div className="mt-3 text-sm text-gray-500">
+                    Last updated:{" "}
+                    {new Date(project.updated_at).toLocaleString()}
+                  </div>
+                </div>
+              </Link>
+            </Card>
+          ))}
+      </div>
     </div>
+  )
+}
+
+function AddLineBreaks({ text }: { text: string }) {
+  return (
+    <>
+      {text.split("\n").map((line) => (
+        <div key={line}>{line}</div>
+      ))}
+    </>
   )
 }
 

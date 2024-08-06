@@ -19,7 +19,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
+
+import type {
   CategoricalEncodingMethod,
   NumericImputationMethod,
   NumericScalingMethod,
@@ -46,102 +47,94 @@ export function ColumnPreprocessing({
   preprocessingConfig,
   handleColumnTypeChange,
   handleColumnPreprocessingChange,
-}: ColumnPreprocessingProps) {
+}: Readonly<ColumnPreprocessingProps>) {
   return (
-    <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Column</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Preprocessing</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {preprocessingConfig.columns.map((column) => (
-            <TableRow key={column.name}>
-              <TableCell>{column.name}</TableCell>
-              <TableCell>
-                <Select
-                  value={column.type}
-                  onValueChange={(value: "numeric" | "categorical") =>
-                    handleColumnTypeChange(column.name, value)
-                  }
-                >
+    <div className="grid grid-cols-3 gap-8">
+      <div className="font-bold">Column</div>
+      <div className="font-bold">Type</div>
+      <div className="font-bold">Preprocessing</div>
+      {preprocessingConfig.columns.map((column) => (
+        <React.Fragment key={column.name}>
+          <div>{column.name}</div>
+          <div>
+            <Select
+              value={column.type}
+              onValueChange={(value: "numeric" | "categorical") =>
+                handleColumnTypeChange(column.name, value)
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="numeric">Numeric</SelectItem>
+                <SelectItem value="categorical">Categorical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            {column.type === "numeric" ? (
+              <div className="space-y-2">
+                <div>
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Imputation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {(
+                          ["none", "mean", "median", "constant", "knn"] as const
+                        ).map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Select>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Scaling" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {(
+                          ["none", "standard", "minmax", "robust"] as const
+                        ).map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Select>
                   <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue placeholder="Encoding" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="numeric">Numeric</SelectItem>
-                    <SelectItem value="categorical">Categorical</SelectItem>
+                    <SelectGroup>
+                      {(["none", "onehot", "label", "ordinal"] as const).map(
+                        (method) => (
+                          <SelectItem key={method} value={method}>
+                            {method}
+                          </SelectItem>
+                        ),
+                      )}
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
-              </TableCell>
-              <TableCell>
-                {column.type === "numeric" ? (
-                  <div className="space-y-2">
-                    <div>
-                      <Select>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Imputation" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {(
-                              [
-                                "none",
-                                "mean",
-                                "median",
-                                "constant",
-                                "knn",
-                              ] as const
-                            ).map((method) => (
-                              <SelectItem value={method}>{method}</SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Select>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Scaling" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {(
-                              ["none", "standard", "minmax", "robust"] as const
-                            ).map((method) => (
-                              <SelectItem value={method}>{method}</SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <Select>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Encoding" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {(
-                            ["none", "onehot", "label", "ordinal"] as const
-                          ).map((method) => (
-                            <SelectItem value={method}>{method}</SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+              </div>
+            )}
+          </div>
+        </React.Fragment>
+      ))}
     </div>
   )
 }
