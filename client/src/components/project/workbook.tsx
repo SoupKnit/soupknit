@@ -21,15 +21,15 @@ interface Project {
 
 const loadProject = async (
   supa: ReturnType<typeof createClient>,
-  projectId: string | number,
+  projectId: string,
 ): Promise<Project> => {
   console.log("loadProject called with projectId:", projectId)
   try {
     console.log("Fetching project from Supabase...")
     const { data, error: supaError } = await supa
-      .from("Projects")
+      .from("projects")
       .select("title, id, description")
-      .eq("id", typeof projectId === "string" ? parseInt(projectId) : projectId)
+      .eq("id", projectId)
       .single()
 
     console.log("Supabase response:", { data, supaError })
