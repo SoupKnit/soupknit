@@ -32,7 +32,7 @@ export function useWorkbook(projectId: string) {
       const { data, error } = await supa
         .from("workbooks")
         .select("*")
-        .eq("project_id", parseInt(projectId))
+        .eq("project_id", projectId)
         .order("created_at", { ascending: false })
         .limit(1)
 
@@ -115,7 +115,7 @@ export function useWorkbook(projectId: string) {
       const { data: workbook, error: workbookError } = await supa
         .from("workbooks")
         .insert({
-          project_id: parseInt(projectId),
+          project_id: projectId,
           name: file.name,
           file_url: publicUrl,
           file_type: file.name.split(".").pop(),
@@ -203,7 +203,7 @@ export function useWorkbook(projectId: string) {
 
       // 5. Delete the project
       const { error: projectDeleteError } = await supa
-        .from("Projects")
+        .from("projects")
         .delete()
         .eq("id", projectId)
       if (projectDeleteError) throw projectDeleteError
