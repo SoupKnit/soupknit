@@ -146,10 +146,17 @@ export type Cell = z.infer<typeof CellSchema>;
 export const WorkbookSchema = z.object({
   cells: z.array(CellSchema),
   workbookId: z.string(),
-  userId: z.string(),
 });
 
 export type Workbook = z.infer<typeof WorkbookSchema>;
+
+export const ProjectSchema = z.object({
+  workbookVersions: z.array(z.string()),
+  projectId: z.string().nullable(),
+  userId: z.string().nullable(),
+});
+
+export type Project = z.infer<typeof ProjectSchema>;
 
 /** *********************************
  *            EXAMPLES
@@ -192,5 +199,4 @@ const examplePreprocessingTaskCell: SoupCell = {
 const Workbook1: Workbook = {
   cells: [cell1, examplePreprocessingTaskCell],
   workbookId: "workbook1",
-  userId: "user1",
 };

@@ -33,6 +33,7 @@ export const loadProject = async (supa: SupabaseClient, projectId: string) => {
     .select("title, id, description")
     .eq("id", parseInt(projectId))
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (error || !data || !data.length) {
     throw error
   } else {
@@ -64,7 +65,7 @@ export const createNewProject = async (supa: SupabaseClient) => {
 export const loadProjects = async (supa: SupabaseClient) => {
   return await supa
     .from("Projects")
-    .select("title, id")
+    .select("title, id, description")
     .throwOnError()
     .then((r) => r.data)
 }

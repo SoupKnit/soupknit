@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { useAtom } from "jotai"
 
-import { CSVViewer } from "../editor/CSVViewer"
+import { DatasetPreview } from "../editor/DatasetPreview"
+import { MultiLineTextInput } from "../editor/MultiLineText"
 import {
   loadProject,
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
 import { useSupa } from "@/lib/supabaseClient"
+import { projectDetailsStore } from "@/store/workbookStore"
 
-interface ProjectDetailsFormProps {
+interface WorkbookProps {
   projectId: string
 }
 
@@ -19,7 +22,7 @@ interface Project {
   description: string
 }
 
-const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
+const Workbook: React.FC<WorkbookProps> = ({ projectId }) => {
   const supa = useSupa()
 
   const { isLoading, data: project = null } = useQuery({
@@ -37,7 +40,7 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
     }
   }, [project, isLoading])
 
-  const descriptionInputRef = useRef<HTMLTextAreaElement>(null)
+  const descriptionInputRef = useRef<HTMLDivElement>(null)
   const [focusDescription, setFocusDescription] = useState<boolean>(false)
 
   useEffect(() => {
@@ -76,44 +79,40 @@ const Workbook: React.FC<ProjectDetailsFormProps> = ({ projectId }) => {
   return (
     <div className="container mx-auto my-24">
       {/* <h2 className="mb-4 text-2xl font-bold">Project Details</h2> */}
-      <div className="">
-        <input
-          type="text"
-          className="input-invisible text-5xl font-semibold"
-          value={title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setTitle(e.target.value)
+      <input
+        type="text"
+        className="input-invisible text-5xl font-semibold"
+        value={title}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          setTitle(e.target.value)
+        }
+        onKeyDown={(e) => {
+          if (
+            e.key === "Enter" ||
+            e.key === "Escape" ||
+            e.key === "Tab" ||
+            e.key === "ArrowDown"
+          ) {
+            e.preventDefault()
+            setFocusDescription(true)
+            titleMutation.mutate(title)
           }
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" ||
-              e.key === "Escape" ||
-              e.key === "Tab" ||
-              e.key === "ArrowDown"
-            ) {
-              e.preventDefault()
-              setFocusDescription(true)
-              titleMutation.mutate(title)
-            }
-          }}
-          onBlur={() => titleMutation.mutate(title)}
-          placeholder="Untitled"
-        />
-      </div>
+        }}
+        onBlur={() => titleMutation.mutate(title)}
+        placeholder="Untitled"
+      />
       <div className="mt-4">
-        <textarea
-          ref={descriptionInputRef}
+        <MultiLineTextInput
+          className="outline-none"
           value={description}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-            setDescription(e.target.value)
-          }
-          onBlur={() => descriptionMutation.mutate(description)}
-          className="input-invisible resize-none text-xl"
-          placeholder="Description"
-          rows={4}
+          onChange={(value) => {
+            console.log("Setting description to:", value)
+            descriptionMutation.mutate(value)
+            setDescription(value)
+          }}
         />
       </div>
-      <CSVViewer />
+      <DatasetPreview />
     </div>
   )
 }
