@@ -154,6 +154,12 @@ export const ProjectSchema = z.object({
   workbookVersions: z.array(z.string()),
   projectId: z.string().nullable(),
   userId: z.string().nullable(),
+  files: z.array(
+    z.object({
+      name: z.string(),
+      url: z.string(),
+    }),
+  ),
 });
 
 export type Project = z.infer<typeof ProjectSchema>;

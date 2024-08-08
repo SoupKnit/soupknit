@@ -25,7 +25,7 @@ import type {
   NumericImputationMethod,
   NumericScalingMethod,
   PreprocessingConfig,
-} from "@/types/preprocessing"
+} from "@soupknit/model/src/preprocessing"
 
 interface ColumnPreprocessingProps {
   preprocessingConfig: PreprocessingConfig
