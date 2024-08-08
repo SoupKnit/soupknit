@@ -1,7 +1,8 @@
 import { helloMessageSchema } from "@soupknit/model/src/helloMessage"
 import { validate } from "@soupknit/model/src/validate"
 
-import { hiServerApi } from "@/api/hiServerApi"
+import { api } from "./baseApi"
+import { hiServerApi } from "@/actions/hiServerApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 
 import type { ClientEnvironment } from "../lib/clientEnvironment"
@@ -10,7 +11,10 @@ import type { ClientEnvironment } from "../lib/clientEnvironment"
 
 export async function hiServer(env: ClientEnvironment) {
   try {
-    const data = await hiServerApi(env, await getSupabaseAccessToken())
+    const url = `${env.serverUrl}/your_mom`
+    const data = await api.get(url, {
+      token: await getSupabaseAccessToken(),
+    })
     const validatedData = validate(helloMessageSchema, data)
     return validatedData.message
   } catch (error) {

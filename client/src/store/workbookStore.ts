@@ -1,13 +1,13 @@
 import { atom } from "jotai"
 
-import type { Cell, Workbook } from "@soupknit/model/src/workbookSchemas"
+import type {
+  ActiveProject,
+  Cell,
+  Workbook,
+} from "@soupknit/model/src/workbookSchemas"
 
 // atom to store the active workbook ID
-export const activeProject = atom<{
-  workbookId: Workbook["workbookId"] | null
-  projectId: string | null
-  projectTitle: string | null
-} | null>(null)
+export const activeProject = atom<ActiveProject | null>(null)
 
 // atom to store all the loaded projects, their titles, and descriptions
 type ProjectDetails = {
@@ -23,7 +23,7 @@ export const cellsStore = atom<Cell[]>([])
 
 // atom to store the workbook, and its cells
 export const workbookStore = atom<Workbook | null>((get) => {
-  const id = get(activeProject)?.projectId
+  const id = get(activeProject)?.workbookId
   if (!id) return null
   const cells = get(cellsStore)
   return { workbookId: id, cells }

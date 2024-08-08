@@ -158,6 +158,16 @@ export const ProjectSchema = z.object({
 
 export type Project = z.infer<typeof ProjectSchema>;
 
+export type ActiveProject = {
+  workbookId?: Workbook["workbookId"];
+  projectId: string;
+  projectTitle?: string;
+  files?: {
+    name: string;
+    url: string;
+  }[];
+};
+
 /** *********************************
  *            EXAMPLES
  * **********************************/

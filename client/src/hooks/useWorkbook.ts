@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react"
+import { useAtom } from "jotai"
 import Papa from "papaparse"
 
 import * as workbookActions from "@/actions/workbookActions"
 import { useSupa } from "@/lib/supabaseClient"
-import { workbookStore } from "@/store/workbookStore"
+import { activeProject, workbookStore } from "@/store/workbookStore"
+
+import type { SupabaseClient } from "@supabase/supabase-js"
 
 /**
  * TODO: refactor needed here
@@ -15,7 +18,7 @@ import { workbookStore } from "@/store/workbookStore"
  * {@link workbookStore}
  * {@link workbookActions}
  */
-export function useWorkbook(projectId: string) {
+export function useWorkbook(_projectId?: string) {
   const [csvData, setCSVData] = useState<Record<string, any>[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -25,9 +28,11 @@ export function useWorkbook(projectId: string) {
   const [error, setError] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const supa = useSupa()
+  const [project, setProject] = useAtom(activeProject)
+  const [workbook, setWorkbook] = useAtom(workbookStore)
 
   useEffect(() => {
-    if (projectId) {
+    if (project?.projectId) {
       loadExistingWorkbook()
     }
     const fetchUserId = async () => {
@@ -37,14 +42,17 @@ export function useWorkbook(projectId: string) {
       setUserId(user?.id)
     }
     fetchUserId()
-  }, [projectId])
+  }, [project?.projectId])
 
+  // this should be use react-query (useQuery) to fetch the workbook data
+  // and keep it cached
   const loadExistingWorkbook = async () => {
+    if (!project?.projectId) return
     try {
       const { data, error } = await supa
         .from("workbooks")
         .select("*")
-        .eq("project_id", projectId)
+        .eq("project_id", project?.projectId)
         .order("created_at", { ascending: false })
         .limit(1)
 
@@ -55,6 +63,10 @@ export function useWorkbook(projectId: string) {
         setWorkbookId(workbook.id)
         setWorkbookName(workbook.name)
         setWorkbookFileType(workbook.file_type)
+        setProject({
+          projectId: project?.projectId,
+          workbookId: workbook.id,
+        })
         await fetchFirstRows(workbook.id)
       }
     } catch (error) {
@@ -67,6 +79,7 @@ export function useWorkbook(projectId: string) {
     setLoading(true)
 
     try {
+      // use react-query
       const { data, error } = await supa
         .from("workbook_data")
         .select("preview_data")
@@ -93,6 +106,7 @@ export function useWorkbook(projectId: string) {
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
+    if (project?.projectId) throw new Error("Project ID not available")
     const file = event.target.files?.[0]
     if (!file) return
 
@@ -104,7 +118,7 @@ export function useWorkbook(projectId: string) {
         throw new Error("User ID not available")
       }
 
-      const filePath = `${userId}/project-${projectId}/${Date.now()}_${file.name}`
+      const filePath = `${userId}/project-${project?.projectId}/${Date.now()}_${file.name}`
 
       const { data: uploadData, error: uploadError } = await supa.storage
         .from("workbook-files")
@@ -124,10 +138,11 @@ export function useWorkbook(projectId: string) {
 
       const previewData = parsedData.slice(0, 15)
 
+      // react-query mutation
       const { data: workbook, error: workbookError } = await supa
         .from("workbooks")
         .insert({
-          project_id: projectId,
+          project_id: project?.projectId,
           name: file.name,
           file_url: publicUrl,
           file_type: file.name.split(".").pop(),
@@ -137,7 +152,10 @@ export function useWorkbook(projectId: string) {
         .single()
 
       if (workbookError) throw workbookError
-
+      setProject({
+        projectId: project?.projectId,
+        workbookId: workbook.id,
+      })
       const { error: insertError } = await supa.from("workbook_data").insert({
         workbook_id: workbook.id,
         preview_data: previewData,
@@ -146,11 +164,11 @@ export function useWorkbook(projectId: string) {
       if (insertError) throw insertError
 
       setHeaders(meta.fields || [])
-      setCSVData(previewData)
+      setCSVData(previewData) // fix types
       setWorkbookId(workbook.id)
       setWorkbookName(workbook.name)
       setWorkbookFileType(workbook.file_type)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
     } finally {

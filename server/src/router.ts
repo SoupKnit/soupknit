@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import userController from "./controller/userController";
 import indexController from "./controller/indexController";
-import appController from "./controller/appController";
+import workbookController from "./controller/workbookController";
 
 // Middleware to verify JWT
 async function verifyJWT(request: FastifyRequest, reply: FastifyReply) {
@@ -35,6 +35,6 @@ export default async function router(fastify: FastifyInstance) {
   fastify.addHook("onRequest", verifyJWT);
   fastify.register(indexController, { prefix: "/" });
   fastify.register(userController, { prefix: "/user" });
-  fastify.register(appController, { prefix: "/app" });
+  fastify.register(workbookController, { prefix: "/app" });
   // fastify.register(uploadController, { prefix: "/upload" });
 }

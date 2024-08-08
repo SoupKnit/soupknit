@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
+import { useAtom } from "jotai"
 
 import { Folder, PlusCircle } from "lucide-react"
 
@@ -8,6 +9,7 @@ import { withLineBreaks } from "./MultiLineText"
 import { createNewProject, loadProjects } from "@/actions/projectsActions"
 import { Button } from "@/components/ui/button"
 import { useSupa } from "@/lib/supabaseClient"
+import { activeProject } from "@/store/workbookStore"
 
 interface Project {
   id: string
@@ -19,6 +21,7 @@ interface Project {
 export function ProjectList() {
   const supa = useSupa()
   const navigate = useNavigate({ from: "/app/$projectId" })
+  const [project, setProject] = useAtom(activeProject)
 
   const {
     isPending,
@@ -36,6 +39,7 @@ export function ProjectList() {
       return await createNewProject(supa)
     },
     onSuccess: (projectId) => {
+      setProject({ projectId: projectId })
       navigate({ to: "/app/$projectId", params: { projectId } })
     },
   })

@@ -3,6 +3,7 @@ import {
   CodeGenerationRequestConfig,
   CodeGenerationConfigSchema,
 } from "@soupknit/model/src/codeGeneratorSchemas";
+// import { WorkbookSchema } from "@soupknit/model/src/workbookSchemas";
 import {
   BaseGenerator,
   GeneratedCode,
@@ -12,8 +13,9 @@ import {
   PyTorchGenerator,
   TensorFlowGenerator,
 } from "../core/codeGeneration/modelGenerator";
+import { runInPythonSandbox } from "../core/pythonSandbox/run";
 
-export default async function appController(fastify: FastifyInstance) {
+export default async function workbookController(fastify: FastifyInstance) {
   // POST /
   fastify.post(
     "/code_gen",
@@ -29,8 +31,29 @@ export default async function appController(fastify: FastifyInstance) {
         .send(response);
     },
   );
+
+  // POST /workbook
+  fastify.post(
+    "/workbook",
+    async function (_request: FastifyRequest, reply: FastifyReply) {
+      // validate the request
+      // const request = WorkbookSchema.parse(_request.body);
+      console.log(_request.body);
+
+      // This is an example
+      runInPythonSandbox({
+        files: [],
+        input: "Here's some input passed from the controller!!!",
+      });
+
+      reply.send({ status: "success" });
+    },
+  );
 }
 
+/**
+ * @deprecated
+ */
 function getGenerator(
   framework: CodeGenerationRequestConfig["framework"],
   payload: CodeGenerationRequestConfig["payload"],
