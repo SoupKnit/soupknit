@@ -104,4 +104,12 @@
   .input-invisible {
     @apply w-full bg-transparent pb-2 outline-none;
   }
+
+  .shadow-brutal {
+    @apply shadow-[4px_4px_0px];
+  }
+
+  .shadow-brutal-lg {
+    @apply shadow-[8px_8px_1px];
+  }
 }
