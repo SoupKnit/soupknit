@@ -1,6 +1,6 @@
 import { atom } from "jotai"
 
-import { appCalloutStore } from "./appCalloutStore"
+// import { appCalloutStore } from "./appCalloutStore"
 import { editorSettingsStore } from "./editorSettingsStore"
 import { userSettingsStore } from "./userSettingsStore"
 
@@ -12,5 +12,5 @@ import { userSettingsStore } from "./userSettingsStore"
 export const appState = atom({
   userSettingsStore: userSettingsStore,
   editorSettingsState: editorSettingsStore,
-  appCalloutState: appCalloutStore,
+  // appCalloutState: appCalloutStore,
 })

@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import supa from "@/lib/supabaseClient"
 
-export function Editor() {
+export function Canvas() {
   const [theme, setTheme] = useState("light")
   const [layout, setLayout] = useState<"focused" | "full">("focused")
   const [editorLoaded, setEditorLoaded] = useState(false)
