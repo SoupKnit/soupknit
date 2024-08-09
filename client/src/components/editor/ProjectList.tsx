@@ -4,6 +4,7 @@ import { useAtom } from "jotai"
 
 import { Folder, PlusCircle } from "lucide-react"
 
+import OnboardingForm from "../onboarding/OnbaordingForm"
 import { Card } from "../ui/card"
 import { withLineBreaks } from "./MultiLineText"
 import { createNewProject, loadProjects } from "@/actions/projectsActions"
@@ -58,14 +59,17 @@ export function ProjectList() {
         <h2 className="font-headline text-3xl font-bold text-gray-700">
           Your Projects
         </h2>
-        <Button
-          variant={"brutal"}
-          onClick={() => createProject.mutate()}
-          className="text-md w-full bg-orange-300 font-bold hover:bg-orange-400 sm:w-auto"
-        >
-          <PlusCircle className="mr-2 h-6 w-6" />
-          NEW PROJECT
-        </Button>
+        <div className="flex gap-4">
+          <OnboardingForm />
+          <Button
+            variant={"brutal"}
+            onClick={() => createProject.mutate()}
+            className="text-md w-full bg-orange-300 font-bold hover:bg-orange-400 sm:w-auto"
+          >
+            <PlusCircle className="mr-2 h-6 w-6" />
+            NEW PROJECT
+          </Button>
+        </div>
       </div>
       <div className="my-8 flex gap-8">
         {!isError &&
