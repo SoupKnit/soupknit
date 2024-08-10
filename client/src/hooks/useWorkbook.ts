@@ -54,7 +54,7 @@ export function useWorkbook(_projectId: string) {
       )
     },
     onSuccess: (data) => {
-      toast("Workbook created successfully")
+      toast.success("Workbook created successfully")
     },
   })
 

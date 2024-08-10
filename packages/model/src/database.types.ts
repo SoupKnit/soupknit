@@ -60,67 +60,32 @@ export type Database = {
       workbook_data: {
         Row: {
           created_at: string | null
+          created_by: string
           files: Json
           id: string
           preview_data: Json
           project_id: string | null
+          status: Database["public"]["Enums"]["status"]
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string
           files: Json
           id?: string
           preview_data: Json
           project_id?: string | null
+          status?: Database["public"]["Enums"]["status"]
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string
           files?: Json
           id?: string
           preview_data?: Json
           project_id?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "workbooks_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      workbooks: {
-        Row: {
-          created_at: string | null
-          file_type: string
-          file_url: string
-          id: string
-          name: string
-          project_id: string | null
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          file_type: string
-          file_url: string
-          id?: string
-          name: string
-          project_id?: string | null
-          status: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          file_type?: string
-          file_url?: string
-          id?: string
-          name?: string
-          project_id?: string | null
-          status?: string
+          status?: Database["public"]["Enums"]["status"]
           updated_at?: string | null
         }
         Relationships: [
@@ -235,6 +200,7 @@ export type Database = {
         | "Regression"
         | "Clustering"
         | "Time Series"
+      status: "draft" | "published" | "archived" | "deleted" | "in_review"
     }
     CompositeTypes: {
       [_ in never]: never

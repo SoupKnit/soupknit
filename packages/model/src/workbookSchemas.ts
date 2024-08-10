@@ -32,6 +32,7 @@ export const WorkbookDataSchema = z.object({
   files: z.nullable(z.array(WorkbookDataFileSchema)),
   preview_data: z.array(z.any()),
   created_at: z.string(),
+  created_by: z.string(),
   updated_at: z.string(),
 });
 

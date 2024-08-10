@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { useAtom } from "jotai"
+import { toast } from "sonner"
 
 import { ModelDeployMain } from "../deployModel/ModelDeployMain"
 import { MultiLineTextInput } from "../editor/MultiLineText"
@@ -182,9 +183,11 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
         {projectId && <Workbook projectId={projectId} />}
         <div className="mt-4 flex justify-end">
           <Button
-            onClick={() =>
+            onClick={() => {
+              console.log("Running project...")
+              toast.success("Running project...")
               projectAndWorkbook && runAction.mutate(projectAndWorkbook)
-            }
+            }}
             variant={"brutal"}
             className="bg-purple-300 font-mono hover:bg-purple-400"
           >

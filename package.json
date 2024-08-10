@@ -6,7 +6,8 @@
     "server"
   ],
   "scripts": {
-    "dev": "pnpm run --parallel -r dev",
+    "gen-types": "pnpm exec supabase gen types typescript --project-id kstcbdcmgvzsitnywtue > packages/model/src/database.types.ts",
+    "dev": "pnpm run gen-types && pnpm run --parallel -r dev",
     "build": "pnpm run --parallel -r build",
     "typecheck": "pnpm run -r typecheck",
     "prepare": "husky"
