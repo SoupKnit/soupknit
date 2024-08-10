@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router"
 import { ArrowRight, BarChart, Code, Users, Zap } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export function LandingPage() {
   return (
@@ -24,14 +25,14 @@ export function LandingPage() {
 
       <main className="container mx-auto max-w-screen-lg px-4 py-16">
         <section className="mb-16 text-left">
-          <h1 className="font-headline mb-6 text-8xl font-semibold leading-none text-gray-700">
+          <h1 className="mb-6 font-headline text-8xl font-semibold leading-none text-gray-700 dark:text-blue-100">
             <span>No-Code</span>
             <br />
             <span>Machine Learning</span>
             <br />
             <span className="">for Everyone</span>
           </h1>
-          <p className="mb-8 max-w-2xl text-3xl text-gray-600">
+          <p className="mb-8 max-w-2xl text-3xl text-gray-600 dark:text-gray-400">
             Build, train, and deploy machine learning models without writing a
             single line of code.
           </p>
@@ -79,23 +80,17 @@ export function LandingPage() {
           ))}
         </section>
 
-        <FeatureCard>
+        <FeatureCard className="text-lg text-gray-700 dark:text-gray-200">
           <h2 className="mb-6 text-3xl font-bold">How It Works</h2>
           <ol className="list-inside list-decimal space-y-4">
-            <li className="text-lg text-gray-700">
-              Upload your data or connect to your data source
-            </li>
-            <li className="text-lg text-gray-700">
+            <li>Upload your data or connect to your data source</li>
+            <li>
               Choose your machine learning task (classification, regression,
               clustering, etc.)
             </li>
-            <li className="text-lg text-gray-700">
-              Select and configure your model using our visual interface
-            </li>
-            <li className="text-lg text-gray-700">
-              Train and evaluate your model with just a few clicks
-            </li>
-            <li className="text-lg text-gray-700">
+            <li>Select and configure your model using our visual interface</li>
+            <li>Train and evaluate your model with just a few clicks</li>
+            <li>
               Deploy your model to production or export it for use in your
               applications
             </li>
@@ -132,16 +127,23 @@ function FeatureCard({
   title,
   description,
   children,
+  className,
 }: {
   title?: string
   description?: string
   children?: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="rounded-lg border-2 border-black bg-[#e8ece528] p-6 shadow-[8px_8px_1px] shadow-zinc-500">
+    <div
+      className={cn(
+        "rounded-lg border-2 border-black bg-[#e8ece528] p-6 shadow-[8px_8px_1px] shadow-zinc-500",
+        className,
+      )}
+    >
       {children}
       <h3 className="mb-2 text-xl font-semibold">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+      <p className="text-gray-600 dark:text-gray-200">{description}</p>
     </div>
   )
 }
