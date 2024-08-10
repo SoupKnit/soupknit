@@ -1,0 +1,11 @@
+{   
+    "X_columns": ["x"],
+    "y_column": "y",
+    "task": "regression",
+    "preprocessing" : {
+    
+        "global_preprocessing": ["drop_missing"],
+        "global_params": {},
+        "columns":[]
+    }
+}
