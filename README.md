@@ -32,7 +32,12 @@ To get started with this project, you'll need to have Node.js installed on your 
    ```bash
    pnpm install
    ```
-4. Start the development server:
+4. Install supabase cli
+   ```bash
+   brew install supabase/tap/supabase
+   supabase login
+   ```
+6. Start the development server:
    ```bash
    pnpm dev
    ```
