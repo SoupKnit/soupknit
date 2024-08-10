@@ -69,3 +69,17 @@ export const loadProjects = async (supa: SupabaseClient) => {
     .throwOnError()
     .then((r) => r.data)
 }
+
+export const loadDatasets = async (
+  supa: SupabaseClient,
+  userId: string | null,
+) => {
+  if (!userId) {
+    return []
+  }
+  const { data, error } = await supa.storage.from("workbook-files").list(userId)
+  if (error) {
+    throw error
+  }
+  return data
+}

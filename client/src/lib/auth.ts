@@ -1,4 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
+import { useAtom } from "jotai"
+
+import { userSettingsStore } from "@/store/userSettingsStore"
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_CLIENT_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_API_KEY

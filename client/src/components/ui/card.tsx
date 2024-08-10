@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 
 import { cn } from "@/lib/utils"
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   asChild?: boolean
   hoverable?: boolean
 }

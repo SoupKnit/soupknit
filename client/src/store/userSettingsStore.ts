@@ -1,5 +1,9 @@
 import { atom } from "jotai"
 
-const userSettingsStore = atom({})
+type UserSettings = {
+  userId: string | null
+}
 
-export default userSettingsStore
+export const userSettingsStore = atom<UserSettings>({
+  userId: null,
+})
