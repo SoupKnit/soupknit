@@ -21,11 +21,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { activeProject } from "@/store/workbookStore"
+import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
 export function EditorHeaderAndSidebar() {
   // TODO: get the project name from here and display it in the breadcrumb
-  const currentProject = useAtom(activeProject)
+  const currentProject = useAtom(activeProjectAndWorkbook)
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-2">
       <Sidebar />

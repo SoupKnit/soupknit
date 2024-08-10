@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 import Papa from "papaparse"
+import { toast } from "sonner"
 
 import * as workbookActions from "@/actions/workbookActions"
-import { useSupa } from "@/lib/supabaseClient"
-import { activeProject, workbookStore } from "@/store/workbookStore"
+import { loadExistingWorkbook } from "@/actions/workbookActions"
+import { useEnv } from "@/lib/clientEnvironment"
+import { userSettingsStore } from "@/store/userSettingsStore"
+import { activeProjectAndWorkbook, workbookStore } from "@/store/workbookStore"
 
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
 /**
  * TODO: refactor needed here
@@ -18,109 +22,121 @@ import type { SupabaseClient } from "@supabase/supabase-js"
  * {@link workbookStore}
  * {@link workbookActions}
  */
-export function useWorkbook(_projectId?: string) {
+export function useWorkbook(_projectId: string) {
   const [csvData, setCSVData] = useState<Record<string, any>[]>([])
   const [headers, setHeaders] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [workbookId, setWorkbookId] = useState<string | null>(null)
-  const [workbookName, setWorkbookName] = useState<string | null>(null)
-  const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
+  // const [workbookId, setWorkbookId] = useState<string | null>(null)
+  // const [workbookName, setWorkbookName] = useState<string | null>(null)
+  // const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  const supa = useSupa()
-  const [project, setProject] = useAtom(activeProject)
-  const [workbook, setWorkbook] = useAtom(workbookStore)
+  const env = useEnv()
+  const [projectWorkbook, setProjectAndWorkbook] = useAtom(
+    activeProjectAndWorkbook,
+  )
+  const [workbook] = useAtom(workbookStore)
+  const [userSettings] = useAtom(userSettingsStore)
+
+  const workbookQuery = useQuery({
+    queryKey: ["workbook", _projectId, env.supa],
+    queryFn: async () => {
+      return await loadExistingWorkbook(env.supa, _projectId)
+    },
+  })
+
+  const createWorkbook = useMutation({
+    mutationFn: async (data: { preview_data: any; file: WorkbookDataFile }) => {
+      return await workbookActions.createNewWorkbook(
+        env.supa,
+        _projectId,
+        data.file,
+        data.preview_data,
+      )
+    },
+    onSuccess: (data) => {
+      toast.success("Workbook created successfully")
+    },
+  })
 
   useEffect(() => {
-    if (project?.projectId) {
-      loadExistingWorkbook()
-    }
-    const fetchUserId = async () => {
-      const {
-        data: { user },
-      } = await supa.auth.getUser()
-      setUserId(user?.id)
-    }
-    fetchUserId()
-  }, [project?.projectId])
-
-  // this should be use react-query (useQuery) to fetch the workbook data
-  // and keep it cached
-  const loadExistingWorkbook = async () => {
-    if (!project?.projectId) return
-    try {
-      const { data, error } = await supa
-        .from("workbooks")
-        .select("*")
-        .eq("project_id", project?.projectId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-
-      if (error) throw error
-
-      if (data && data.length > 0) {
-        const workbook = data[0]
-        setWorkbookId(workbook.id)
-        setWorkbookName(workbook.name)
-        setWorkbookFileType(workbook.file_type)
-        setProject({
-          projectId: project?.projectId,
-          workbookId: workbook.id,
-        })
-        await fetchFirstRows(workbook.id)
+    if (workbookQuery.isFetched && workbookQuery.isSuccess) {
+      const data = workbookQuery.data
+      if (!data || !data.id || !data.project_id) {
+        toast.warning("No workbook / error fetching workbook")
+        return
       }
-    } catch (error) {
-      console.error("Error loading existing workbook:", error)
-      setError("Error loading existing workbook")
-    }
-  }
-
-  const fetchFirstRows = async (workbookId: string) => {
-    setLoading(true)
-
-    try {
-      // use react-query
-      const { data, error } = await supa
-        .from("workbook_data")
-        .select("preview_data")
-        .eq("workbook_id", workbookId)
-        .single()
-
-      if (error) throw error
-
-      if (data && data.preview_data) {
-        setHeaders(Object.keys(data.preview_data[0]))
-        setCSVData(data.preview_data)
+      toast("Loading workbook...")
+      setProjectAndWorkbook({
+        projectId: data.project_id,
+        workbookId: data.id,
+        files: data.files?.map((f) => ({
+          name: f.name,
+          file_url: f.file_url,
+          file_type: f.file_type,
+        })),
+      })
+      if (
+        data &&
+        data.preview_data &&
+        data.preview_data instanceof Array &&
+        isNonEmptyArray(data.preview_data)
+      ) {
+        setHeaders(Object.keys(data.preview_data[0] as any))
+        setCSVData(data.preview_data as any)
       } else {
         setHeaders([])
         setCSVData([])
       }
-    } catch (error) {
-      console.error("Error fetching preview data:", error)
-      setError(`Error fetching preview data: ${error.message}`)
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [workbookQuery.isFetched, workbookQuery.data, setProjectAndWorkbook])
 
-  const handleFileSelect = async (
+  // setWorkbookId(workbook.id)
+  // setWorkbookName(workbook.name)
+  // setWorkbookFileType(workbook.file_type)
+
+  // const fetchFirstRows = async (workbookId: string) => {
+  //   setLoading(true)
+
+  //   try {
+  //     // use react-query
+  //     // const { data, error } = await supa
+  //     //   .from("workbook_data")
+  //     //   .select("preview_data")
+  //     //   .eq("workbook_id", workbookId)
+  //     //   .single()
+
+  //     if (error) throw error
+
+  //     if (data && data.preview_data) {
+  //       setHeaders(Object.keys(data.preview_data[0]))
+  //       setCSVData(data.preview_data)
+  //     } else {
+  //       setHeaders([])
+  //       setCSVData([])
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching preview data:", error)
+  //     setError(`Error fetching preview data: ${error.message}`)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
+
+  const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (project?.projectId) throw new Error("Project ID not available")
     const file = event.target.files?.[0]
     if (!file) return
+
+    console.log("Uploading file:", file)
 
     setLoading(true)
     setError(null)
 
     try {
-      if (!userId) {
-        throw new Error("User ID not available")
-      }
+      const filePath = `${userSettings.userId}/project-${projectWorkbook?.projectId}/${Date.now()}_${file.name}`
 
-      const filePath = `${userId}/project-${project?.projectId}/${Date.now()}_${file.name}`
-
-      const { data: uploadData, error: uploadError } = await supa.storage
+      const { data: uploadData, error: uploadError } = await env.supa.storage
         .from("workbook-files")
         .upload(filePath, file)
 
@@ -128,46 +144,23 @@ export function useWorkbook(_projectId?: string) {
 
       const {
         data: { publicUrl },
-        error: urlError,
-      } = supa.storage.from("workbook-files").getPublicUrl(uploadData.path)
-
-      if (urlError) throw urlError
+      } = env.supa.storage.from("workbook-files").getPublicUrl(uploadData.path)
 
       const text = await file.text()
       const { data: parsedData, meta } = Papa.parse(text, { header: true })
-
+      setHeaders(meta.fields ?? [])
       const previewData = parsedData.slice(0, 15)
+      setCSVData(previewData as any) // fix types
 
       // react-query mutation
-      const { data: workbook, error: workbookError } = await supa
-        .from("workbooks")
-        .insert({
-          project_id: project?.projectId,
+      createWorkbook.mutate({
+        preview_data: previewData,
+        file: {
           name: file.name,
           file_url: publicUrl,
-          file_type: file.name.split(".").pop(),
-          status: "draft",
-        })
-        .select()
-        .single()
-
-      if (workbookError) throw workbookError
-      setProject({
-        projectId: project?.projectId,
-        workbookId: workbook.id,
+          file_type: file.type,
+        },
       })
-      const { error: insertError } = await supa.from("workbook_data").insert({
-        workbook_id: workbook.id,
-        preview_data: previewData,
-      })
-
-      if (insertError) throw insertError
-
-      setHeaders(meta.fields || [])
-      setCSVData(previewData) // fix types
-      setWorkbookId(workbook.id)
-      setWorkbookName(workbook.name)
-      setWorkbookFileType(workbook.file_type)
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
@@ -176,86 +169,20 @@ export function useWorkbook(_projectId?: string) {
     }
   }
 
-  const deleteProject = async (
-    supa: SupabaseClient,
-    projectId: string,
-  ): Promise<void> => {
-    try {
-      console.log(`Starting deletion process for project with ID: ${projectId}`)
-      // 1. Fetch the workbooks associated with this project
-      const { data: workbooks, error: workbooksError } = await supa
-        .from("workbooks")
-        .select("id, file_url")
-        .eq("project_id", projectId)
-      if (workbooksError) throw workbooksError
-
-      // 2. Delete files from storage
-      for (const workbook of workbooks) {
-        if (workbook.file_url) {
-          const filePathMatch = workbook.file_url.match(
-            /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
-          )
-          if (filePathMatch) {
-            const filePath = filePathMatch[1]
-            const { error: deleteFileError } = await supa.storage
-              .from("workbook-files")
-              .remove([filePath])
-            if (deleteFileError) {
-              console.error(
-                `Failed to delete file for workbook ${workbook.id}:`,
-                deleteFileError,
-              )
-            } else {
-              console.log(`Deleted file for workbook ${workbook.id}`)
-            }
-          }
-        }
-      }
-
-      // 3. Delete workbook data
-      const { error: workbookDataError } = await supa
-        .from("workbook_data")
-        .delete()
-        .in(
-          "workbook_id",
-          workbooks.map((w) => w.id),
-        )
-      if (workbookDataError) throw workbookDataError
-      console.log("Deleted associated workbook data")
-
-      // 4. Delete workbooks
-      const { error: workbooksDeleteError } = await supa
-        .from("workbooks")
-        .delete()
-        .eq("project_id", projectId)
-      if (workbooksDeleteError) throw workbooksDeleteError
-      console.log("Deleted associated workbooks")
-
-      // 5. Delete the project
-      const { error: projectDeleteError } = await supa
-        .from("projects")
-        .delete()
-        .eq("id", projectId)
-      if (projectDeleteError) throw projectDeleteError
-      console.log(
-        `Successfully deleted project ${projectId} and all associated data`,
-      )
-    } catch (error) {
-      console.error("Error in deleteProject:", error)
-      throw new Error(`Failed to delete project: ${error.message}`)
-    }
-  }
-
   return {
     csvData,
     headers,
     loading,
     error,
-    workbookId,
-    workbookName,
-    workbookFileType,
-    handleFileSelect,
-    fetchFirstRows,
-    deleteProject,
+    handleFileUpload,
+    // workbookId,
+    // workbookName,
+    // workbookFileType,
+    // fetchFirstRows,
+    // deleteProject,
   }
+}
+
+function isNonEmptyArray<T>(arr: T[] | null | undefined): arr is T[] {
+  return Array.isArray(arr) && arr.length > 0
 }

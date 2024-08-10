@@ -3,6 +3,7 @@ import { useRouter } from "@tanstack/react-router"
 
 import { Trash2 } from "lucide-react"
 
+import { deleteProject } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -14,12 +15,10 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useWorkbook } from "@/hooks/useWorkbook"
-import { useSupa } from "@/lib/supabaseClient"
+import { useEnv } from "@/lib/clientEnvironment"
 
 export function WTFIsOther({ projectId }: { projectId: string }) {
-  const { deleteProject } = useWorkbook()
-  const supa = useSupa()
+  const { supa } = useEnv()
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const { history } = useRouter()

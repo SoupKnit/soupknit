@@ -1,6 +1,4 @@
-import { useSupa } from "@/lib/supabaseClient"
-
-import type { PreprocessingConfig } from "@/types/preprocessing"
+import type { PreprocessingConfig } from "@soupknit/model/src/preprocessing"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export const fetchPreprocessingConfig = async (

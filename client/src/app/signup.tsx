@@ -12,7 +12,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useEnv } from "@/lib/clientEnvironment"
-import supabase, { useSupa } from "@/lib/supabaseClient"
 
 import type { OrgSetupRequest } from "@soupknit/model/src/userAndOrgSchemas"
 
@@ -29,13 +28,12 @@ export function SignupForm() {
   const [error, setError] = useState("")
 
   const env = useEnv()
-  const supa = useSupa()
 
   const handleSignUp = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const { data, error } = await supa.auth.signUp({
+      const { data, error } = await env.supa.auth.signUp({
         email,
         password,
       })

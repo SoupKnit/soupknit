@@ -13,24 +13,18 @@ import {
   loadProjects,
 } from "@/actions/projectsActions"
 import { Button } from "@/components/ui/button"
-import { useSupa } from "@/lib/supabaseClient"
+import { useEnv } from "@/lib/clientEnvironment"
 import { cn } from "@/lib/utils"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import { activeProject } from "@/store/workbookStore"
+import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
 import type { CardProps } from "../ui/card"
-
-interface Project {
-  id: string
-  title: string
-  description: string
-  updated_at: string
-}
+import type { DBProject } from "@soupknit/model/src/dbTables"
 
 export function ProjectList() {
-  const supa = useSupa()
+  const { supa } = useEnv()
   const navigate = useNavigate({ from: "/app/$projectId" })
-  const [project, setProject] = useAtom(activeProject)
+  const [project, setProject] = useAtom(activeProjectAndWorkbook)
 
   const {
     isPending,
@@ -79,30 +73,33 @@ export function ProjectList() {
           </Button>
         </div>
       </div>
-      <div className="mx-auto my-8 flex flex-wrap justify-between gap-y-6">
+      <div className="mx-auto my-8 flex flex-wrap gap-8">
         {!isError &&
-          projects.map((project: Project) => (
-            <ProjectCard key={project.id}>
-              <Link to={`/app/${project.id}`}>
-                <div className="flex h-full flex-col">
-                  {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
-                  <div className="flex-grow text-2xl font-semibold text-gray-800">
-                    {project.title}
+          projects
+            .filter((p) => !!p)
+            .map((project: DBProject) => (
+              <ProjectCard key={project.id}>
+                <Link to={`/app/${project.id}`}>
+                  <div className="flex h-full flex-col">
+                    {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
+                    <div className="flex-grow text-2xl font-semibold text-gray-800">
+                      {project.title}
+                    </div>
+                    <div className="mt-2 h-40 flex-grow overflow-hidden">
+                      <AddLineBreaks
+                        className="text-sm tracking-tighter text-gray-500"
+                        text={project.description || ""}
+                      />
+                    </div>
+                    <div className="mt-3 text-sm text-gray-500">
+                      Last updated:{" "}
+                      {project.updated_at &&
+                        new Date(project.updated_at).toLocaleString()}
+                    </div>
                   </div>
-                  <div className="mt-2 h-40 flex-grow overflow-hidden">
-                    <AddLineBreaks
-                      className="text-sm tracking-tighter text-gray-500"
-                      text={project.description}
-                    />
-                  </div>
-                  <div className="mt-3 text-sm text-gray-500">
-                    Last updated:{" "}
-                    {new Date(project.updated_at).toLocaleString()}
-                  </div>
-                </div>
-              </Link>
-            </ProjectCard>
-          ))}
+                </Link>
+              </ProjectCard>
+            ))}
         <ProjectCard
           hoverable
           onClick={() => createProject.mutate()}
@@ -121,7 +118,7 @@ export function ProjectList() {
 }
 
 function Datasets() {
-  const supa = useSupa()
+  const { supa } = useEnv()
 
   const userId = useAtom(userSettingsStore)[0].userId
 

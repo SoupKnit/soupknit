@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
-import { useSupa } from "@/lib/supabaseClient"
+import { useEnv } from "@/lib/clientEnvironment"
 
 import type {
   CategoricalEncodingMethod,
@@ -13,14 +13,13 @@ import type {
 } from "@soupknit/model/src/preprocessing"
 
 export function usePreprocessing(headers: string[]) {
+  const { supa } = useEnv()
   const [preprocessingConfig, setPreprocessingConfig] =
     useState<PreprocessingConfig>({
       global_preprocessing: [],
       global_params: {},
       columns: [],
     })
-
-  const supa = useSupa()
 
   const { data: fetchedConfig } = useQuery<PreprocessingConfig>({
     queryKey: ["preprocessingConfig", supa],

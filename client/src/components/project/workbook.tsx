@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 import { useAtom } from "jotai"
+import { toast } from "sonner"
 
 import { ModelDeployMain } from "../deployModel/ModelDeployMain"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import { ModelSelector } from "../modelGenerator/ModelSelector"
 import { WTFIsOther } from "../Other"
+import { Badge } from "../ui/badge"
 import { Separator } from "../ui/separator"
 import { Hide } from "../util/ConditionalShow"
 import {
@@ -13,7 +16,7 @@ import {
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
-import { runProjectAction } from "@/actions/workbookActions"
+import { runProject } from "@/actions/workbookActions"
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
 import { FileInputArea } from "@/components/editor/DatasetPreview"
@@ -35,14 +38,17 @@ import {
 import { usePreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
-import { useSupa } from "@/lib/supabaseClient"
 import {
-  activeProject,
+  activeFileStore,
+  activeProjectAndWorkbook,
   projectDetailsStore,
   workbookStore,
 } from "@/store/workbookStore"
 
-import type { Workbook } from "@soupknit/model/src/workbookSchemas"
+import type {
+  ActiveProject,
+  Workbook,
+} from "@soupknit/model/src/workbookSchemas"
 
 interface WorkbookProps {
   projectId: string
@@ -55,17 +61,17 @@ interface Project {
 }
 
 const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
-  const supa = useSupa()
   const env = useEnv()
+  const [title, setTitle] = useState<string>()
+  const [description, setDescription] = useState<string>()
+  const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [workbook] = useAtom(workbookStore)
 
+  // Tries to load the project from the database
   const { isLoading, data: project = null } = useQuery({
-    queryKey: ["project", projectId, supa],
-    queryFn: async () => loadProject(supa, projectId),
+    queryKey: ["project", projectId, env.supa],
+    queryFn: async () => loadProject(env.supa, projectId),
   })
-
-  const [title, setTitle] = useState<string>(project?.title)
-  const [description, setDescription] = useState<string>(project?.description)
 
   useEffect(() => {
     if (isLoading === false && project) {
@@ -86,7 +92,7 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
 
   const titleMutation = useMutation({
     mutationFn: async (title: string) =>
-      updateProjectTitle(supa, title, projectId),
+      updateProjectTitle(env.supa, title, projectId),
     onSuccess: () => {
       console.log("Title saved successfully")
     },
@@ -97,7 +103,7 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
 
   const descriptionMutation = useMutation({
     mutationFn: async (description: string) =>
-      updateProjectDescription(supa, description, projectId),
+      updateProjectDescription(env.supa, description, projectId),
     onSuccess: () => {
       console.log("Description saved successfully")
     },
@@ -107,14 +113,10 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
   })
 
   const runAction = useMutation({
-    mutationFn: async (workbook: Workbook | null) => {
-      console.log("Running workbook:", workbook)
-      if (!workbook) {
-        throw new Error("No workbook to run")
-      }
-      return runProjectAction(env, {
-        workbook,
-        project: activeProject,
+    mutationFn: async (project: ActiveProject) => {
+      console.log("Running project, workbook:", project)
+      return runProject(env, {
+        project: project,
       })
     },
     onError: (error) => {
@@ -130,7 +132,6 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
     <>
       <div className="bg-gray-100 pb-4 pt-10">
         <div className="container mx-auto">
-          {/* <h2 className="mb-4 text-2xl font-bold">Project Details</h2> */}
           <input
             type="text"
             className="input-invisible text-5xl font-semibold"
@@ -147,16 +148,24 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
               ) {
                 e.preventDefault()
                 setFocusDescription(true)
-                titleMutation.mutate(title)
+                title && titleMutation.mutate(title)
               }
             }}
-            onBlur={() => titleMutation.mutate(title)}
+            onBlur={() => {
+              title && titleMutation.mutate(title)
+            }}
             placeholder="Untitled"
           />
-          <div className="my-4">
+          <div className="mb-4">
+            {/* // Remove later */}
+            <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
+              <Badge className="my-2 bg-slate-200 p-2 px-4 text-gray-600 hover:bg-slate-300">
+                ProjectID: {projectId}
+              </Badge>
+            </a>
             <MultiLineTextInput
               className="input-invisible min-h-12 rounded-md p-2 text-lg text-gray-700 hover:outline-gray-400 focus:outline-2 focus:outline-gray-500"
-              value={description}
+              value={description ?? ""}
               onChange={(value) => {
                 console.log("Setting description to:", value)
                 descriptionMutation.mutate(value)
@@ -171,10 +180,14 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
       <div className="container my-12">
         {/* TODO: Fix this, these 2 components do the same thing */}
         {/* <DatasetPreview /> */}
-        <Workbook projectId={projectId} />
+        {projectId && <Workbook projectId={projectId} />}
         <div className="mt-4 flex justify-end">
           <Button
-            onClick={() => runAction.mutate(workbook)}
+            onClick={() => {
+              console.log("Running project...")
+              toast.success("Running project...")
+              projectAndWorkbook && runAction.mutate(projectAndWorkbook)
+            }}
             variant={"brutal"}
             className="bg-purple-300 font-mono hover:bg-purple-400"
           >
@@ -191,18 +204,19 @@ interface WorkbookProps {
 }
 
 export function Workbook({ projectId }: Readonly<WorkbookProps>) {
-  const supa = useSupa()
+  const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
+  const [activeFile] = useAtom(activeFileStore)
 
   const {
     csvData,
     headers,
     loading,
     error,
-    workbookId,
-    workbookName,
-    workbookFileType,
-    handleFileSelect,
-    fetchFirstRows,
+    // workbookId,
+    // workbookName,
+    // workbookFileType,
+    handleFileUpload,
+    // fetchFirstRows,
   } = useWorkbook(projectId)
 
   // const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
@@ -253,9 +267,9 @@ export function Workbook({ projectId }: Readonly<WorkbookProps>) {
             <CardContent className="mt-4 space-y-2">
               {error && <div className="mb-4 text-red-500">{error}</div>}
               <Hide when={headers.length > 0}>
-                <FileInputArea fileUpload={handleFileSelect} />
+                <FileInputArea fileUpload={handleFileUpload} />
               </Hide>
-              {workbookId && (
+              {/* {workbookId && (
                 <Button
                   onClick={() => fetchFirstRows(workbookId)}
                   disabled={loading}
@@ -263,11 +277,9 @@ export function Workbook({ projectId }: Readonly<WorkbookProps>) {
                 >
                   Refresh Data
                 </Button>
-              )}
-              {workbookName && (
-                <div className="mb-4">
-                  Dataset: {workbookName} ({workbookFileType})
-                </div>
+              )} */}
+              {activeFile && (
+                <div className="mb-4">Dataset: {activeFile.name}</div>
               )}
               {loading ? (
                 <div>Loading...</div>
