@@ -10,7 +10,7 @@ import type {
   NumericImputationMethod,
   NumericScalingMethod,
   PreprocessingConfig,
-} from "@/types/preprocessing"
+} from "@soupknit/model/src/preprocessing"
 
 export function usePreprocessing(headers: string[]) {
   const [preprocessingConfig, setPreprocessingConfig] =
