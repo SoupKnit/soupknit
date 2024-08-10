@@ -1,5 +1,47 @@
 import { z } from "zod";
 type $TS_TODO_ANY = any;
+import * as SupabaseGenTypes from "./dbTables";
+
+type IfEquals<T, U, Y = unknown, N = never> =
+  (<G>() => G extends T ? 1 : 2) extends <G>() => G extends U ? 1 : 2 ? Y : N;
+
+type AssertEqual<T, U> = T extends U ? (U extends T ? true : never) : never;
+
+/**
+ * ******************************************************************
+ * NEW SCHEMA DEFINITIONS
+ * These schemas are supposed to match the supabase generated types
+ * {@link SupabaseGenTypes}}
+ * ******************************************************************
+ */
+
+const WorkbookDataFileSchema = z.object({
+  name: z.string(),
+  file_url: z.string(),
+  file_type: z.string(),
+});
+
+export type WorkbookDataFile = z.infer<typeof WorkbookDataFileSchema>;
+
+/**
+ * WorkbookDataSchema matches {@link SupabaseGenTypes.DBWorkbookData}
+ */
+export const WorkbookDataSchema = z.object({
+  id: z.string(),
+  project_id: z.string(),
+  files: z.nullable(z.array(WorkbookDataFileSchema)),
+  preview_data: z.array(z.any()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export type WorkbookData = z.infer<typeof WorkbookDataSchema>;
+
+/**
+ * ******************************************************************
+ * OLD SCHEMA DEFINITIONS
+ * ******************************************************************
+ */
 
 export const BaseTaskSchema = z.object({
   taskName: z.string(),
@@ -11,22 +53,7 @@ export type BaseTask = z.infer<typeof BaseTaskSchema>;
 const DataColumnSchema = z.object({
   name: z.string(),
   type: z.enum(["numeric", "categorical", "text", "datetime"]),
-  method: z.enum([
-    "impute_mean",
-    "impute_median",
-    "impute_constant",
-    "impute_knn",
-    "scale_standard",
-    "scale_minmax",
-    "scale_robust",
-    "encode_onehot",
-    "encode_label",
-    "encode_ordinal",
-    "bin_quantile",
-    "bin_kmeans",
-    "polynomial_features",
-    "drop",
-  ]),
+  method: z.string(),
 });
 
 export type DataColumn = z.infer<typeof DataColumnSchema>;
@@ -168,10 +195,7 @@ export type ActiveProject = {
   workbookId?: Workbook["workbookId"];
   projectId: string;
   projectTitle?: string;
-  files?: {
-    name: string;
-    url: string;
-  }[];
+  files?: WorkbookDataFile[];
 };
 
 /** *********************************

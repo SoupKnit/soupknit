@@ -6,6 +6,7 @@ import { EditorHeaderAndSidebar } from "@/components/editor/Controls"
 import { Sidebar } from "@/components/editor/EditorSidebar"
 import { StatusBar } from "@/components/editor/StatusBar"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Toaster } from "@/components/ui/toaster"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { isAuthenticated } from "@/lib/auth"
 import { useSupa } from "@/lib/supabaseClient"
@@ -41,6 +42,7 @@ function BaseLayout() {
   }, [])
   return (
     <TooltipProvider>
+      <Toaster />
       <div className="flex h-dvh w-full flex-col overflow-hidden">
         <EditorHeaderAndSidebar />
 

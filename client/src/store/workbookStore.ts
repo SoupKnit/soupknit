@@ -7,7 +7,7 @@ import type {
 } from "@soupknit/model/src/workbookSchemas"
 
 // atom to store the active workbook ID
-export const activeProject = atom<ActiveProject | null>(null)
+export const activeProjectAndWorkbook = atom<ActiveProject | null>(null)
 
 // atom to store all the loaded projects, their titles, and descriptions
 type ProjectDetails = {
@@ -23,10 +23,16 @@ export const cellsStore = atom<Cell[]>([])
 
 // atom to store the workbook, and its cells
 export const workbookStore = atom<Workbook | null>((get) => {
-  const id = get(activeProject)?.workbookId
+  const id = get(activeProjectAndWorkbook)?.workbookId
   if (!id) return null
   const cells = get(cellsStore)
   return { workbookId: id, cells }
+})
+
+export const activeFileStore = atom((get) => {
+  const files = get(activeProjectAndWorkbook)?.files
+  if (!files) return null
+  return files[0]
 })
 
 // cell actions

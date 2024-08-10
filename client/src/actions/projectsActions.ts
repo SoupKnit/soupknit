@@ -1,3 +1,4 @@
+import type { DBProject } from "@soupknit/model/src/dbTables"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export const updateProjectTitle = async (
@@ -63,11 +64,11 @@ export const createNewProject = async (supa: SupabaseClient) => {
 }
 
 export const loadProjects = async (supa: SupabaseClient) => {
-  return await supa
+  return (await supa
     .from("projects")
     .select("title, id, description, updated_at")
     .throwOnError()
-    .then((r) => r.data)
+    .then((r) => r.data)) as Partial<DBProject[]>
 }
 
 export const loadDatasets = async (
