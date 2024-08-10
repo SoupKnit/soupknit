@@ -2,7 +2,7 @@ import { useEffect } from "react"
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 
-import { EditorHeaderAndSidebar } from "@/components/editor/Controls"
+import { EditorHeader } from "@/components/editor/EditorHeader"
 import { Sidebar } from "@/components/editor/EditorSidebar"
 import { StatusBar } from "@/components/editor/StatusBar"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -43,14 +43,14 @@ function BaseLayout() {
   return (
     <TooltipProvider>
       <div className="flex h-dvh w-full flex-col overflow-hidden">
-        <EditorHeaderAndSidebar />
+        <EditorHeader />
         <Toaster />
         <ScrollArea
           className="flex h-full w-full flex-col [&>[data-orientation=vertical]]:!top-14 [&>[data-orientation=vertical]]:!h-auto"
           type="scroll"
         >
           <main className="flex flex-1 overflow-x-hidden">
-            <div className="flex min-h-screen w-full flex-col bg-muted/40">
+            <div className="flex min-h-screen w-full flex-col bg-muted/40 dark:bg-green-200/15">
               <Sidebar />
               <div className="sm:ml-12">
                 <Outlet />

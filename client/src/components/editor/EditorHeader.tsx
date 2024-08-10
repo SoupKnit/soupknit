@@ -3,6 +3,7 @@ import { useAtom } from "jotai"
 
 import { ScanFace, Search, Sidebar } from "lucide-react"
 
+import DarkModeSwitcher from "../DarkModeSwitcher"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,11 +24,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
-export function EditorHeaderAndSidebar() {
+export function EditorHeader() {
   // TODO: get the project name from here and display it in the breadcrumb
   const currentProject = useAtom(activeProjectAndWorkbook)
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-2">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 dark:bg-black/30 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-2">
       <Sidebar />
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
@@ -42,7 +43,10 @@ export function EditorHeaderAndSidebar() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
-      <div className="relative ml-auto flex-1 md:grow-0">
+      <div className="relative ml-auto md:grow-0">
+        <DarkModeSwitcher />
+      </div>
+      <div className="relative flex-1 md:grow-0">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"

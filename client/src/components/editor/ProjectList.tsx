@@ -82,8 +82,8 @@ export function ProjectList() {
                 <Link to={`/app/${project.id}`}>
                   <div className="flex h-full flex-col">
                     {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
-                    <div className="flex-grow text-2xl font-semibold text-gray-800">
-                      {project.title}
+                    <div className="flex-grow text-2xl font-semibold text-gray-800 dark:text-gray-300">
+                      {project.title || "Untitled Project"}
                     </div>
                     <div className="mt-2 h-40 flex-grow overflow-hidden">
                       <AddLineBreaks
@@ -185,7 +185,7 @@ function ProjectCard(props: CardProps) {
     <Card
       hoverable
       className={cn(
-        "rounded-md p-6 transition-colors duration-200 hover:bg-gray-100",
+        "rounded-md p-6 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800",
         props.className,
         "md:w-[360px]",
       )}
