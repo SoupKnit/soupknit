@@ -3,6 +3,8 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 import { toast } from "sonner"
 
+import { Settings, Trash2 } from "lucide-react"
+
 import { ModelDeployMain } from "../deployModel/ModelDeployMain"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import { ModelSelector } from "../modelGenerator/ModelSelector"
@@ -24,6 +26,19 @@ import {
 import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { usePreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
@@ -38,24 +53,24 @@ import type {
   Workbook,
 } from "@soupknit/model/src/workbookSchemas"
 
-interface WorkbookProps {
-  projectId: string
-}
+const sections = ["Overview", "Preprocessing", "Model Creation", "Deploy"]
+const taskTypes = [
+  "Regression",
+  "Clustering",
+  "Classification",
+  "Time Series Prediction",
+]
 
-interface Project {
-  id: string
-  title: string
-  description: string
-}
-
-const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
+const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const env = useEnv()
   const [title, setTitle] = useState<string>()
   const [description, setDescription] = useState<string>()
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [workbook] = useAtom(workbookStore)
+  const [activeSection, setActiveSection] = useState(0)
+  const [taskType, setTaskType] = useState("Regression")
+  const [targetColumn, setTargetColumn] = useState("")
 
-  // Tries to load the project from the database
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, env.supa],
     queryFn: async () => loadProject(env.supa, projectId),
@@ -65,6 +80,8 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
     if (isLoading === false && project) {
       setTitle(project.title)
       setDescription(project.description)
+      setTaskType(project.taskType || "Regression")
+      setTargetColumn(project.targetColumn || "")
     }
   }, [project, isLoading])
 
@@ -100,6 +117,18 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => deleteProject(env.supa, projectId),
+    onSuccess: () => {
+      toast.success("Project deleted successfully")
+      // Redirect to projects list or handle post-deletion navigation
+    },
+    onError: (error) => {
+      console.error("Error deleting project:", error)
+      toast.error("Failed to delete project")
+    },
+  })
+
   const runAction = useMutation({
     mutationFn: async (project: ActiveProject) => {
       console.log("Running project, workbook:", project)
@@ -112,14 +141,47 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
     },
   })
 
+  const nextSection = () => {
+    if (activeSection < sections.length - 1) {
+      setActiveSection(activeSection + 1)
+    }
+  }
+
+  const getNextButtonText = () => {
+    switch (activeSection) {
+      case 0:
+        return "Start Preprocessing"
+      case 1:
+        return "Create Model"
+      case 2:
+        return "Deploy Model"
+      default:
+        return "Next"
+    }
+  }
+
   if (isLoading || !project) {
     return <div>Loading...</div>
   }
 
   return (
     <>
-      <div className="bg-gray-100 pb-4 pt-10 dark:bg-slate-800/40">
+      <div className="relative bg-gray-100 pb-4 pt-10 dark:bg-slate-800/40">
         <div className="container mx-auto">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="absolute right-4 top-4">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => deleteMutation.mutate()}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Project
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <input
             type="text"
             className="input-invisible text-5xl font-semibold"
@@ -155,7 +217,6 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
               }}
             />
           </div>
-          {/* // Remove later */}
           <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
             <Badge className="my-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
               ProjectID: {projectId}
@@ -171,9 +232,65 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
       </div>
 
       <div className="container my-12">
-        {/* TODO: Fix this, these 2 components do the same thing */}
-        {/* <DatasetPreview /> */}
-        {projectId && <Workbook projectId={projectId} />}
+        <div className="mb-6 flex items-center">
+          {sections.map((section, index) => (
+            <React.Fragment key={section}>
+              <Button
+                variant={index === activeSection ? "default" : "ghost"}
+                onClick={() => setActiveSection(index)}
+                className={index === activeSection ? "font-bold" : ""}
+              >
+                {section}
+              </Button>
+              {index < sections.length - 1 && <span className="mx-2">→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+
+        <Card>
+          <CardContent>
+            {activeSection === 0 && (
+              <>
+                <h2 className="mb-4 text-2xl font-bold">Project Overview</h2>
+                <Select value={taskType} onValueChange={setTaskType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a task type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {taskTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            )}
+
+            {activeSection === 1 && (
+              <Workbook
+                projectId={projectId}
+                targetColumn={targetColumn}
+                setTargetColumn={setTargetColumn}
+              />
+            )}
+
+            {activeSection === 2 && (
+              <>
+                <h2 className="mb-4 text-2xl font-bold">Model Creation</h2>
+                <ModelSelector />
+              </>
+            )}
+
+            {activeSection === 3 && <ModelDeployMain />}
+          </CardContent>
+          <CardFooter className="justify-end">
+            {activeSection < sections.length - 1 && (
+              <Button onClick={nextSection}>{getNextButtonText()}</Button>
+            )}
+          </CardFooter>
+        </Card>
+
         <div className="mt-4 flex justify-end">
           <Button
             onClick={() => {
@@ -192,27 +309,20 @@ const ProjectWorkbook: React.FC<WorkbookProps> = ({ projectId }) => {
   )
 }
 
-interface WorkbookProps {
+function Workbook({
+  projectId,
+  targetColumn,
+  setTargetColumn,
+}: Readonly<{
   projectId: string
-}
-
-export function Workbook({ projectId }: Readonly<WorkbookProps>) {
+  targetColumn: string
+  setTargetColumn: React.Dispatch<React.SetStateAction<string>>
+}>) {
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [activeFile] = useAtom(activeFileStore)
 
-  const {
-    csvData,
-    headers,
-    loading,
-    error,
-    // workbookId,
-    // workbookName,
-    // workbookFileType,
-    handleFileUpload,
-    // fetchFirstRows,
-  } = useWorkbook(projectId)
-
-  // const { data: fetchedPreprocessingConfig, isLoading: isConfigLoading } =
+  const { csvData, headers, loading, error, handleFileUpload } =
+    useWorkbook(projectId)
 
   const {
     preprocessingConfig,
@@ -222,67 +332,51 @@ export function Workbook({ projectId }: Readonly<WorkbookProps>) {
   } = usePreprocessing(headers)
 
   return (
-    <div className="flex">
-      <ul className="flex w-1/6 list-none flex-col gap-4">
-        <li value="Preprocessing">Preprocessing</li>
-        <li value="Model Results">Model Results</li>
-        <li value="Deploy">Deploy</li>
-        <li value="Other">Other</li>
-      </ul>
-      <div className="flex w-5/6 flex-col gap-12">
-        <>
-          {/* Move to it's own component  */}
-          <Card>
-            <CardContent className="mt-4 space-y-2">
-              {error && <div className="mb-4 text-red-500">{error}</div>}
-              <Hide when={headers.length > 0}>
-                <FileInputArea fileUpload={handleFileUpload} />
-              </Hide>
-              {/* {workbookId && (
-                <Button
-                  onClick={() => fetchFirstRows(workbookId)}
-                  disabled={loading}
-                  className="mb-4 ml-4"
-                >
-                  Refresh Data
-                </Button>
-              )} */}
+    <>
+      <h2 className="mb-4 text-2xl font-bold">Data Preprocessing</h2>
+      {error && <div className="mb-4 text-red-500">{error}</div>}
+      <Hide when={headers.length > 0}>
+        <FileInputArea fileUpload={handleFileUpload} />
+      </Hide>
 
-              {csvData.length > 0 ? (
-                <DatasetPreview
-                  name={activeFile?.name ?? "Untitled"}
-                  headers={headers}
-                  data={csvData}
-                  loading={loading}
-                />
-              ) : (
-                <div>No data available</div>
-              )}
-            </CardContent>
-            <CardFooter>
-              <div>
-                <GlobalPreprocessing
-                  preprocessingConfig={preprocessingConfig}
-                  handleGlobalPreprocessingChange={
-                    handleGlobalPreprocessingChange
-                  }
-                />
-                <ColumnPreprocessing
-                  preprocessingConfig={preprocessingConfig}
-                  handleColumnTypeChange={handleColumnTypeChange}
-                  handleColumnPreprocessingChange={
-                    handleColumnPreprocessingChange
-                  }
-                />
-              </div>
-            </CardFooter>
-          </Card>
+      {csvData.length > 0 ? (
+        <>
+          <DatasetPreview
+            name={activeFile?.name ?? "Untitled"}
+            headers={headers}
+            data={csvData}
+            loading={loading}
+          />
+          <div className="mt-4">
+            <Select value={targetColumn} onValueChange={setTargetColumn}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select target column" />
+              </SelectTrigger>
+              <SelectContent>
+                {headers.map((header) => (
+                  <SelectItem key={header} value={header}>
+                    {header}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </>
-        <ModelSelector />
-        <ModelDeployMain />
-        <WTFIsOther projectId={projectId} />
+      ) : (
+        <div>No data available</div>
+      )}
+      <div>
+        <GlobalPreprocessing
+          preprocessingConfig={preprocessingConfig}
+          handleGlobalPreprocessingChange={handleGlobalPreprocessingChange}
+        />
+        <ColumnPreprocessing
+          preprocessingConfig={preprocessingConfig}
+          handleColumnTypeChange={handleColumnTypeChange}
+          handleColumnPreprocessingChange={handleColumnPreprocessingChange}
+        />
       </div>
-    </div>
+    </>
   )
 }
 
