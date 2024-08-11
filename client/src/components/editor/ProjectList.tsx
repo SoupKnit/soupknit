@@ -12,13 +12,12 @@ import {
   loadDatasets,
   loadProjects,
 } from "@/actions/projectsActions"
+import { HoverCard } from "@/components/HoverCard"
 import { Button } from "@/components/ui/button"
 import { useEnv } from "@/lib/clientEnvironment"
-import { cn } from "@/lib/utils"
 import { userSettingsStore } from "@/store/userSettingsStore"
 import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
-import type { CardProps } from "../ui/card"
 import type { DBProject } from "@soupknit/model/src/dbTables"
 
 export function ProjectList() {
@@ -78,7 +77,7 @@ export function ProjectList() {
           projects
             .filter((p) => !!p)
             .map((project: DBProject) => (
-              <ProjectCard key={project.id}>
+              <HoverCard key={project.id} className="md:w-[360px]">
                 <Link to={`/app/${project.id}`}>
                   <div className="flex h-full flex-col">
                     {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
@@ -98,18 +97,17 @@ export function ProjectList() {
                     </div>
                   </div>
                 </Link>
-              </ProjectCard>
+              </HoverCard>
             ))}
-        <ProjectCard
-          hoverable
+        <HoverCard
           onClick={() => createProject.mutate()}
-          className="w-full rounded-md border-dashed border-gray-400 p-6 shadow-gray-300 transition-colors duration-200 hover:border-orange-400 hover:bg-orange-300 hover:shadow-orange-400"
+          className="w-full rounded-md border-dashed border-gray-400 p-6 shadow-gray-300 transition-colors duration-200 hover:border-orange-400 hover:bg-orange-300 hover:shadow-orange-400 md:w-[360px]"
         >
           <div className="flex h-full flex-col justify-center gap-4 text-center text-xl font-bold text-gray-300 hover:text-orange-400">
             <PlusCircle className="mx-auto h-12 w-12" />
             New Project
           </div>
-        </ProjectCard>
+        </HoverCard>
       </div>
 
       <Datasets />
@@ -138,10 +136,9 @@ function Datasets() {
       </div>
       <div className="mx-auto my-8 flex flex-wrap gap-8">
         {datasets?.map((dataset) => (
-          <ProjectCard
-            hoverable
-            key={dataset.name}
+          <HoverCard
             className="w-full rounded-md p-6 transition-colors duration-200 hover:bg-gray-100 md:w-80"
+            key={dataset.name}
           >
             <Link to={`/app/${dataset.name}`}>
               <div className="flex h-full flex-col">
@@ -154,7 +151,7 @@ function Datasets() {
                 </div>
               </div>
             </Link>
-          </ProjectCard>
+          </HoverCard>
         ))}
       </div>
     </>
@@ -177,21 +174,6 @@ function AddLineBreaks({
         </span>
       ))}
     </>
-  )
-}
-
-function ProjectCard(props: CardProps) {
-  return (
-    <Card
-      hoverable
-      className={cn(
-        "rounded-md p-6 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800",
-        props.className,
-        "md:w-[360px]",
-      )}
-    >
-      {props.children}
-    </Card>
   )
 }
 

@@ -5,25 +5,25 @@ import { toast } from "sonner"
 
 import { Settings, Trash2 } from "lucide-react"
 
-import { ModelDeployMain } from "../deployModel/ModelDeployMain"
 import { MultiLineTextInput } from "../editor/MultiLineText"
-import { ModelSelector } from "../modelGenerator/ModelSelector"
-import { WTFIsOther } from "../Other"
 import { Badge } from "../ui/badge"
 import { Separator } from "../ui/separator"
-import { Hide } from "../util/ConditionalShow"
+import {
+  DataProcessingSection,
+  DataProcessingSectionHeader,
+} from "./DataProcessingSection"
+import { ModelDeploySection, ModelDeploySectionHeader } from "./ModelDeployMain"
+import { ModelSelector, ModelSelectorHeader } from "./ModelSelector"
+import {
+  SelectTaskTypeSection,
+  SelectTaskTypeSectionHeader,
+} from "./SelectTaskTypeSection"
 import {
   loadProject,
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
 import * as workbookActions from "@/actions/workbookActions"
-import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
-import {
-  DatasetPreview,
-  FileInputArea,
-} from "@/components/editor/DatasetPreview"
-import { GlobalPreprocessing } from "@/components/editor/GlobalPreprocessing"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
@@ -32,50 +32,30 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  useFetchPreprocessing,
-  usePreProcessing,
-} from "@/hooks/usePreprocessing"
-import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
+import { cn } from "@/lib/utils"
 import {
-  activeFileStore,
   activeProjectAndWorkbook,
   workbookConfigStore,
-  workbookStore,
 } from "@/store/workbookStore"
 
 import type { WorkbookConfig } from "@/store/workbookStore"
-import type {
-  ActiveProject,
-  Workbook,
-} from "@soupknit/model/src/workbookSchemas"
+import type { ActiveProject } from "@soupknit/model/src/workbookSchemas"
 
-const sections = ["Overview", "Preprocessing", "Model Creation", "Deploy"]
-const taskTypes = [
-  "Regression",
-  "Clustering",
-  "Classification",
-  "Time Series Prediction",
-]
+const sections = [
+  "Overview",
+  "Preprocessing",
+  "Model Creation",
+  "Deploy",
+] as const
 
 const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const env = useEnv()
   const [title, setTitle] = useState<string>()
   const [description, setDescription] = useState<string>()
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
-  const [workbook] = useAtom(workbookStore)
   const [activeSection, setActiveSection] = useState(0)
-  // const [taskType, setTaskType] = useState("Regression")
-  // const [targetColumn, setTargetColumn] = useState("")
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const [workbookConfig] = useAtom(workbookConfigStore)
 
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, env.supa],
@@ -261,66 +241,69 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             </Badge>
           </a>
           <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
-            <Badge className="my-4 ml-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+            <Badge className="ml-4 mt-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
               Status: Draft
             </Badge>
           </a>
         </div>
-        <Separator className="mx-auto mt-10 w-2/3" />
+        <Separator className="mx-auto w-2/3" />
       </div>
 
-      <div className="container my-12">
-        <div className="mb-6 flex items-center">
+      <div className="container mb-12 mt-4">
+        <div className="mx-auto mb-6 flex items-center justify-center">
           {sections.map((section, index) => (
             <React.Fragment key={section}>
-              <Button
-                variant={index === activeSection ? "default" : "ghost"}
+              <div
+                role="button"
                 onClick={() => setActiveSection(index)}
-                className={index === activeSection ? "font-bold" : ""}
+                className={cn(
+                  "mx-2 text-xl",
+                  index === activeSection ? "font-semibold" : "font-thin",
+                )}
               >
                 {section}
-              </Button>
+              </div>
               {index < sections.length - 1 && <span className="mx-2">→</span>}
             </React.Fragment>
           ))}
         </div>
 
-        <Card>
-          <CardContent>
-            {activeSection === 0 && (
-              <>
-                <h2 className="mb-4 text-2xl font-bold">Project Overview</h2>
-                <Select
-                  value={workbookConfig.taskType}
-                  onValueChange={(e) => {
-                    setWorkbookConfig((prev: any) => ({ ...prev, taskType: e }))
-                  }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a task type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {taskTypes.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </>
-            )}
+        <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
+          {activeSection === 0 && (
+            <>
+              <SelectTaskTypeSectionHeader />
+              <CardContent>
+                <SelectTaskTypeSection />
+              </CardContent>
+            </>
+          )}
 
-            {activeSection === 1 && <Workbook projectId={projectId} />}
+          {activeSection === 1 && (
+            <>
+              <DataProcessingSectionHeader />
+              <CardContent>
+                <DataProcessingSection projectId={projectId} />
+              </CardContent>
+            </>
+          )}
 
-            {activeSection === 2 && (
-              <>
-                <h2 className="mb-4 text-2xl font-bold">Model Creation</h2>
+          {activeSection === 2 && (
+            <>
+              <ModelSelectorHeader />
+              <CardContent>
                 <ModelSelector />
-              </>
-            )}
+              </CardContent>
+            </>
+          )}
 
-            {activeSection === 3 && <ModelDeployMain />}
-          </CardContent>
+          {activeSection === 3 && (
+            <>
+              <ModelDeploySectionHeader />
+              <CardContent>
+                <ModelDeploySection />
+              </CardContent>
+            </>
+          )}
           <CardFooter className="justify-end">
             {activeSection < sections.length - 1 && (
               <Button onClick={proceedToNextSection}>
@@ -343,75 +326,6 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             RUN WORKBOOK
           </Button>
         </div>
-      </div>
-    </>
-  )
-}
-
-function Workbook({
-  projectId,
-}: Readonly<{
-  projectId: string
-  targetColumn?: string
-  setTargetColumn?: React.Dispatch<React.SetStateAction<string>>
-}>) {
-  // const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [activeFile] = useAtom(activeFileStore)
-
-  const { csvData, headers, loading, error, handleFileUpload } =
-    useWorkbook(projectId)
-
-  useEffect(() => {
-    console.log(workbookConfig)
-  }, [workbookConfig])
-
-  useFetchPreprocessing(headers)
-
-  const setTargetColumn = (value: string) => {
-    setWorkbookConfig((prev: any) => ({ ...prev, targetColumn: value }))
-  }
-
-  return (
-    <>
-      <h2 className="mb-4 text-2xl font-bold">Data Preprocessing</h2>
-      {error && <div className="mb-4 text-red-500">{error}</div>}
-      <Hide when={headers.length > 0}>
-        <FileInputArea fileUpload={handleFileUpload} />
-      </Hide>
-
-      {csvData.length > 0 ? (
-        <>
-          <DatasetPreview
-            name={activeFile?.name ?? "Untitled"}
-            headers={headers}
-            data={csvData}
-            loading={loading}
-          />
-          <div className="mt-4">
-            <Select
-              value={workbookConfig.targetColumn ?? undefined}
-              onValueChange={setTargetColumn}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select target column" />
-              </SelectTrigger>
-              <SelectContent>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </>
-      ) : (
-        <div>No data available</div>
-      )}
-      <div>
-        <GlobalPreprocessing />
-        <ColumnPreprocessing />
       </div>
     </>
   )
