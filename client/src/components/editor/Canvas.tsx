@@ -1,23 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
 
-import { ActionCallout } from "./ActionsCallout"
-import { Sidebar } from "./EditorSidebar"
-import { ActionsContainer } from "./LeftPanel"
-import { NativeEditor } from "./native/NativeEditor"
 import ProjectList from "./ProjectList"
-import JupyterEmbedded from "@/components/editor/JupyterEmbedded"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import supa from "@/lib/supabaseClient"
 
 export function Canvas() {
-  const [theme, setTheme] = useState("light")
-  const [layout, setLayout] = useState<"focused" | "full">("focused")
-  const [editorLoaded, setEditorLoaded] = useState(false)
+  const [_, setTheme] = useState("light")
+  const [layout] = useState<"focused" | "full">("focused")
 
-  const editorRef = useRef<HTMLIFrameElement>(null)
   // Effect to listen for messages from the iframe
   useEffect(() => {
     const handleMessage = (event: {

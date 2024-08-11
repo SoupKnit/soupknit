@@ -2,11 +2,9 @@ import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 
-import { Folder, PlusCircle, PlusIcon, PlusSquare } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
 import OnboardingForm from "../onboarding/OnbaordingForm"
-import { Card } from "../ui/card"
-import { withLineBreaks } from "./MultiLineText"
 import {
   createNewProject,
   loadDatasets,
@@ -162,10 +160,10 @@ function Datasets() {
 function AddLineBreaks({
   text,
   className,
-}: {
+}: Readonly<{
   text: string
   className: string
-}) {
+}>) {
   return (
     <>
       {text?.split("\n").map((line) => (
