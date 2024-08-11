@@ -28,7 +28,7 @@ export function EditorHeader() {
   // TODO: get the project name from here and display it in the breadcrumb
   const currentProject = useAtom(activeProjectAndWorkbook)
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 dark:bg-black/30 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:bg-transparent sm:py-2">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-muted/40 px-4 dark:bg-green-200/15 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:py-2">
       <Sidebar />
       <Breadcrumb className="hidden md:flex">
         <BreadcrumbList>
@@ -51,7 +51,7 @@ export function EditorHeader() {
         <Input
           type="search"
           placeholder="Search..."
-          className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
+          className="w-full rounded-lg border border-slate-300 bg-transparent pl-8 md:w-[200px] lg:w-[336px]"
         />
       </div>
       <DropdownMenu>

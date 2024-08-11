@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
+import { useNavigate } from "@tanstack/react-router"
 import { useAtom } from "jotai"
 import { toast } from "sonner"
 
@@ -24,7 +25,18 @@ import {
   updateProjectTitle,
 } from "@/actions/projectsActions"
 import * as workbookActions from "@/actions/workbookActions"
-import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -56,6 +68,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [activeSection, setActiveSection] = useState(0)
   const [workbookConfig] = useAtom(workbookConfigStore)
+  const navigate = useNavigate({ from: "/app" })
 
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, env.supa],
@@ -181,22 +194,8 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
 
   return (
     <>
-      <div className="relative bg-gray-100 pb-4 pt-10 dark:bg-slate-800/40">
+      <div className="relative pb-4 pt-10">
         <div className="container mx-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="absolute right-4 top-4">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => deleteMutation.mutate()}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <input
             type="text"
             className="input-invisible text-5xl font-semibold"
@@ -232,19 +231,34 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
               }}
             />
           </div>
-          <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
-            <Badge className="my-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-              ProjectID: {projectId}
-            </Badge>
-            <Badge className="my-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-              WorkbookId: {projectAndWorkbook?.workbookId}
-            </Badge>
-          </a>
-          <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
-            <Badge className="ml-4 mt-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-              Status: Draft
-            </Badge>
-          </a>
+          <div className="my-4 flex items-center">
+            <DeleteDialog
+              onConfirm={() => {
+                deleteMutation.mutate()
+                navigate({ to: "/app" })
+              }}
+            >
+              <Button
+                variant="ghost"
+                className="mr-2 h-6 w-8 rounded-full p-0 hover:text-red-500"
+              >
+                <Trash2 className="h-4" />
+              </Button>
+            </DeleteDialog>
+            <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
+              <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+                ProjectID: {projectId}
+              </Badge>
+              <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+                WorkbookId: {projectAndWorkbook?.workbookId}
+              </Badge>
+            </a>
+            <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
+              <Badge className="ml-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+                Status: Draft
+              </Badge>
+            </a>
+          </div>
         </div>
         <Separator className="mx-auto w-2/3" />
       </div>
@@ -328,6 +342,38 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
         </div>
       </div>
     </>
+  )
+}
+
+export function DeleteDialog({
+  children,
+  onConfirm,
+}: {
+  children: React.ReactNode
+  onConfirm: () => void
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete your
+            account and remove your data from our servers.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className={buttonVariants({ variant: "destructive" })}
+            onClick={onConfirm}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 

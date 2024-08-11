@@ -100,8 +100,9 @@ export function ProjectList() {
               </HoverCard>
             ))}
         <HoverCard
+          role="button"
           onClick={() => createProject.mutate()}
-          className="w-full rounded-md border-dashed border-gray-400 p-6 shadow-gray-300 transition-colors duration-200 hover:border-orange-400 hover:bg-orange-300 hover:shadow-orange-400 md:w-[360px]"
+          className="rounded-md border-dashed border-gray-400 p-6 shadow-gray-300 transition-colors duration-200 hover:border-orange-400 hover:bg-orange-300 hover:shadow-orange-400 md:w-[360px]"
         >
           <div className="flex h-full flex-col justify-center gap-4 text-center text-xl font-bold text-gray-300 hover:text-orange-400">
             <PlusCircle className="mx-auto h-12 w-12" />
