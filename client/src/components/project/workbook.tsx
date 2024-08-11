@@ -17,7 +17,7 @@ import {
   updateProjectDescription,
   updateProjectTitle,
 } from "@/actions/projectsActions"
-import { runProject } from "@/actions/workbookActions"
+import * as workbookActions from "@/actions/workbookActions"
 import { ColumnPreprocessing } from "@/components/editor/ColumnPreprocessing"
 import {
   DatasetPreview,
@@ -39,15 +39,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { usePreprocessing } from "@/hooks/usePreprocessing"
+import {
+  useFetchPreprocessing,
+  usePreProcessing,
+} from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
 import {
   activeFileStore,
   activeProjectAndWorkbook,
+  workbookConfigStore,
   workbookStore,
 } from "@/store/workbookStore"
 
+import type { WorkbookConfig } from "@/store/workbookStore"
 import type {
   ActiveProject,
   Workbook,
@@ -68,8 +73,9 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [workbook] = useAtom(workbookStore)
   const [activeSection, setActiveSection] = useState(0)
-  const [taskType, setTaskType] = useState("Regression")
-  const [targetColumn, setTargetColumn] = useState("")
+  // const [taskType, setTaskType] = useState("Regression")
+  // const [targetColumn, setTargetColumn] = useState("")
+  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
 
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, env.supa],
@@ -80,8 +86,6 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     if (isLoading === false && project) {
       setTitle(project.title)
       setDescription(project.description)
-      setTaskType(project.taskType || "Regression")
-      setTargetColumn(project.targetColumn || "")
     }
   }, [project, isLoading])
 
@@ -118,7 +122,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async () => deleteProject(env.supa, projectId),
+    mutationFn: async () => workbookActions.deleteProject(env.supa, projectId),
     onSuccess: () => {
       toast.success("Project deleted successfully")
       // Redirect to projects list or handle post-deletion navigation
@@ -129,10 +133,28 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     },
   })
 
+  const workbookConfigMutation = useMutation({
+    mutationFn: async (config: WorkbookConfig) => {
+      if (!projectAndWorkbook?.workbookId) {
+        throw new Error("No workbook ID found")
+      }
+      return await workbookActions.updateWorkbookConfig(env.supa, {
+        workbookId: projectAndWorkbook?.workbookId,
+        config,
+      })
+    },
+    onError: (error) => {
+      console.error("Error updating workbook config:", error)
+    },
+    onSuccess: () => {
+      toast.success("Workbook configuration saved successfully")
+    },
+  })
+
   const runAction = useMutation({
     mutationFn: async (project: ActiveProject) => {
       console.log("Running project, workbook:", project)
-      return runProject(env, {
+      return workbookActions.runProject(env, {
         project: project,
       })
     },
@@ -141,9 +163,22 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     },
   })
 
-  const nextSection = () => {
-    if (activeSection < sections.length - 1) {
-      setActiveSection(activeSection + 1)
+  const proceedToNextSection = async () => {
+    switch (activeSection) {
+      case 0:
+        if (workbookConfig.taskType) {
+          setActiveSection(activeSection + 1)
+        }
+        break
+      case 1:
+        if (workbookConfig.targetColumn) {
+          workbookConfigMutation.mutate(workbookConfig, {
+            onSuccess: () => setActiveSection(activeSection + 1),
+          })
+        }
+        break
+      default:
+        setActiveSection(activeSection + 1)
     }
   }
 
@@ -152,7 +187,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
       case 0:
         return "Start Preprocessing"
       case 1:
-        return "Create Model"
+        return "Proceed to Model Creation"
       case 2:
         return "Deploy Model"
       default:
@@ -221,6 +256,9 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             <Badge className="my-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
               ProjectID: {projectId}
             </Badge>
+            <Badge className="my-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+              WorkbookId: {projectAndWorkbook?.workbookId}
+            </Badge>
           </a>
           <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
             <Badge className="my-4 ml-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
@@ -252,7 +290,12 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             {activeSection === 0 && (
               <>
                 <h2 className="mb-4 text-2xl font-bold">Project Overview</h2>
-                <Select value={taskType} onValueChange={setTaskType}>
+                <Select
+                  value={workbookConfig.taskType}
+                  onValueChange={(e) => {
+                    setWorkbookConfig((prev: any) => ({ ...prev, taskType: e }))
+                  }}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a task type" />
                   </SelectTrigger>
@@ -267,13 +310,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
               </>
             )}
 
-            {activeSection === 1 && (
-              <Workbook
-                projectId={projectId}
-                targetColumn={targetColumn}
-                setTargetColumn={setTargetColumn}
-              />
-            )}
+            {activeSection === 1 && <Workbook projectId={projectId} />}
 
             {activeSection === 2 && (
               <>
@@ -286,7 +323,9 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
           </CardContent>
           <CardFooter className="justify-end">
             {activeSection < sections.length - 1 && (
-              <Button onClick={nextSection}>{getNextButtonText()}</Button>
+              <Button onClick={proceedToNextSection}>
+                {getNextButtonText()}
+              </Button>
             )}
           </CardFooter>
         </Card>
@@ -311,25 +350,27 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
 
 function Workbook({
   projectId,
-  targetColumn,
-  setTargetColumn,
 }: Readonly<{
   projectId: string
-  targetColumn: string
-  setTargetColumn: React.Dispatch<React.SetStateAction<string>>
+  targetColumn?: string
+  setTargetColumn?: React.Dispatch<React.SetStateAction<string>>
 }>) {
-  const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
+  // const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
+  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
   const [activeFile] = useAtom(activeFileStore)
 
   const { csvData, headers, loading, error, handleFileUpload } =
     useWorkbook(projectId)
 
-  const {
-    preprocessingConfig,
-    handleGlobalPreprocessingChange,
-    handleColumnTypeChange,
-    handleColumnPreprocessingChange,
-  } = usePreprocessing(headers)
+  useEffect(() => {
+    console.log(workbookConfig)
+  }, [workbookConfig])
+
+  useFetchPreprocessing(headers)
+
+  const setTargetColumn = (value: string) => {
+    setWorkbookConfig((prev: any) => ({ ...prev, targetColumn: value }))
+  }
 
   return (
     <>
@@ -348,7 +389,10 @@ function Workbook({
             loading={loading}
           />
           <div className="mt-4">
-            <Select value={targetColumn} onValueChange={setTargetColumn}>
+            <Select
+              value={workbookConfig.targetColumn ?? undefined}
+              onValueChange={setTargetColumn}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select target column" />
               </SelectTrigger>
@@ -366,15 +410,8 @@ function Workbook({
         <div>No data available</div>
       )}
       <div>
-        <GlobalPreprocessing
-          preprocessingConfig={preprocessingConfig}
-          handleGlobalPreprocessingChange={handleGlobalPreprocessingChange}
-        />
-        <ColumnPreprocessing
-          preprocessingConfig={preprocessingConfig}
-          handleColumnTypeChange={handleColumnTypeChange}
-          handleColumnPreprocessingChange={handleColumnPreprocessingChange}
-        />
+        <GlobalPreprocessing />
+        <ColumnPreprocessing />
       </div>
     </>
   )

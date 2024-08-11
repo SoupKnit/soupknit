@@ -1,59 +1,45 @@
 import React from "react"
+import { useAtom } from "jotai"
 
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { usePreProcessing } from "@/hooks/usePreprocessing"
+import { workbookConfigStore } from "@/store/workbookStore"
 
-import type {
-  CategoricalEncodingMethod,
-  NumericImputationMethod,
-  NumericScalingMethod,
-  PreprocessingConfig,
-} from "@soupknit/model/src/preprocessing"
+// interface ColumnPreprocessingProps {
+//   preprocessingConfig: PreprocessingConfig
+//   handleColumnTypeChange: (
+//     columnName: string,
+//     type: "numeric" | "categorical",
+//   ) => void
+//   handleColumnPreprocessingChange: (
+//     columnName: string,
+//     preprocessingType: "imputation" | "scaling" | "encoding",
+//     value:
+//       | NumericImputationMethod
+//       | NumericScalingMethod
+//       | CategoricalEncodingMethod,
+//   ) => void
+// }
 
-interface ColumnPreprocessingProps {
-  preprocessingConfig: PreprocessingConfig
-  handleColumnTypeChange: (
-    columnName: string,
-    type: "numeric" | "categorical",
-  ) => void
-  handleColumnPreprocessingChange: (
-    columnName: string,
-    preprocessingType: "imputation" | "scaling" | "encoding",
-    value:
-      | NumericImputationMethod
-      | NumericScalingMethod
-      | CategoricalEncodingMethod,
-  ) => void
-}
-
-export function ColumnPreprocessing({
-  preprocessingConfig,
-  handleColumnTypeChange,
-  handleColumnPreprocessingChange,
-}: Readonly<ColumnPreprocessingProps>) {
+export function ColumnPreprocessing() {
+  const [workbookConfig] = useAtom(workbookConfigStore)
+  const { handleColumnTypeChange } = usePreProcessing()
+  if (!workbookConfig.preProcessingConfig) {
+    return null
+  }
   return (
     <div className="grid grid-cols-3 gap-8">
       <div className="font-bold">Column</div>
       <div className="font-bold">Type</div>
       <div className="font-bold">Preprocessing</div>
-      {preprocessingConfig.columns.map((column) => (
+      {workbookConfig?.preProcessingConfig?.columns?.map((column) => (
         <React.Fragment key={column.name}>
           <div>{column.name}</div>
           <div>

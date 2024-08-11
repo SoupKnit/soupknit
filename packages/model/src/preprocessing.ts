@@ -10,20 +10,27 @@ export type NumericImputationMethod =
   | "median"
   | "constant"
   | "knn";
-export type NumericScalingMethod = "none" | "standard" | "minmax" | "robust";
-export type CategoricalEncodingMethod = "none" | "onehot" | "label" | "ordinal";
+export type NumericScalingMethod =
+  | "scale_standard"
+  | "scale_minmax"
+  | "scale_robust";
+export type CategoricalEncodingMethod =
+  | "encode_onehot"
+  | "encode_label"
+  | "encode_ordinal";
 
-export interface ColumnPreprocessing {
-  name: string;
-  type: "numeric" | "categorical";
-  imputation?: NumericImputationMethod;
-  scaling?: NumericScalingMethod;
-  encoding?: CategoricalEncodingMethod;
-  params: Record<string, any>;
-}
-
-export interface PreprocessingConfig {
-  global_preprocessing: GlobalPreprocessingOption[];
-  global_params: Record<string, any>;
-  columns: ColumnPreprocessing[];
-}
+export type PreProcessingColumnConfig = {
+  name: string; // String, name of the column
+  type: "numeric" | "categorical" | "date";
+  params: Record<string, any>; // Object, parameters for preprocessing steps
+  //List of preprocessing operations
+  preprocessing: {
+    imputation?:
+      | "impute_mean"
+      | "impute_median"
+      | "impute_constant"
+      | "impute_knn";
+    scaling?: NumericScalingMethod;
+    encoding?: CategoricalEncodingMethod;
+  };
+};
