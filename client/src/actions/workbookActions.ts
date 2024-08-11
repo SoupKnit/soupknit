@@ -2,6 +2,7 @@ import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
+import { WorkbookConfig } from "@/store/workbookStore"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 import type { DBWorkbookData } from "@soupknit/model/src/dbTables"
@@ -68,6 +69,26 @@ export async function createNewWorkbook(
     })
     .select()
     .single()
+    .throwOnError()
+  return data
+}
+
+export async function updateWorkbookConfig(
+  supa: SupabaseClient,
+  args: { workbookId: string; config: WorkbookConfig },
+) {
+  const { workbookId, config } = args
+  console.log(
+    `Updating workbook config for workbook with ID: ${workbookId}: `,
+    config,
+  )
+  const { data } = await supa
+    .from("workbook_data")
+    .update({
+      config: config,
+    })
+    .eq("id", workbookId)
+    .select()
     .throwOnError()
   return data
 }

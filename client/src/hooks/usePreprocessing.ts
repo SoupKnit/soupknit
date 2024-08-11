@@ -1,66 +1,109 @@
 import { useEffect, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { useAtom } from "jotai"
 
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import { useEnv } from "@/lib/clientEnvironment"
+import { workbookConfigStore } from "@/store/workbookStore"
 
+import type { WorkbookConfig } from "@/store/workbookStore"
 import type {
   CategoricalEncodingMethod,
   GlobalPreprocessingOption,
   NumericImputationMethod,
   NumericScalingMethod,
-  PreprocessingConfig,
+  PreProcessingColumnConfig,
 } from "@soupknit/model/src/preprocessing"
 
-export function usePreprocessing(headers: string[]) {
+export function useFetchPreprocessing(headers: string[]) {
   const { supa } = useEnv()
-  const [preprocessingConfig, setPreprocessingConfig] =
-    useState<PreprocessingConfig>({
-      global_preprocessing: [],
-      global_params: {},
-      columns: [],
-    })
+  // const [preprocessingConfig, setPreprocessingConfig] =
+  //   useState<PreprocessingConfig>({
+  //     global_preprocessing: [],
+  //     global_params: {},
+  //     columns: [],
+  //   })
+  const [_, setWorkbookConfig] = useAtom(workbookConfigStore)
 
-  const { data: fetchedConfig } = useQuery<PreprocessingConfig>({
-    queryKey: ["preprocessingConfig", supa],
+  const { data: fetchedConfig } = useQuery({
+    queryKey: ["preProcessingConfig", supa],
     queryFn: async () => fetchPreprocessingConfig(supa),
   })
 
   useEffect(() => {
     if (fetchedConfig && headers.length > 0) {
-      setPreprocessingConfig(fetchedConfig)
+      setWorkbookConfig((prev: any) => ({
+        ...prev,
+        preProcessingConfig: fetchedConfig,
+      }))
     }
-  }, [fetchedConfig, headers])
+  }, [fetchedConfig, headers, setWorkbookConfig])
+}
 
-  const handleGlobalPreprocessingChange = (
-    option: GlobalPreprocessingOption,
-  ) => {
-    setPreprocessingConfig((prev) => ({
-      ...prev,
-      global_preprocessing: prev.global_preprocessing.includes(option)
-        ? prev.global_preprocessing.filter((item) => item !== option)
-        : [...prev.global_preprocessing, option],
-    }))
+export function usePreProcessing() {
+  const [_, setWorkbookConfig] = useAtom(workbookConfigStore)
+
+  const handleGlobalPreprocessingChange = (change: {
+    option?: GlobalPreprocessingOption
+    global_params?: [string, any]
+  }) => {
+    console.log("Inside handleGlobalPreprocessingChange", change)
+    setWorkbookConfig((prev: WorkbookConfig) => {
+      const new_global_params = prev.preProcessingConfig.global_params ?? {}
+      let new_global_preprocessing =
+        prev.preProcessingConfig.global_preprocessing
+
+      if (change.global_params)
+        new_global_params[change.global_params[0]] = change.global_params[1]
+
+      if (change.option) {
+        new_global_preprocessing =
+          prev.preProcessingConfig?.global_preprocessing.includes(change.option)
+            ? prev.preProcessingConfig.global_preprocessing.filter(
+                (item: string) => item !== change.option,
+              )
+            : [...prev.preProcessingConfig.global_preprocessing, change.option]
+      }
+
+      return {
+        ...prev,
+        preProcessingConfig: {
+          ...prev.preProcessingConfig,
+          global_params: new_global_params,
+          global_preprocessing: new_global_preprocessing,
+        },
+      }
+    })
   }
 
   const handleColumnTypeChange = (
     columnName: string,
-    type: "numeric" | "categorical",
+    type: "numeric" | "categorical" | "date",
   ) => {
-    setPreprocessingConfig((prev) => ({
-      ...prev,
-      columns: prev.columns.map((col) =>
-        col.name === columnName
-          ? {
-              ...col,
-              type,
-              imputation: undefined,
-              scaling: undefined,
-              encoding: undefined,
-            }
-          : col,
-      ),
-    }))
+    setWorkbookConfig((prev: WorkbookConfig) => {
+      const newColumns = prev.preProcessingConfig.columns?.map(
+        (col: PreProcessingColumnConfig) =>
+          col.name === columnName
+            ? {
+                ...col,
+                type,
+                preprocessing: {
+                  imputation: undefined,
+                  scaling: undefined,
+                  encoding: undefined,
+                },
+              }
+            : col,
+      )
+
+      return {
+        ...prev,
+        preProcessingConfig: {
+          ...prev.preProcessingConfig,
+          columns: newColumns,
+        },
+      }
+    })
   }
 
   const handleColumnPreprocessingChange = (
@@ -71,16 +114,20 @@ export function usePreprocessing(headers: string[]) {
       | NumericScalingMethod
       | CategoricalEncodingMethod,
   ) => {
-    setPreprocessingConfig((prev) => ({
+    setWorkbookConfig((prev: WorkbookConfig) => ({
       ...prev,
-      columns: prev.columns.map((col) =>
-        col.name === columnName ? { ...col, [preprocessingType]: value } : col,
-      ),
+      preProcessingConfig: {
+        ...prev.preProcessingConfig,
+        columns: prev.preProcessingConfig.columns?.map((col) =>
+          col.name === columnName
+            ? { ...col, [preprocessingType]: value }
+            : col,
+        ),
+      },
     }))
   }
 
   return {
-    preprocessingConfig,
     handleGlobalPreprocessingChange,
     handleColumnTypeChange,
     handleColumnPreprocessingChange,
