@@ -8,7 +8,11 @@ import * as workbookActions from "@/actions/workbookActions"
 import { loadExistingWorkbook } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import { activeProjectAndWorkbook, workbookStore } from "@/store/workbookStore"
+import {
+  activeProjectAndWorkbook,
+  workbookConfigStore,
+  workbookStore,
+} from "@/store/workbookStore"
 
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
@@ -36,6 +40,51 @@ export function useWorkbook(_projectId: string) {
   )
   const [workbook] = useAtom(workbookStore)
   const [userSettings] = useAtom(userSettingsStore)
+  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+
+  // Add a new mutation for saving the workbook config
+  const saveWorkbookConfig = useMutation({
+    mutationFn: async (config: any) => {
+      if (!projectWorkbook?.workbookId) {
+        throw new Error("No workbook ID found for saving config")
+      }
+      return await workbookActions.saveWorkbookConfig(
+        env.supa,
+        projectWorkbook.workbookId,
+        config,
+      )
+    },
+    onSuccess: () => {
+      toast.success("Workbook configuration saved successfully")
+    },
+    onError: (error) => {
+      toast.error(`Error saving workbook configuration: ${error.message}`)
+    },
+  })
+
+  // Add a new query for loading the workbook config
+  const workbookConfigQuery = useQuery({
+    queryKey: ["workbookConfig", projectWorkbook?.workbookId],
+    queryFn: async () => {
+      if (!projectWorkbook?.workbookId) {
+        throw new Error("No workbook ID found for loading config")
+      }
+      return await workbookActions.loadWorkbookConfig(
+        env.supa,
+        projectWorkbook.workbookId,
+      )
+    },
+    enabled: !!projectWorkbook?.workbookId,
+  })
+
+  // Effect to save workbook config when component unmounts
+  useEffect(() => {
+    return () => {
+      if (projectWorkbook?.workbookId && workbookConfig) {
+        saveWorkbookConfig.mutate(workbookConfig)
+      }
+    }
+  }, [projectWorkbook?.workbookId, workbookConfig])
 
   const workbookQuery = useQuery({
     queryKey: ["workbook", _projectId, env.supa],
@@ -58,6 +107,7 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
+  // Effect to update local state when workbook is fetched
   useEffect(() => {
     if (workbookQuery.isFetched && workbookQuery.isSuccess) {
       const data = workbookQuery.data
@@ -76,19 +126,27 @@ export function useWorkbook(_projectId: string) {
         })),
       })
       if (
-        data &&
         data.preview_data &&
-        data.preview_data instanceof Array &&
-        isNonEmptyArray(data.preview_data)
+        Array.isArray(data.preview_data) &&
+        data.preview_data.length > 0
       ) {
-        setHeaders(Object.keys(data.preview_data[0] as any))
-        setCSVData(data.preview_data as any)
+        setHeaders(Object.keys(data.preview_data[0]))
+        setCSVData(data.preview_data)
       } else {
         setHeaders([])
         setCSVData([])
       }
+      // Set the workbook config if it exists
+      if (data.config) {
+        setWorkbookConfig(data.config)
+      }
     }
-  }, [workbookQuery.isFetched, workbookQuery.data, setProjectAndWorkbook])
+  }, [
+    workbookQuery.isFetched,
+    workbookQuery.data,
+    setProjectAndWorkbook,
+    setWorkbookConfig,
+  ])
 
   // setWorkbookId(workbook.id)
   // setWorkbookName(workbook.name)
@@ -175,6 +233,8 @@ export function useWorkbook(_projectId: string) {
     loading,
     error,
     handleFileUpload,
+    saveWorkbookConfig,
+    workbookConfigQuery,
     // workbookId,
     // workbookName,
     // workbookFileType,

@@ -6,6 +6,7 @@ import { DatasetPreview, FileInputArea } from "../editor/DatasetPreview"
 import { GlobalPreprocessing } from "../editor/GlobalPreprocessing"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Hide } from "../util/ConditionalShow"
+import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select"
 import { useFetchPreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
+import { useEnv } from "@/lib/clientEnvironment"
 import { activeFileStore, workbookConfigStore } from "@/store/workbookStore"
 
 export function DataProcessingSection({
@@ -27,6 +29,8 @@ export function DataProcessingSection({
   // const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
   const [activeFile] = useAtom(activeFileStore)
+  const { workbookConfigQuery } = useWorkbook(projectId)
+  const env = useEnv()
 
   const { csvData, headers, loading, error, handleFileUpload } =
     useWorkbook(projectId)
@@ -35,7 +39,17 @@ export function DataProcessingSection({
     console.log(workbookConfig)
   }, [workbookConfig])
 
-  useFetchPreprocessing(headers)
+  useEffect(() => {
+    if (workbookConfig && !workbookConfig.preProcessingConfig) {
+      // If there's no saved preprocessing config, fetch the default one
+      fetchPreprocessingConfig(env.supa).then((defaultConfig) => {
+        setWorkbookConfig((prev) => ({
+          ...prev,
+          preProcessingConfig: defaultConfig,
+        }))
+      })
+    }
+  }, [workbookConfig, setWorkbookConfig])
 
   const setTargetColumn = (value: string) => {
     setWorkbookConfig((prev: any) => ({ ...prev, targetColumn: value }))

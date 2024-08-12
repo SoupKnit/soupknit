@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 
 import { fetchPreprocessingConfig } from "@/api/preprocessing"
+import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
 import { workbookConfigStore } from "@/store/workbookStore"
 
@@ -15,29 +16,37 @@ import type {
   PreProcessingColumnConfig,
 } from "@soupknit/model/src/preprocessing"
 
-export function useFetchPreprocessing(headers: string[]) {
+export function useFetchPreprocessing(headers: string[], projectId: string) {
   const { supa } = useEnv()
-  // const [preprocessingConfig, setPreprocessingConfig] =
-  //   useState<PreprocessingConfig>({
-  //     global_preprocessing: [],
-  //     global_params: {},
-  //     columns: [],
-  //   })
   const [_, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const { workbookConfigQuery } = useWorkbook(projectId)
 
-  const { data: fetchedConfig } = useQuery({
-    queryKey: ["preProcessingConfig", supa],
+  const { data: fetchedDefaultConfig } = useQuery({
+    queryKey: ["defaultPreProcessingConfig", supa],
     queryFn: async () => fetchPreprocessingConfig(supa),
+    enabled: !workbookConfigQuery.data, // Only fetch default if no saved config
   })
 
   useEffect(() => {
-    if (fetchedConfig && headers.length > 0) {
+    if (workbookConfigQuery.data && headers.length > 0) {
+      // Use the saved workbook configuration
       setWorkbookConfig((prev: any) => ({
         ...prev,
-        preProcessingConfig: fetchedConfig,
+        preProcessingConfig: workbookConfigQuery.data.preProcessingConfig || {},
+      }))
+    } else if (fetchedDefaultConfig && headers.length > 0) {
+      // Fall back to default configuration if no saved config exists
+      setWorkbookConfig((prev: any) => ({
+        ...prev,
+        preProcessingConfig: fetchedDefaultConfig,
       }))
     }
-  }, [fetchedConfig, headers, setWorkbookConfig])
+  }, [
+    workbookConfigQuery.data,
+    fetchedDefaultConfig,
+    headers,
+    setWorkbookConfig,
+  ])
 }
 
 export function usePreProcessing() {
