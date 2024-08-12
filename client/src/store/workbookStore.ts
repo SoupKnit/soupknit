@@ -32,11 +32,7 @@ export const cellsStore = atom<Cell[]>([])
  */
 export type WorkbookConfig = {
   targetColumn: string | null
-  taskType?:
-    | "Regression"
-    | "Clustering"
-    | "Classification"
-    | "Time Series Prediction"
+  taskType?: "Regression" | "Clustering" | "Classification" | "TimeSeries"
   preProcessingConfig: {
     columns?: Array<PreProcessingColumnConfig>
     global_params?: Record<string, any>

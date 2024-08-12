@@ -112,6 +112,9 @@
   .shadow-brutal {
     @apply shadow-[4px_4px_0px];
   }
+  .shadow-brutal-hover {
+    @apply shadow-[4px_4px_0px] hover:shadow-[6px_6px_0px];
+  }
 
   .shadow-brutal-lg {
     @apply shadow-[8px_8px_1px];
