@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
-import { useAtom } from "jotai"
+import { useAtom, useSetAtom } from "jotai"
+import { toast } from "sonner"
 
 import { PlusCircle } from "lucide-react"
 
@@ -14,14 +15,16 @@ import { HoverCard } from "@/components/HoverCard"
 import { Button } from "@/components/ui/button"
 import { useEnv } from "@/lib/clientEnvironment"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import { activeProjectAndWorkbook } from "@/store/workbookStore"
-
-import type { DBProject } from "@soupknit/model/src/dbTables"
+import {
+  activeFileAtom,
+  activeProjectAndWorkbookAtom,
+} from "@/store/workbookStore"
 
 export function ProjectList() {
   const { supa } = useEnv()
   const navigate = useNavigate({ from: "/app/$projectId" })
-  const [project, setProject] = useAtom(activeProjectAndWorkbook)
+  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbookAtom)
+  const setActiveFile = useSetAtom(activeFileAtom)
 
   const {
     isPending,
@@ -36,11 +39,23 @@ export function ProjectList() {
 
   const createProject = useMutation({
     mutationFn: async () => {
-      return await createNewProject(supa)
+      const initialFile = {
+        name: "New File",
+        file_url: "",
+        type: "csv",
+      }
+      return await createNewProject(supa, initialFile)
     },
-    onSuccess: (projectId) => {
-      setProject({ projectId: projectId })
+    onSuccess: ({ projectId, workbookId, activeFile }) => {
+      setActiveProjectAndWorkbook({ projectId, workbookId })
+      if (activeFile) {
+        setActiveFile(activeFile)
+      }
       navigate({ to: "/app/$projectId", params: { projectId } })
+    },
+    onError: (error) => {
+      console.error("Failed to create project:", error)
+      toast.error(`Failed to create project: ${error.message}`)
     },
   })
 

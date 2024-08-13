@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 import Papa from "papaparse"
 import { toast } from "sonner"
@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import * as workbookActions from "@/actions/workbookActions"
 import { loadExistingWorkbook } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
+import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { userSettingsStore } from "@/store/userSettingsStore"
 import {
   activeProjectAndWorkbook,
@@ -41,6 +42,7 @@ export function useWorkbook(_projectId: string) {
   const [workbook] = useAtom(workbookStore)
   const [userSettings] = useAtom(userSettingsStore)
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const queryClient = useQueryClient()
 
   // Add a new mutation for saving the workbook config
   const saveWorkbookConfig = useMutation({
@@ -180,6 +182,43 @@ export function useWorkbook(_projectId: string) {
   //   }
   // }
 
+  const analyzeFile = useMutation({
+    mutationFn: async (data: {
+      taskType: string
+      targetColumn: string
+      fileUrl: string
+      projectId: string
+    }) => {
+      console.log("fetching analyze file with", data)
+      const response = await fetch(`${env.serverUrl}/app/analyze_file`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        throw new Error("Failed to analyze file")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast.success("File analysis completed successfully")
+      console.log("File analysis result:", data)
+      // Invalidate the workbook config query to trigger a refetch
+      if (projectWorkbook?.workbookId) {
+        queryClient.invalidateQueries([
+          "workbookConfig",
+          projectWorkbook.workbookId,
+        ])
+      }
+    },
+    onError: (error) => {
+      toast.error(`Error analyzing file: ${error.message}`)
+    },
+  })
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -210,8 +249,8 @@ export function useWorkbook(_projectId: string) {
       const previewData = parsedData.slice(0, 15)
       setCSVData(previewData as any) // fix types
 
-      // react-query mutation
-      createWorkbook.mutate({
+      // Create workbook
+      await createWorkbook.mutateAsync({
         preview_data: previewData,
         file: {
           name: file.name,
@@ -219,6 +258,23 @@ export function useWorkbook(_projectId: string) {
           file_type: file.type,
         },
       })
+
+      // Analyze file
+      if (
+        workbookConfig &&
+        workbookConfig.taskType &&
+        workbookConfig.targetColumn
+      ) {
+        await analyzeFile.mutateAsync({
+          taskType: workbookConfig.taskType,
+          targetColumn: workbookConfig.targetColumn,
+          fileUrl: publicUrl,
+        })
+      } else {
+        console.warn(
+          "Workbook config is missing taskType or targetColumn. Skipping file analysis.",
+        )
+      }
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
@@ -233,6 +289,8 @@ export function useWorkbook(_projectId: string) {
     loading,
     error,
     handleFileUpload,
+    analyzeFile,
+    projectWorkbook,
     saveWorkbookConfig,
     workbookConfigQuery,
     // workbookId,

@@ -3,28 +3,32 @@ const { spawn } = require("child_process");
 type RunInPythonSandboxArgs = {
   input: string;
   files: string[];
-  // ... more, as needed
+  scriptPath: string;
+  onData: (data: string) => void;
+  onError: (error: string) => void;
+  onClose: (code: number) => void;
 };
 
-export function runInPythonSandbox({ input }: RunInPythonSandboxArgs) {
-  const pythonProcess = spawn("python3", ["../packages/python/workbook.py"]);
-
-  let outputData = "";
-  pythonProcess.stdout.on("data", (data: any) => {
-    outputData += data.toString();
+export function runInPythonSandbox({
+  input,
+  files,
+  scriptPath,
+  onData,
+  onError,
+  onClose,
+}: RunInPythonSandboxArgs) {
+  const pythonProcess = spawn("python3", [scriptPath]);
+  console.log(files);
+  pythonProcess.stdout.on("data", (data: Buffer) => {
+    onData(data.toString());
   });
 
-  pythonProcess.stderr.on("data", (data: any) => {
-    console.error(`stderr: ${data}`);
+  pythonProcess.stderr.on("data", (data: Buffer) => {
+    onError(data.toString());
   });
 
   pythonProcess.on("close", (code: number) => {
-    if (code !== 0) {
-      return "Python script exited with code " + code;
-    } else {
-      console.log(outputData);
-      return "That might not have worked";
-    }
+    onClose(code);
   });
 
   pythonProcess.stdin.write(input);
