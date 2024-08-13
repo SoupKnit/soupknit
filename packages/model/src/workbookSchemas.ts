@@ -1,6 +1,12 @@
 import { z } from "zod";
 type $TS_TODO_ANY = any;
 import * as SupabaseGenTypes from "./dbTables";
+import {
+  GlobalPreprocessingOption,
+  GlobalPreprocessingOptionSchema,
+  PreProcessingColumnConfig,
+  PreProcessingColumnConfigSchema,
+} from "./preprocessing";
 
 type IfEquals<T, U, Y = unknown, N = never> =
   (<G>() => G extends T ? 1 : 2) extends <G>() => G extends U ? 1 : 2 ? Y : N;
@@ -23,11 +29,49 @@ const WorkbookDataFileSchema = z.object({
 
 export type WorkbookDataFile = z.infer<typeof WorkbookDataFileSchema>;
 
+/*************************************************
+ * WorkbookConfig - Schema for Config column in WorkbookData table
+ * ************************************************/
+/**
+ * @see DataColumn
+ * TODO (later): unify types and schemas
+ */
+
+export const TaskTypesSchema = z.enum([
+  "Regression",
+  "Clustering",
+  "Classification",
+  "TimeSeries",
+]);
+
+// export type WorkbookConfig = {
+//   targetColumn: string | null;
+//   taskType?: "Regression" | "Clustering" | "Classification" | "TimeSeries";
+//   preProcessingConfig: {
+//     columns?: Array<PreProcessingColumnConfig>;
+//     global_params?: Record<string, any>;
+//     global_preprocessing: GlobalPreprocessingOption[];
+//   };
+// };
+
+const workbookConfigSchema = z.object({
+  targetColumn: z.string().nullable(),
+  taskType: z.optional(TaskTypesSchema),
+  preProcessingConfig: z.object({
+    columns: z.array(PreProcessingColumnConfigSchema),
+    global_params: z.record(z.string(), z.any()),
+    global_preprocessing: z.array(GlobalPreprocessingOptionSchema),
+  }),
+});
+
+export type WorkbookConfig = z.infer<typeof workbookConfigSchema>;
+
 /**
  * WorkbookDataSchema matches {@link SupabaseGenTypes.DBWorkbookData}
  */
 export const WorkbookDataSchema = z.object({
   id: z.string(),
+  config: workbookConfigSchema,
   project_id: z.string(),
   files: z.nullable(z.array(WorkbookDataFileSchema)),
   preview_data: z.array(z.any()),
@@ -40,7 +84,7 @@ export type WorkbookData = z.infer<typeof WorkbookDataSchema>;
 
 /**
  * ******************************************************************
- * OLD SCHEMA DEFINITIONS
+ * OLD SCHEMA DEFINITIONS - DO NOT USE/MODIFY for now
  * ******************************************************************
  */
 
