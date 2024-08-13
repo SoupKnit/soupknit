@@ -48,6 +48,7 @@ import { useEnv } from "@/lib/clientEnvironment"
 import { cn } from "@/lib/utils"
 import {
   activeProjectAndWorkbook,
+  activeProjectAndWorkbookAtom,
   workbookConfigStore,
 } from "@/store/workbookStore"
 
@@ -68,11 +69,15 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [activeSection, setActiveSection] = useState(0)
   const [workbookConfig] = useAtom(workbookConfigStore)
+  const [activeProject, setActiveProject] = useAtom(
+    activeProjectAndWorkbookAtom,
+  )
   const navigate = useNavigate({ from: "/app" })
 
   const { isLoading, data: project = null } = useQuery({
     queryKey: ["project", projectId, env.supa],
     queryFn: async () => loadProject(env.supa, projectId),
+    enabled: !!projectId,
   })
 
   useEffect(() => {
@@ -81,6 +86,15 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
       setDescription(project.description)
     }
   }, [project, isLoading])
+
+  useEffect(() => {
+    if (
+      projectId &&
+      (!activeProject || activeProject.projectId !== projectId)
+    ) {
+      setActiveProject({ projectId })
+    }
+  }, [projectId, activeProject, setActiveProject])
 
   const descriptionInputRef = useRef<HTMLDivElement>(null)
   const [focusDescription, setFocusDescription] = useState<boolean>(false)
@@ -188,8 +202,12 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     }
   }
 
-  if (isLoading || !project) {
-    return <div>Loading...</div>
+  if (isLoading) {
+    return <div>Loading project...</div>
+  }
+
+  if (!project) {
+    return <div>Project not found</div>
   }
 
   return (

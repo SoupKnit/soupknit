@@ -9,7 +9,20 @@ import type {
   ActiveProject,
   Cell,
   Workbook,
+  WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
+
+export interface ActiveProject {
+  projectId: string
+  workbookId?: string
+}
+
+export const activeProjectAndWorkbookAtom = atom<ActiveProject>({
+  projectId: "",
+  workbookId: undefined,
+})
+
+export const activeFileAtom = atom<WorkbookDataFile | null>(null)
 
 // atom to store the active workbook ID
 export const activeProjectAndWorkbook = atom<ActiveProject | null>(null)

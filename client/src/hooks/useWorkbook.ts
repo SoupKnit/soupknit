@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAtom } from "jotai"
 import Papa from "papaparse"
 import { toast } from "sonner"
@@ -7,8 +7,13 @@ import { toast } from "sonner"
 import * as workbookActions from "@/actions/workbookActions"
 import { loadExistingWorkbook } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
+import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import { activeProjectAndWorkbook, workbookStore } from "@/store/workbookStore"
+import {
+  activeProjectAndWorkbook,
+  workbookConfigStore,
+  workbookStore,
+} from "@/store/workbookStore"
 
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
@@ -36,6 +41,52 @@ export function useWorkbook(_projectId: string) {
   )
   const [workbook] = useAtom(workbookStore)
   const [userSettings] = useAtom(userSettingsStore)
+  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const queryClient = useQueryClient()
+
+  // Add a new mutation for saving the workbook config
+  const saveWorkbookConfig = useMutation({
+    mutationFn: async (config: any) => {
+      if (!projectWorkbook?.workbookId) {
+        throw new Error("No workbook ID found for saving config")
+      }
+      return await workbookActions.saveWorkbookConfig(
+        env.supa,
+        projectWorkbook.workbookId,
+        config,
+      )
+    },
+    onSuccess: () => {
+      toast.success("Workbook configuration saved successfully")
+    },
+    onError: (error) => {
+      toast.error(`Error saving workbook configuration: ${error.message}`)
+    },
+  })
+
+  // Add a new query for loading the workbook config
+  const workbookConfigQuery = useQuery({
+    queryKey: ["workbookConfig", projectWorkbook?.workbookId],
+    queryFn: async () => {
+      if (!projectWorkbook?.workbookId) {
+        throw new Error("No workbook ID found for loading config")
+      }
+      return await workbookActions.loadWorkbookConfig(
+        env.supa,
+        projectWorkbook.workbookId,
+      )
+    },
+    enabled: !!projectWorkbook?.workbookId,
+  })
+
+  // Effect to save workbook config when component unmounts
+  useEffect(() => {
+    return () => {
+      if (projectWorkbook?.workbookId && workbookConfig) {
+        saveWorkbookConfig.mutate(workbookConfig)
+      }
+    }
+  }, [projectWorkbook?.workbookId, workbookConfig])
 
   const workbookQuery = useQuery({
     queryKey: ["workbook", _projectId, env.supa],
@@ -58,6 +109,7 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
+  // Effect to update local state when workbook is fetched
   useEffect(() => {
     if (workbookQuery.isFetched && workbookQuery.isSuccess) {
       const data = workbookQuery.data
@@ -76,19 +128,27 @@ export function useWorkbook(_projectId: string) {
         })),
       })
       if (
-        data &&
         data.preview_data &&
-        data.preview_data instanceof Array &&
-        isNonEmptyArray(data.preview_data)
+        Array.isArray(data.preview_data) &&
+        data.preview_data.length > 0
       ) {
-        setHeaders(Object.keys(data.preview_data[0] as any))
-        setCSVData(data.preview_data as any)
+        setHeaders(Object.keys(data.preview_data[0]))
+        setCSVData(data.preview_data)
       } else {
         setHeaders([])
         setCSVData([])
       }
+      // Set the workbook config if it exists
+      if (data.config) {
+        setWorkbookConfig(data.config)
+      }
     }
-  }, [workbookQuery.isFetched, workbookQuery.data, setProjectAndWorkbook])
+  }, [
+    workbookQuery.isFetched,
+    workbookQuery.data,
+    setProjectAndWorkbook,
+    setWorkbookConfig,
+  ])
 
   // setWorkbookId(workbook.id)
   // setWorkbookName(workbook.name)
@@ -122,6 +182,43 @@ export function useWorkbook(_projectId: string) {
   //   }
   // }
 
+  const analyzeFile = useMutation({
+    mutationFn: async (data: {
+      taskType: string
+      targetColumn: string
+      fileUrl: string
+      projectId: string
+    }) => {
+      console.log("fetching analyze file with", data)
+      const response = await fetch(`${env.serverUrl}/app/analyze_file`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        throw new Error("Failed to analyze file")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast.success("File analysis completed successfully")
+      console.log("File analysis result:", data)
+      // Invalidate the workbook config query to trigger a refetch
+      if (projectWorkbook?.workbookId) {
+        queryClient.invalidateQueries([
+          "workbookConfig",
+          projectWorkbook.workbookId,
+        ])
+      }
+    },
+    onError: (error) => {
+      toast.error(`Error analyzing file: ${error.message}`)
+    },
+  })
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -152,8 +249,8 @@ export function useWorkbook(_projectId: string) {
       const previewData = parsedData.slice(0, 15)
       setCSVData(previewData as any) // fix types
 
-      // react-query mutation
-      createWorkbook.mutate({
+      // Create workbook
+      await createWorkbook.mutateAsync({
         preview_data: previewData,
         file: {
           name: file.name,
@@ -161,6 +258,23 @@ export function useWorkbook(_projectId: string) {
           file_type: file.type,
         },
       })
+
+      // Analyze file
+      if (
+        workbookConfig &&
+        workbookConfig.taskType &&
+        workbookConfig.targetColumn
+      ) {
+        await analyzeFile.mutateAsync({
+          taskType: workbookConfig.taskType,
+          targetColumn: workbookConfig.targetColumn,
+          fileUrl: publicUrl,
+        })
+      } else {
+        console.warn(
+          "Workbook config is missing taskType or targetColumn. Skipping file analysis.",
+        )
+      }
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
@@ -175,6 +289,10 @@ export function useWorkbook(_projectId: string) {
     loading,
     error,
     handleFileUpload,
+    analyzeFile,
+    projectWorkbook,
+    saveWorkbookConfig,
+    workbookConfigQuery,
     // workbookId,
     // workbookName,
     // workbookFileType,

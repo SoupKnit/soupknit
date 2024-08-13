@@ -93,6 +93,34 @@ export async function updateWorkbookConfig(
   return data
 }
 
+export async function saveWorkbookConfig(
+  supa: SupabaseClient,
+  workbookId: string,
+  config: any,
+) {
+  const { data, error } = await supa
+    .from("workbook_data")
+    .update({ config: config })
+    .eq("id", workbookId)
+
+  if (error) throw error
+  return data
+}
+
+export async function loadWorkbookConfig(
+  supa: SupabaseClient,
+  workbookId: string,
+) {
+  const { data, error } = await supa
+    .from("workbook_data")
+    .select("config")
+    .eq("id", workbookId)
+    .single()
+
+  if (error) throw error
+  return data?.config
+}
+
 export async function deleteProject(supa: SupabaseClient, projectId: string) {
   console.log(`Starting deletion process for project with ID: ${projectId}`)
   // 1. Fetch the workbooks associated with this project

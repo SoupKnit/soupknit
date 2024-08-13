@@ -1,3 +1,7 @@
+import { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
+
+import { createNewWorkbook } from "@/actions/workbookActions"
+
 import type { DBProject } from "@soupknit/model/src/dbTables"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
@@ -42,24 +46,32 @@ export const loadProject = async (supa: SupabaseClient, projectId: string) => {
   }
 }
 
-export const createNewProject = async (supa: SupabaseClient) => {
+export const createNewProject = async (
+  supa: SupabaseClient,
+  initialFile?: WorkbookDataFile,
+) => {
   try {
-    const data = await supa
+    const { data: projectData, error: projectError } = await supa
       .from("projects")
-      .insert([
-        {
-          title: "",
-        },
-      ])
+      .insert([{ title: "New Project" }])
       .select()
-      .throwOnError()
-      .then((r) => r.data)
-    if (!data || !data.length) {
-      throw new Error("No data returned from insert")
+      .single()
+
+    if (projectError || !projectData) {
+      throw new Error(projectError?.message || "Failed to create project")
     }
-    return data[0].id
+
+    const projectId = projectData.id
+
+    if (initialFile) {
+      const workbookData = await createNewWorkbook(supa, projectId, initialFile)
+      return { projectId, workbookId: workbookData.id, activeFile: initialFile }
+    }
+
+    return { projectId }
   } catch (error) {
     console.error("Error creating project:", error)
+    throw error
   }
 }
 
