@@ -1,26 +1,12 @@
-import { DataColumn } from "@soupknit/model/src/workbookSchemas"
 import { atom } from "jotai"
 
-import type {
-  GlobalPreprocessingOption,
-  PreProcessingColumnConfig,
-} from "@soupknit/model/src/preprocessing"
 import type {
   ActiveProject,
   Cell,
   Workbook,
+  WorkbookConfig,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
-
-export interface ActiveProject {
-  projectId: string
-  workbookId?: string
-}
-
-export const activeProjectAndWorkbookAtom = atom<ActiveProject>({
-  projectId: "",
-  workbookId: undefined,
-})
 
 export const activeFileAtom = atom<WorkbookDataFile | null>(null)
 
@@ -39,19 +25,6 @@ export const projectDetailsStore = atom<ProjectDetails[]>([])
 // key: Workbook["workbookId"]: Workbook["cells"]
 export const cellsStore = atom<Cell[]>([])
 
-/**
- * @see DataColumn
- * TODO: unify types and schemas
- */
-export type WorkbookConfig = {
-  targetColumn: string | null
-  taskType?: "Regression" | "Clustering" | "Classification" | "TimeSeries"
-  preProcessingConfig: {
-    columns?: Array<PreProcessingColumnConfig>
-    global_params?: Record<string, any>
-    global_preprocessing: GlobalPreprocessingOption[]
-  }
-}
 export const workbookConfigStore = atom<WorkbookConfig>({
   taskType: "Regression",
   targetColumn: null,

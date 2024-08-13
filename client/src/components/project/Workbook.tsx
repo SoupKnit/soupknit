@@ -48,12 +48,13 @@ import { useEnv } from "@/lib/clientEnvironment"
 import { cn } from "@/lib/utils"
 import {
   activeProjectAndWorkbook,
-  activeProjectAndWorkbookAtom,
   workbookConfigStore,
 } from "@/store/workbookStore"
 
-import type { WorkbookConfig } from "@/store/workbookStore"
-import type { ActiveProject } from "@soupknit/model/src/workbookSchemas"
+import type {
+  ActiveProject,
+  WorkbookConfig,
+} from "@soupknit/model/src/workbookSchemas"
 
 const sections = [
   "Overview",
@@ -66,12 +67,9 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const env = useEnv()
   const [title, setTitle] = useState<string>()
   const [description, setDescription] = useState<string>()
-  const [projectAndWorkbook] = useAtom(activeProjectAndWorkbook)
   const [activeSection, setActiveSection] = useState(0)
   const [workbookConfig] = useAtom(workbookConfigStore)
-  const [activeProject, setActiveProject] = useAtom(
-    activeProjectAndWorkbookAtom,
-  )
+  const [activeProject, setActiveProject] = useAtom(activeProjectAndWorkbook)
   const navigate = useNavigate({ from: "/app" })
 
   const { isLoading, data: project = null } = useQuery({
@@ -88,13 +86,10 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   }, [project, isLoading])
 
   useEffect(() => {
-    if (
-      projectId &&
-      (!activeProject || activeProject.projectId !== projectId)
-    ) {
+    if (projectId && !activeProject?.projectId) {
       setActiveProject({ projectId })
     }
-  }, [projectId, activeProject, setActiveProject])
+  }, [projectId, setActiveProject, activeProject])
 
   const descriptionInputRef = useRef<HTMLDivElement>(null)
   const [focusDescription, setFocusDescription] = useState<boolean>(false)
@@ -142,11 +137,11 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
 
   const workbookConfigMutation = useMutation({
     mutationFn: async (config: WorkbookConfig) => {
-      if (!projectAndWorkbook?.workbookId) {
+      if (!activeProject?.workbookId) {
         throw new Error("No workbook ID found")
       }
       return await workbookActions.updateWorkbookConfig(env.supa, {
-        workbookId: projectAndWorkbook?.workbookId,
+        workbookId: activeProject?.workbookId,
         config,
       })
     },
@@ -268,7 +263,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
                 ProjectID: {projectId}
               </Badge>
               <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-                WorkbookId: {projectAndWorkbook?.workbookId}
+                WorkbookId: {activeProject?.workbookId}
               </Badge>
             </a>
             <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
@@ -350,7 +345,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             onClick={() => {
               console.log("Running project...")
               toast.success("Running project...")
-              projectAndWorkbook && runAction.mutate(projectAndWorkbook)
+              activeProject && runAction.mutate(activeProject)
             }}
             variant={"brutal"}
             className="bg-purple-300 font-mono hover:bg-purple-400"

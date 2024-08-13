@@ -18,12 +18,6 @@ import {
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
 /**
- * TODO: refactor needed here
- *   - This needs to tie in with the Workbook store, and jotai global state
- *   - This hook should also interface with react-query to keep the workbook state synced with the database
- *   - Split this hook into smaller hooks and functions. Only state management should be here
- *   - All other logic should be moved to actions/stores
- *
  * {@link workbookStore}
  * {@link workbookActions}
  */
@@ -50,11 +44,10 @@ export function useWorkbook(_projectId: string) {
       if (!projectWorkbook?.workbookId) {
         throw new Error("No workbook ID found for saving config")
       }
-      return await workbookActions.saveWorkbookConfig(
-        env.supa,
-        projectWorkbook.workbookId,
+      return await workbookActions.updateWorkbookConfig(env.supa, {
+        workbookId: projectWorkbook.workbookId,
         config,
-      )
+      })
     },
     onSuccess: () => {
       toast.success("Workbook configuration saved successfully")
@@ -113,7 +106,7 @@ export function useWorkbook(_projectId: string) {
   useEffect(() => {
     if (workbookQuery.isFetched && workbookQuery.isSuccess) {
       const data = workbookQuery.data
-      if (!data || !data.id || !data.project_id) {
+      if (!data?.id || !data.project_id) {
         toast.warning("No workbook / error fetching workbook")
         return
       }
@@ -127,11 +120,7 @@ export function useWorkbook(_projectId: string) {
           file_type: f.file_type,
         })),
       })
-      if (
-        data.preview_data &&
-        Array.isArray(data.preview_data) &&
-        data.preview_data.length > 0
-      ) {
+      if (data.preview_data && isNonEmptyArray(data.preview_data)) {
         setHeaders(Object.keys(data.preview_data[0]))
         setCSVData(data.preview_data)
       } else {
@@ -148,6 +137,7 @@ export function useWorkbook(_projectId: string) {
     workbookQuery.data,
     setProjectAndWorkbook,
     setWorkbookConfig,
+    workbookQuery.isSuccess,
   ])
 
   // setWorkbookId(workbook.id)
@@ -187,7 +177,7 @@ export function useWorkbook(_projectId: string) {
       taskType: string
       targetColumn: string
       fileUrl: string
-      projectId: string
+      projectId?: string
     }) => {
       console.log("fetching analyze file with", data)
       const response = await fetch(`${env.serverUrl}/app/analyze_file`, {
@@ -208,10 +198,9 @@ export function useWorkbook(_projectId: string) {
       console.log("File analysis result:", data)
       // Invalidate the workbook config query to trigger a refetch
       if (projectWorkbook?.workbookId) {
-        queryClient.invalidateQueries([
-          "workbookConfig",
-          projectWorkbook.workbookId,
-        ])
+        queryClient.invalidateQueries({
+          queryKey: ["workbookConfig", projectWorkbook.workbookId],
+        })
       }
     },
     onError: (error) => {
@@ -223,7 +212,7 @@ export function useWorkbook(_projectId: string) {
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0]
-    if (!file) return
+    if (!file || !userSettings.userId) return
 
     console.log("Uploading file:", file)
 
@@ -231,17 +220,12 @@ export function useWorkbook(_projectId: string) {
     setError(null)
 
     try {
-      const filePath = `${userSettings.userId}/project-${projectWorkbook?.projectId}/${Date.now()}_${file.name}`
-
-      const { data: uploadData, error: uploadError } = await env.supa.storage
-        .from("workbook-files")
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const {
-        data: { publicUrl },
-      } = env.supa.storage.from("workbook-files").getPublicUrl(uploadData.path)
+      const publicUrl = await workbookActions.uploadWorkbookFile(
+        env.supa,
+        file,
+        userSettings?.userId,
+        _projectId,
+      )
 
       const text = await file.text()
       const { data: parsedData, meta } = Papa.parse(text, { header: true })
@@ -260,11 +244,7 @@ export function useWorkbook(_projectId: string) {
       })
 
       // Analyze file
-      if (
-        workbookConfig &&
-        workbookConfig.taskType &&
-        workbookConfig.targetColumn
-      ) {
+      if (workbookConfig?.taskType && workbookConfig.targetColumn) {
         await analyzeFile.mutateAsync({
           taskType: workbookConfig.taskType,
           targetColumn: workbookConfig.targetColumn,
@@ -293,11 +273,6 @@ export function useWorkbook(_projectId: string) {
     projectWorkbook,
     saveWorkbookConfig,
     workbookConfigQuery,
-    // workbookId,
-    // workbookName,
-    // workbookFileType,
-    // fetchFirstRows,
-    // deleteProject,
   }
 }
 

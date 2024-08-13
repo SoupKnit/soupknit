@@ -2,14 +2,11 @@ import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
-import { WorkbookConfig } from "@/store/workbookStore"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
-import type { DBWorkbookData } from "@soupknit/model/src/dbTables"
 import type {
   ActiveProject,
-  Workbook,
-  WorkbookData,
+  WorkbookConfig,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -93,20 +90,6 @@ export async function updateWorkbookConfig(
   return data
 }
 
-export async function saveWorkbookConfig(
-  supa: SupabaseClient,
-  workbookId: string,
-  config: any,
-) {
-  const { data, error } = await supa
-    .from("workbook_data")
-    .update({ config: config })
-    .eq("id", workbookId)
-
-  if (error) throw error
-  return data
-}
-
 export async function loadWorkbookConfig(
   supa: SupabaseClient,
   workbookId: string,
@@ -173,4 +156,24 @@ export async function deleteProject(supa: SupabaseClient, projectId: string) {
   console.log(
     `Successfully deleted project ${projectId} and all associated data`,
   )
+}
+
+export async function uploadWorkbookFile(
+  supa: SupabaseClient,
+  file: File,
+  userId: string,
+  projectId: string,
+) {
+  const filePath = `${userId}/project-${projectId}/${Date.now()}_${file.name}`
+
+  const { data: uploadData, error: uploadError } = await supa.storage
+    .from("workbook-files")
+    .upload(filePath, file)
+
+  if (uploadError) throw uploadError
+
+  const {
+    data: { publicUrl },
+  } = supa.storage.from("workbook-files").getPublicUrl(uploadData.path)
+  return publicUrl
 }

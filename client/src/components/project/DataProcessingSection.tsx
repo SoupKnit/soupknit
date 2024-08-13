@@ -8,7 +8,6 @@ import { DatasetPreview, FileInputArea } from "../editor/DatasetPreview"
 import { GlobalPreprocessing } from "../editor/GlobalPreprocessing"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
 import { Hide } from "../util/ConditionalShow"
-import { fetchPreprocessingConfig } from "@/api/preprocessing"
 import {
   Select,
   SelectContent,
@@ -17,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useFetchPreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
 import {
@@ -88,12 +86,11 @@ export function DataProcessingSection({
       console.log("File analysis result:", result)
       toast.success("File analysis completed successfully")
       if (projectWorkbook?.workbookId) {
-        await queryClient.refetchQueries([
-          "workbookConfig",
-          projectWorkbook.workbookId,
-        ])
+        await queryClient.refetchQueries({
+          queryKey: ["workbookConfig", projectWorkbook.workbookId],
+        })
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in file analysis:", error)
       toast.error(`Error analyzing file: ${error.message}`)
     } finally {
