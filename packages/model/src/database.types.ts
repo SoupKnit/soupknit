@@ -64,7 +64,7 @@ export type Database = {
           created_by: string
           files: Json
           id: string
-          preview_data: Json
+          preview_data: Json | null
           project_id: string | null
           status: Database["public"]["Enums"]["status"]
           updated_at: string | null
@@ -75,7 +75,7 @@ export type Database = {
           created_by?: string
           files: Json
           id?: string
-          preview_data: Json
+          preview_data?: Json | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["status"]
           updated_at?: string | null
@@ -86,7 +86,7 @@ export type Database = {
           created_by?: string
           files?: Json
           id?: string
-          preview_data?: Json
+          preview_data?: Json | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["status"]
           updated_at?: string | null

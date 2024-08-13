@@ -1,36 +1,54 @@
-export type GlobalPreprocessingOption =
-  | "drop_missing"
-  | "drop_constant"
-  | "drop_duplicate"
-  | "pca";
+import { z } from "zod";
 
-export type NumericImputationMethod =
-  | "none"
-  | "mean"
-  | "median"
-  | "constant"
-  | "knn";
-export type NumericScalingMethod =
-  | "scale_standard"
-  | "scale_minmax"
-  | "scale_robust";
-export type CategoricalEncodingMethod =
-  | "encode_onehot"
-  | "encode_label"
-  | "encode_ordinal";
+export const GlobalPreprocessingOptionSchema = z.enum([
+  "drop_missing",
+  "drop_constant",
+  "drop_duplicate",
+  "pca",
+]);
+export type GlobalPreprocessingOption = z.infer<
+  typeof GlobalPreprocessingOptionSchema
+>;
 
-export type PreProcessingColumnConfig = {
-  name: string; // String, name of the column
-  type: "numeric" | "categorical" | "date";
-  params: Record<string, any>; // Object, parameters for preprocessing steps
-  //List of preprocessing operations
-  preprocessing: {
-    imputation?:
-      | "impute_mean"
-      | "impute_median"
-      | "impute_constant"
-      | "impute_knn";
-    scaling?: NumericScalingMethod;
-    encoding?: CategoricalEncodingMethod;
-  };
-};
+export const NumericImputationMethodSchema = z.enum([
+  "none",
+  "mean",
+  "median",
+  "constant",
+  "knn",
+]);
+export type NumericImputationMethod = z.infer<
+  typeof NumericImputationMethodSchema
+>;
+
+export const NumericScalingMethodSchema = z.enum([
+  "scale_standard",
+  "scale_minmax",
+  "scale_robust",
+]);
+export type NumericScalingMethod = z.infer<typeof NumericScalingMethodSchema>;
+
+export const CategoricalEncodingMethodSchema = z.enum([
+  "encode_onehot",
+  "encode_label",
+  "encode_ordinal",
+]);
+
+export type CategoricalEncodingMethod = z.infer<
+  typeof CategoricalEncodingMethodSchema
+>;
+
+export const PreProcessingColumnConfigSchema = z.object({
+  name: z.string(), // String, name of the column
+  type: z.enum(["numeric", "categorical", "date"]),
+  params: z.record(z.string(), z.any()), // Object, parameters for preprocessing steps
+  preprocessing: z.object({
+    imputation: z.optional(NumericImputationMethodSchema),
+    scaling: z.optional(NumericScalingMethodSchema),
+    encoding: z.optional(CategoricalEncodingMethodSchema),
+  }),
+});
+
+export type PreProcessingColumnConfig = z.infer<
+  typeof PreProcessingColumnConfigSchema
+>;
