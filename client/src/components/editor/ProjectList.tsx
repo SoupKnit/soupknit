@@ -15,15 +15,14 @@ import { HoverCard } from "@/components/HoverCard"
 import { Button } from "@/components/ui/button"
 import { useEnv } from "@/lib/clientEnvironment"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import {
-  activeFileAtom,
-  activeProjectAndWorkbookAtom,
-} from "@/store/workbookStore"
+import { activeFileAtom, activeProjectAndWorkbook } from "@/store/workbookStore"
+
+import type { DBProject } from "@soupknit/model/src/dbTables"
 
 export function ProjectList() {
   const { supa } = useEnv()
   const navigate = useNavigate({ from: "/app/$projectId" })
-  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbookAtom)
+  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbook)
   const setActiveFile = useSetAtom(activeFileAtom)
 
   const {
@@ -42,11 +41,12 @@ export function ProjectList() {
       const initialFile = {
         name: "New File",
         file_url: "",
-        type: "csv",
+        file_type: "csv",
       }
       return await createNewProject(supa, initialFile)
     },
     onSuccess: ({ projectId, workbookId, activeFile }) => {
+      console.log("Created project with ID:", projectId, workbookId)
       setActiveProjectAndWorkbook({ projectId, workbookId })
       if (activeFile) {
         setActiveFile(activeFile)

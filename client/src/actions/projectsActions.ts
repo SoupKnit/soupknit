@@ -1,8 +1,7 @@
-import { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
-
 import { createNewWorkbook } from "@/actions/workbookActions"
 
 import type { DBProject } from "@soupknit/model/src/dbTables"
+import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export const updateProjectTitle = async (
@@ -58,7 +57,7 @@ export const createNewProject = async (
       .single()
 
     if (projectError || !projectData) {
-      throw new Error(projectError?.message || "Failed to create project")
+      throw new Error(projectError?.message ?? "Failed to create project")
     }
 
     const projectId = projectData.id
