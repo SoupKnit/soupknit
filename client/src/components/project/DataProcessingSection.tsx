@@ -26,6 +26,7 @@ export function DataProcessingSection({
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
   const [activeFile] = useAtom(activeFileStore)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isPreprocessing, setIsPreprocessing] = useState(false)
   const {
     csvData,
     headers,
@@ -34,6 +35,9 @@ export function DataProcessingSection({
     handleFileUpload,
     analyzeFile,
     workbookQuery,
+    preprocessFile,
+    setCSVData,
+    setHeaders,
   } = useWorkbook(projectId)
 
   const hasUploadedFile =
@@ -106,6 +110,41 @@ export function DataProcessingSection({
     setWorkbookConfig((prev) => ({ ...prev, targetColumn: value }))
   }
 
+  const handlePreprocess = async () => {
+    if (!workbookConfig.preProcessingConfig) {
+      toast.error("Please configure preprocessing steps first")
+      return
+    }
+
+    try {
+      setIsPreprocessing(true)
+      const result = await preprocessFile.mutateAsync({
+        taskType: workbookConfig.taskType || "",
+        targetColumn: workbookConfig.targetColumn || null,
+        preProcessingConfig: workbookConfig.preProcessingConfig,
+        projectId,
+      })
+
+      console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
+
+      if (result.previewDataPreprocessed) {
+        // Update the csvData state with the new preprocessed data
+        const newHeaders = Object.keys(result.previewDataPreprocessed[0])
+        const newData = result.previewDataPreprocessed.map(Object.values)
+
+        setCSVData(newData)
+        setHeaders(newHeaders)
+      }
+
+      toast.success("Data preprocessed successfully")
+    } catch (error) {
+      console.error("Error preprocessing data:", error)
+      toast.error(`Error preprocessing data: ${(error as Error).message}`)
+    } finally {
+      setIsPreprocessing(false)
+    }
+  }
+
   // Add this effect to set a default task type if it's not set
   useEffect(() => {
     if (!workbookConfig.taskType) {
@@ -170,6 +209,27 @@ export function DataProcessingSection({
             <div className="mt-8">
               <GlobalPreprocessing />
               <ColumnPreprocessing />
+              <div className="mt-4">
+                <Button
+                  onClick={handlePreprocess}
+                  disabled={
+                    isPreprocessing || !workbookConfig.preProcessingConfig
+                  }
+                >
+                  {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
+                </Button>
+              </div>
+              {csvData.length > 0 && (
+                <div className="mt-4">
+                  <h3>Preprocessed Data Preview</h3>
+                  <DatasetPreview
+                    name="Preprocessed Data"
+                    headers={headers}
+                    data={csvData}
+                    loading={false}
+                  />
+                </div>
+              )}
             </div>
           )}
         </>

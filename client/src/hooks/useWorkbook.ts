@@ -142,7 +142,16 @@ export function useWorkbook(_projectId: string) {
             file_type: f.file_type,
           })),
         })
+
+        // Prioritize preprocessed data if available
         if (
+          data.preview_data_preprocessed &&
+          Array.isArray(data.preview_data_preprocessed) &&
+          data.preview_data_preprocessed.length > 0
+        ) {
+          setHeaders(Object.keys(data.preview_data_preprocessed[0]))
+          setCSVData(data.preview_data_preprocessed)
+        } else if (
           data.preview_data &&
           Array.isArray(data.preview_data) &&
           data.preview_data.length > 0
@@ -150,8 +159,14 @@ export function useWorkbook(_projectId: string) {
           setHeaders(Object.keys(data.preview_data[0]))
           setCSVData(data.preview_data)
         }
+
         if (data.config) {
-          setWorkbookConfig(data.config)
+          setWorkbookConfig((prevConfig) => ({
+            ...prevConfig,
+            ...data.config,
+            preProcessingConfig:
+              prevConfig.preProcessingConfig || data.config.preProcessingConfig,
+          }))
         }
       } else {
         console.log("No existing workbook found")
@@ -163,6 +178,8 @@ export function useWorkbook(_projectId: string) {
     workbookQuery.data,
     setProjectAndWorkbook,
     setWorkbookConfig,
+    setCSVData,
+    setHeaders,
   ])
 
   // setWorkbookId(workbook.id)
@@ -231,6 +248,82 @@ export function useWorkbook(_projectId: string) {
     },
     onError: (error) => {
       toast.error(`Error analyzing file: ${error.message}`)
+    },
+  })
+
+  // Update the preprocessFile mutation
+  const preprocessFile = useMutation({
+    mutationFn: async (data: {
+      taskType: string
+      targetColumn: string | null
+      preProcessingConfig: any
+      projectId: string
+    }) => {
+      console.log("Preprocessing file with", data)
+      const response = await fetch(`${env.serverUrl}/app/preprocess_file`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to preprocess file")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast.success("File preprocessing completed successfully")
+      console.log("File preprocessing result:", data)
+
+      // Update the active file to the preprocessed file
+      if (data.preprocessedFileUrl) {
+        setActiveFile({
+          name:
+            data.preprocessedFileUrl.split("/").pop() ||
+            "preprocessed_file.csv",
+          file_url: data.preprocessedFileUrl,
+          file_type: "text/csv",
+        })
+      }
+
+      // Update the preview data
+      if (data.previewDataPreprocessed) {
+        setCSVData(data.previewDataPreprocessed)
+        if (data.previewDataPreprocessed.length > 0) {
+          setHeaders(Object.keys(data.previewDataPreprocessed[0]))
+        }
+      }
+
+      // Update the workbook config with the new preprocessing config
+      setWorkbookConfig((prevConfig) => ({
+        ...prevConfig,
+        preProcessingConfig:
+          data.preProcessingConfig || prevConfig.preProcessingConfig,
+      }))
+
+      // Invalidate the workbook query to trigger a refetch
+      if (projectWorkbook?.projectId) {
+        queryClient.invalidateQueries([
+          "workbook",
+          projectWorkbook.projectId,
+          env.supa,
+        ])
+      }
+
+      // Invalidate the workbook config query to trigger a refetch
+      if (projectWorkbook?.workbookId) {
+        queryClient.invalidateQueries([
+          "workbookConfig",
+          projectWorkbook.workbookId,
+        ])
+      }
+    },
+    onError: (error) => {
+      toast.error(`Error preprocessing file: ${error.message}`)
+      setError(`Error preprocessing file: ${error.message}`)
     },
   })
 
@@ -323,6 +416,10 @@ export function useWorkbook(_projectId: string) {
     saveWorkbookConfig,
     workbookConfigQuery,
     workbookQuery,
+    preprocessFile,
+    setCSVData,
+    setHeaders,
+    setWorkbookConfig,
     // workbookId,
     // workbookName,
     // workbookFileType,

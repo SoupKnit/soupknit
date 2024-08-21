@@ -16,6 +16,11 @@ import {
 import { runInPythonSandbox } from "../core/pythonSandbox/run";
 import { getSupabaseClient } from "../lib/supabase";
 
+import fs from "fs";
+import path from "path";
+import os from "os";
+import Papa from "papaparse";
+
 export default async function workbookController(fastify: FastifyInstance) {
   const supa = getSupabaseClient();
   // POST /
@@ -240,6 +245,283 @@ export default async function workbookController(fastify: FastifyInstance) {
           .send(result);
       } catch (error) {
         console.error("24. Error in /analyze_file:", error);
+        if (error instanceof Error) {
+          reply
+            .status(500)
+            .send({ error: "Internal Server Error", message: error.message });
+        }
+      }
+    },
+  );
+
+  // POST /preprocess_file
+  fastify.post(
+    "/preprocess_file",
+    async function (_request: FastifyRequest, reply: FastifyReply) {
+      const { taskType, targetColumn, preProcessingConfig, projectId } =
+        _request.body as {
+          taskType: string;
+          targetColumn: string | null;
+          preProcessingConfig: any;
+          projectId: string;
+        };
+
+      try {
+        console.log(
+          "1. Received preprocessing request for projectId:",
+          projectId,
+        );
+
+        // Fetch the workbook_id, user_id, and file_url based on the project_id
+        let workbookId, userId, fileUrl, fileName;
+        try {
+          const { data: workbookData, error: workbookError } = await supa
+            .from("workbook_data")
+            .select("id, created_by, files")
+            .eq("project_id", projectId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+          if (workbookError) {
+            console.error("2. Error fetching workbook data:", workbookError);
+            throw workbookError;
+          }
+
+          if (
+            !workbookData ||
+            !workbookData.files ||
+            workbookData.files.length === 0
+          ) {
+            console.error(
+              "3. No workbook or file found for the given project_id",
+            );
+            throw new Error(
+              "No workbook or file found for the given project_id",
+            );
+          }
+
+          workbookId = workbookData.id;
+          userId = workbookData.created_by;
+          fileUrl = workbookData.files[0].file_url;
+          fileName = workbookData.files[0].name;
+          console.log(
+            "4. Fetched workbookId:",
+            workbookId,
+            "userId:",
+            userId,
+            "and fileUrl:",
+            fileUrl,
+          );
+        } catch (error) {
+          console.error("5. Error in fetching workbook data:", error);
+          throw error;
+        }
+
+        // Extract the path from the fileUrl
+        const urlParts = new URL(fileUrl);
+        let filePath = urlParts.pathname;
+
+        // Remove the '/storage/v1/object/public/' prefix if it exists
+        const prefixToRemove = "/storage/v1/object/public/";
+        if (filePath.startsWith(prefixToRemove)) {
+          filePath = filePath.slice(prefixToRemove.length);
+        }
+
+        // Split the remaining path and remove the bucket name
+        const pathParts = filePath.split("/");
+        const bucketName = pathParts.shift(); // This removes and returns the bucket name
+        filePath = pathParts.join("/");
+
+        console.log("6. Extracted bucket name:", bucketName);
+        console.log("7. Extracted file path:", filePath);
+
+        // Fetch the file content from Supabase storage
+        let fileContent;
+        try {
+          const { data, error } = await supa.storage
+            .from(bucketName!)
+            .download(filePath);
+
+          if (error) {
+            console.error("8. Supabase storage error:", error);
+            throw error;
+          }
+
+          if (!data) {
+            console.error("9. No data received from Supabase storage");
+            throw new Error("No data received from Supabase storage");
+          }
+
+          // Convert the file data to text
+          fileContent = await data.text();
+          console.log("10. File content fetched successfully");
+        } catch (error) {
+          console.error("11. Error in fetching file content:", error);
+          throw error;
+        }
+
+        // Create a temporary file
+        const tempDir = os.tmpdir();
+        let tempFilePath = path.join(tempDir, `temp_${Date.now()}.csv`);
+        fs.writeFileSync(tempFilePath, fileContent);
+
+        console.log("11. Temporary file created:", tempFilePath);
+
+        const input = JSON.stringify({
+          filePath: tempFilePath,
+          taskType,
+          targetColumn,
+          preProcessingConfig,
+        });
+
+        console.log(input);
+
+        // Specify the path to your Python script
+        const scriptPath = "../packages/python/preprocessing.py";
+
+        console.log("12. Running Python script");
+        // Run the Python script in the sandbox
+        const result: any = await new Promise((resolve, reject) => {
+          let stdout = "";
+          let stderr = "";
+
+          runInPythonSandbox({
+            input,
+            files: [tempFilePath], // Include the temporary file
+            scriptPath,
+            onData: (data: string) => {
+              stdout += data;
+            },
+            onError: (error: string) => {
+              stderr += error;
+            },
+            onClose: (code: number) => {
+              if (code !== 0) {
+                console.error("13. Python script error:", stderr);
+                reject(
+                  new Error(
+                    `Python script exited with code ${code}. Stderr: ${stderr}`,
+                  ),
+                );
+              } else {
+                try {
+                  const jsonResult = JSON.parse(stdout);
+                  console.log("14. Python script executed successfully");
+                  resolve(jsonResult);
+                } catch (error) {
+                  console.error("15. Failed to parse JSON result:", error);
+                  reject(
+                    new Error(
+                      `Failed to parse JSON result. Stdout: ${stdout}, Stderr: ${stderr}`,
+                    ),
+                  );
+                }
+              }
+            },
+          });
+        });
+
+        const parsedData = Papa.parse(result.preprocessed_data, {
+          header: true,
+          skipEmptyLines: true,
+        });
+        console.log("Parsed data:", parsedData);
+
+        console.log("16. Uploading preprocessed file to storage");
+        // Upload the preprocessed file to storage
+        const preprocessedFileName = fileName.replace(
+          ".csv",
+          "_preprocessed.csv",
+        );
+        const preprocessedFilePath = `${userId}/project-${projectId}/${preprocessedFileName}`;
+
+        try {
+          const { error } = await supa.storage
+            .from(bucketName!)
+            .upload(preprocessedFilePath, result.preprocessed_data, {
+              contentType: "text/csv",
+              upsert: true,
+            });
+
+          if (error) {
+            console.error("17. Error uploading preprocessed file:", error);
+            throw error;
+          }
+
+          console.log("18. Preprocessed file uploaded successfully");
+
+          // Get the public URL of the uploaded file
+          const {
+            data: { publicUrl },
+          } = supa.storage.from(bucketName!).getPublicUrl(preprocessedFilePath);
+
+          console.log("20. Got public URL for preprocessed file:", publicUrl);
+
+          // Parse the first 15 lines of the preprocessed CSV
+          const parsedData = Papa.parse(result.preprocessed_data, {
+            header: true,
+          });
+          const previewData = parsedData.data.slice(0, 15);
+
+          // Fetch the current files array
+          const { data: currentData, error: fetchError } = await supa
+            .from("workbook_data")
+            .select("files")
+            .eq("id", workbookId)
+            .single();
+
+          if (fetchError) {
+            console.error("21. Error fetching current files data:", fetchError);
+            throw fetchError;
+          }
+
+          // Update the files array with the new preprocessed file
+          const updatedFiles = [
+            ...currentData.files,
+            {
+              name: preprocessedFileName,
+              file_url: publicUrl,
+              file_type: "text/csv",
+              preprocessed_file: true,
+            },
+          ];
+
+          // Update the workbook_data with the new file information
+          const { data: updateData, error: updateError } = await supa
+            .from("workbook_data")
+            .update({
+              files: updatedFiles,
+              preview_data_preprocessed: previewData,
+            })
+            .eq("id", workbookId)
+            .select();
+
+          console.log("21.5 Updated workbook_data with", updateData);
+
+          if (updateError) {
+            console.error("22. Error updating workbook data:", updateError);
+            throw updateError;
+          }
+
+          console.log(
+            "23. Workbook data updated with preprocessed file info and preview data",
+          );
+
+          reply.header("Content-Type", "application/json; charset=utf-8").send({
+            message: "File preprocessed and uploaded successfully",
+            preprocessedFileUrl: publicUrl,
+            previewDataPreprocessed: previewData,
+          });
+        } catch (error) {
+          console.error(
+            "24. Error in uploading preprocessed file or updating workbook data:",
+            error,
+          );
+          throw error;
+        }
+      } catch (error) {
+        console.error("25. Error in /preprocess_file:", error);
         if (error instanceof Error) {
           reply
             .status(500)
