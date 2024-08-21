@@ -5,7 +5,11 @@ import Papa from "papaparse"
 import { toast } from "sonner"
 
 import * as workbookActions from "@/actions/workbookActions"
-import { loadExistingWorkbook } from "@/actions/workbookActions"
+import {
+  analyzeFilePost,
+  AnalyzePostData,
+  loadExistingWorkbook,
+} from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { userSettingsStore } from "@/store/userSettingsStore"
@@ -117,7 +121,9 @@ export function useWorkbook(_projectId: string) {
     onSuccess: (data) => {
       console.log("Workbook created successfully", data)
       toast.success("Workbook created successfully")
-      queryClient.invalidateQueries(["workbook", _projectId, env.supa])
+      queryClient.invalidateQueries({
+        queryKey: ["workbook", _projectId, env.supa],
+      })
     },
     onError: (error) => {
       console.error("Error creating workbook:", error)
@@ -142,6 +148,7 @@ export function useWorkbook(_projectId: string) {
             file_type: f.file_type,
           })),
         })
+        console.log(projectWorkbook)
 
         // Prioritize preprocessed data if available
         if (
@@ -215,35 +222,20 @@ export function useWorkbook(_projectId: string) {
   // }
 
   const analyzeFile = useMutation({
-    mutationFn: async (data: {
-      taskType: string
-      targetColumn: string
-      fileUrl: string
-      projectId: string
-    }) => {
+    mutationFn: async (data: AnalyzePostData) => {
       console.log("fetching analyze file with", data)
-      const response = await fetch(`${env.serverUrl}/app/analyze_file`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
-        },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        throw new Error("Failed to analyze file")
-      }
-      return response.json()
+      const response = analyzeFilePost(env, data)
+
+      return response
     },
     onSuccess: (data) => {
       toast.success("File analysis completed successfully")
       console.log("File analysis result:", data)
       // Invalidate the workbook config query to trigger a refetch
       if (projectWorkbook?.workbookId) {
-        queryClient.invalidateQueries([
-          "workbookConfig",
-          projectWorkbook.workbookId,
-        ])
+        queryClient.invalidateQueries({
+          queryKey: ["workbookConfig", projectWorkbook.workbookId],
+        })
       }
     },
     onError: (error) => {
@@ -306,19 +298,16 @@ export function useWorkbook(_projectId: string) {
 
       // Invalidate the workbook query to trigger a refetch
       if (projectWorkbook?.projectId) {
-        queryClient.invalidateQueries([
-          "workbook",
-          projectWorkbook.projectId,
-          env.supa,
-        ])
+        queryClient.invalidateQueries({
+          queryKey: ["workbook", projectWorkbook.projectId, env.supa],
+        })
       }
 
       // Invalidate the workbook config query to trigger a refetch
       if (projectWorkbook?.workbookId) {
-        queryClient.invalidateQueries([
-          "workbookConfig",
-          projectWorkbook.workbookId,
-        ])
+        queryClient.invalidateQueries({
+          queryKey: ["workbookConfig", projectWorkbook.workbookId],
+        })
       }
     },
     onError: (error) => {
@@ -396,7 +385,9 @@ export function useWorkbook(_projectId: string) {
         )
       }
       // Refetch the workbook query to update the UI
-      queryClient.invalidateQueries(["workbook", _projectId, env.supa])
+      queryClient.invalidateQueries({
+        queryKey: ["workbook", _projectId, env.supa],
+      })
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)

@@ -100,7 +100,7 @@ export function DataProcessingSection({
       toast.success("File analysis completed successfully")
     } catch (error) {
       console.error("Error in file analysis:", error)
-      toast.error(`Error analyzing file: ${(error as Error).message}`)
+      toast.error(`Error analyzing file:`) //${(error as Error).message}`)
     } finally {
       setIsAnalyzing(false)
     }
@@ -139,7 +139,7 @@ export function DataProcessingSection({
       toast.success("Data preprocessed successfully")
     } catch (error) {
       console.error("Error preprocessing data:", error)
-      toast.error(`Error preprocessing data: ${(error as Error).message}`)
+      toast.error(`Error preprocessing data`) //: ${(error as Error).message}`)
     } finally {
       setIsPreprocessing(false)
     }
