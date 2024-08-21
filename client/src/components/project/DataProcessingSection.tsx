@@ -205,7 +205,7 @@ export function DataProcessingSection({
               {isAnalyzing ? "Analyzing..." : "Analyze File"}
             </Button>
           </div>
-          {hasPreprocessingConfig && (
+          {analyzeFile.isSuccess && hasPreprocessingConfig && (
             <div className="mt-8">
               <GlobalPreprocessing />
               <ColumnPreprocessing />
@@ -219,7 +219,7 @@ export function DataProcessingSection({
                   {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
                 </Button>
               </div>
-              {csvData.length > 0 && (
+              {preprocessFile.isSuccess && csvData.length > 0 && (
                 <div className="mt-4">
                   <h3>Preprocessed Data Preview</h3>
                   <DatasetPreview
