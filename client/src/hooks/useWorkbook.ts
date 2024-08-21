@@ -7,7 +7,6 @@ import { toast } from "sonner"
 import * as workbookActions from "@/actions/workbookActions"
 import {
   analyzeFilePost,
-  AnalyzePostData,
   loadExistingWorkbook,
 } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
@@ -20,6 +19,7 @@ import {
   workbookStore,
 } from "@/store/workbookStore"
 
+import type { AnalyzePostData } from "@/actions/workbookActions"
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
 /**
@@ -72,7 +72,7 @@ export function useWorkbook(_projectId: string) {
 
   // Add a new query for loading the workbook config
   const workbookConfigQuery = useQuery({
-    queryKey: ["workbookConfig", projectWorkbook?.workbookId],
+    queryKey: ["workbookConfig", projectWorkbook?.workbookId, env.supa],
     queryFn: async () => {
       if (!projectWorkbook?.workbookId) {
         throw new Error("No workbook ID found for loading config")

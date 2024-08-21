@@ -22,16 +22,16 @@ export type NumericImputationMethod = z.infer<
 >;
 
 export const NumericScalingMethodSchema = z.enum([
-  "scale_standard",
-  "scale_minmax",
-  "scale_robust",
+  "standard",
+  "minmax",
+  "robust",
 ]);
 export type NumericScalingMethod = z.infer<typeof NumericScalingMethodSchema>;
 
 export const CategoricalEncodingMethodSchema = z.enum([
-  "encode_onehot",
-  "encode_label",
-  "encode_ordinal",
+  "onehot",
+  "label",
+  "ordinal",
 ]);
 
 export type CategoricalEncodingMethod = z.infer<
