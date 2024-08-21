@@ -67,7 +67,7 @@ export function ColumnPreprocessing() {
             {column.type === "numeric" ? (
               <div className="space-y-2">
                 <div>
-                  <Select>
+                  <Select value={column.preprocessing.imputation}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Imputation" />
                     </SelectTrigger>
@@ -85,7 +85,7 @@ export function ColumnPreprocessing() {
                   </Select>
                 </div>
                 <div>
-                  <Select>
+                  <Select value={column.preprocessing.scaling}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Scaling" />
                     </SelectTrigger>
@@ -105,7 +105,7 @@ export function ColumnPreprocessing() {
               </div>
             ) : (
               <div>
-                <Select>
+                <Select value={column.preprocessing.encoding}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Encoding" />
                   </SelectTrigger>
