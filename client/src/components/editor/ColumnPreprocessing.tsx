@@ -31,7 +31,12 @@ import { workbookConfigStore } from "@/store/workbookStore"
 export function ColumnPreprocessing() {
   const [workbookConfig] = useAtom(workbookConfigStore)
   const { handleColumnTypeChange } = usePreProcessing()
-  if (!workbookConfig.preProcessingConfig) {
+  console.log("ColumnPreprocessing config:", workbookConfig.preProcessingConfig)
+
+  if (
+    !workbookConfig.preProcessingConfig ||
+    !workbookConfig.preProcessingConfig.columns
+  ) {
     return null
   }
   return (
@@ -39,7 +44,7 @@ export function ColumnPreprocessing() {
       <div className="font-bold">Column</div>
       <div className="font-bold">Type</div>
       <div className="font-bold">Preprocessing</div>
-      {workbookConfig?.preProcessingConfig?.columns?.map((column) => (
+      {workbookConfig.preProcessingConfig.columns.map((column) => (
         <React.Fragment key={column.name}>
           <div>{column.name}</div>
           <div>
@@ -62,7 +67,7 @@ export function ColumnPreprocessing() {
             {column.type === "numeric" ? (
               <div className="space-y-2">
                 <div>
-                  <Select>
+                  <Select value={column.preprocessing.imputation}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Imputation" />
                     </SelectTrigger>
@@ -80,7 +85,7 @@ export function ColumnPreprocessing() {
                   </Select>
                 </div>
                 <div>
-                  <Select>
+                  <Select value={column.preprocessing.scaling}>
                     <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Scaling" />
                     </SelectTrigger>
@@ -100,7 +105,7 @@ export function ColumnPreprocessing() {
               </div>
             ) : (
               <div>
-                <Select>
+                <Select value={column.preprocessing.encoding}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Encoding" />
                   </SelectTrigger>

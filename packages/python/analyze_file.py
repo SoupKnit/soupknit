@@ -10,13 +10,13 @@ def determine_encoding(series, max_categories_for_ordinal=10, ordinal_threshold=
     
     # If too many unique values, use one-hot encoding
     if n_unique > max_categories_for_ordinal:
-        return "encode_onehot"
+        return "onehot"
     
     # Check if the values can be converted to numeric
     try:
         numeric_values = pd.to_numeric(series.dropna().unique())
         if len(numeric_values) / n_unique > ordinal_threshold:
-            return "encode_ordinal"
+            return "ordinal"
     except:
         pass
     
@@ -24,10 +24,10 @@ def determine_encoding(series, max_categories_for_ordinal=10, ordinal_threshold=
     ordinal_patterns = ['low', 'medium', 'high', 'small', 'large', 'first', 'second', 'third']
     lower_values = series.dropna().str.lower()
     if any(lower_values.str.contains(pat).any() for pat in ordinal_patterns):
-        return "encode_ordinal"
+        return "ordinal"
     
     # Default to one-hot encoding
-    return "encode_onehot"
+    return "onehot"
 
 def generate_preprocessing_config(df, target_column=None, task=None):
     preprocessing_config = {
@@ -55,7 +55,7 @@ def generate_preprocessing_config(df, target_column=None, task=None):
         if column == target_column:
             continue
         
-        column_config = {"name": column, "preprocessing": [], "params": {}}
+        column_config = {"name": column, "preprocessing": {}, "params": {}}
         
         if pd.api.types.is_numeric_dtype(df[column]):
             column_config["type"] = "numeric"
@@ -64,32 +64,32 @@ def generate_preprocessing_config(df, target_column=None, task=None):
             missing_pct = df[column].isnull().sum() / len(df)
             if missing_pct > 0:
                 if missing_pct < 0.05:
-                    column_config["preprocessing"].append("impute_median")
+                    column_config["preprocessing"]["imputation"] = "median"
                 elif missing_pct < 0.15:
-                    column_config["preprocessing"].append("impute_knn")
+                    column_config["preprocessing"]["imputation"] = "knn"
                     column_config["params"]["n_neighbors"] = 5
                 elif missing_pct < 0.3:
-                    column_config["preprocessing"].append("impute_iterative")
+                    column_config["preprocessing"]["imputation"] = "iterative"
                 else:
-                    column_config["preprocessing"].append("impute_constant")
+                    column_config["preprocessing"]["imputation"] = "constant"
                     column_config["params"]["fill_value"] = df[column].median()
             
             # Scaling
             if df[column].skew() > 1 or df[column].skew() < -1:
-                column_config["preprocessing"].append("scale_robust")
+                column_config["preprocessing"]["scaling"] = "robust"
             else:
-                column_config["preprocessing"].append("scale_standard")
+                column_config["preprocessing"]["scaling"] = "standard"
         
         elif pd.api.types.is_object_dtype(df[column]) or pd.api.types.is_categorical_dtype(df[column]):
             column_config["type"] = "categorical"
             
             # Handle missing values
             if df[column].isnull().sum() > 0:
-                column_config["preprocessing"].append("impute_mode")
+                column_config["preprocessing"]["imputation"] = "mode"
             
             # Encoding
             encoding_method = determine_encoding(df[column])
-            column_config["preprocessing"].append(encoding_method)
+            column_config["preprocessing"]["encoding"] = encoding_method
         
         preprocessing_config["columns"].append(column_config)
     

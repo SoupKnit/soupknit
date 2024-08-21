@@ -1,4 +1,6 @@
+import { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
+import { z } from "zod"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
@@ -23,6 +25,26 @@ export async function runProject(
   })
 }
 
+export type AnalyzePostData = {
+  taskType: string
+  targetColumn: string
+  fileUrl: string
+  projectId: string
+}
+
+export async function analyzeFilePost(
+  env: ClientEnvironment,
+  data: AnalyzePostData,
+) {
+  return (await api.post(`${env.serverUrl}/app/analyze_file`, data, {
+    token: await getSupabaseAccessToken(),
+  })) as PreProcessingColumnConfig
+}
+// Modify the WorkbookDataSchema to allow null config
+const WorkbookDataSchemaWithNullableConfig = WorkbookDataSchema.extend({
+  config: z.object({}).nullish().optional(),
+})
+
 export async function loadExistingWorkbook(
   supa: SupabaseClient,
   projectId: string,
@@ -39,13 +61,33 @@ export async function loadExistingWorkbook(
     .limit(1)
     .throwOnError()
 
-  if (data) {
-    if (data.length === 0) {
-      return null
+  if (data && data.length > 0) {
+    console.log("Raw workbook data:", data[0]) // Log the raw data
+    try {
+      // Use the modified schema that allows null config
+      const parsedData = WorkbookDataSchemaWithNullableConfig.parse(data[0])
+      console.log("Parsed workbook data:", parsedData)
+      return parsedData
+    } catch (error) {
+      console.error("Error parsing workbook data:", error)
+      if (error instanceof z.ZodError) {
+        console.error(
+          "Zod error issues:",
+          JSON.stringify(error.issues, null, 2),
+        )
+      }
+      // Instead of throwing, return null or a default workbook structure
+      return {
+        id: data[0].id,
+        project_id: data[0].project_id,
+        files: data[0].files || [],
+        preview_data: data[0].preview_data || [],
+        config: null,
+      }
     }
-    return WorkbookDataSchema.parse(data[0])
   } else {
-    throw new Error("No workbook data found")
+    console.log("No workbook data found")
+    return null
   }
 }
 
@@ -121,37 +163,39 @@ export async function loadWorkbookConfig(
   return data?.config
 }
 
-export async function deleteProject(supa: SupabaseClient, projectId: string) {
-  console.log(`Starting deletion process for project with ID: ${projectId}`)
-  // 1. Fetch the workbooks associated with this project
+export async function deleteProject(
+  supa: SupabaseClient,
+  workbook: ActiveProject,
+) {
+  console.log(`Starting deletion process for project: ${workbook}`)
+  // //1. Fetch the workbooks associated with this project
   // const { data: workbooks, error: workbooksError } = await supa
   //   .from("workbooks")
   //   .select("id, file_url")
   //   .eq("project_id", projectId)
   // if (workbooksError) throw workbooksError
 
-  // // 2. Delete files from storage
-  // for (const workbook of workbooks) {
-  //   if (workbook.file_url) {
-  //     const filePathMatch = workbook.file_url.match(
-  //       /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
-  //     )
-  //     if (filePathMatch) {
-  //       const filePath = filePathMatch[1]
-  //       const { error: deleteFileError } = await supa.storage
-  //         .from("workbook-files")
-  //         .remove([filePath])
-  //       if (deleteFileError) {
-  //         console.error(
-  //           `Failed to delete file for workbook ${workbook.id}:`,
-  //           deleteFileError,
-  //         )
-  //       } else {
-  //         console.log(`Deleted file for workbook ${workbook.id}`)
-  //       }
-  //     }
-  //   }
-  // }
+  // 2. Delete files from storage
+
+  if (workbook.files?.length > 0 && workbook.files[0]?.file_url) {
+    const filePathMatch = workbook.files[0]?.file_url.match(
+      /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
+    )
+    if (filePathMatch) {
+      const filePath = filePathMatch[1]
+      const { error: deleteFileError } = await supa.storage
+        .from("workbook-files")
+        .remove([filePath])
+      if (deleteFileError) {
+        console.error(
+          `Failed to delete file for workbook ${workbook.projectId}:`,
+          deleteFileError,
+        )
+      } else {
+        console.log(`Deleted file for workbook ${workbook.projectId}`)
+      }
+    }
+  }
 
   // // 3. Delete workbook data
   // await supa
@@ -167,10 +211,10 @@ export async function deleteProject(supa: SupabaseClient, projectId: string) {
   const { error: projectDeleteError } = await supa
     .from("projects")
     .delete()
-    .eq("id", projectId)
+    .eq("id", workbook.projectId)
     .throwOnError()
   if (projectDeleteError) throw projectDeleteError
   console.log(
-    `Successfully deleted project ${projectId} and all associated data`,
+    `Successfully deleted project ${workbook.projectId} and all associated data`,
   )
 }

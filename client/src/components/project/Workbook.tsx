@@ -129,7 +129,8 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async () => workbookActions.deleteProject(env.supa, projectId),
+    mutationFn: async () =>
+      workbookActions.deleteProject(env.supa, projectAndWorkbook),
     onSuccess: () => {
       toast.success("Project deleted successfully")
       // Redirect to projects list or handle post-deletion navigation
@@ -171,20 +172,51 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   })
 
   const proceedToNextSection = async () => {
+    console.log("Current activeSection:", activeSection)
+    console.log("Current workbookConfig:", workbookConfig)
+
     switch (activeSection) {
       case 0:
         if (workbookConfig.taskType) {
+          console.log(
+            "Moving to data processing section with task type:",
+            workbookConfig.taskType,
+          )
           setActiveSection(activeSection + 1)
+        } else {
+          console.warn(
+            "Task type not selected. Please select a task type before proceeding.",
+          )
+          toast.error("Please select a task type before proceeding.")
         }
         break
       case 1:
-        if (workbookConfig.targetColumn) {
+        if (
+          workbookConfig.targetColumn ||
+          workbookConfig.taskType === "Clustering"
+        ) {
+          console.log("Moving to model creation section")
           workbookConfigMutation.mutate(workbookConfig, {
-            onSuccess: () => setActiveSection(activeSection + 1),
+            onSuccess: () => {
+              console.log("Workbook config updated successfully")
+              setActiveSection(activeSection + 1)
+            },
+            onError: (error) => {
+              console.error("Error updating workbook config:", error)
+              toast.error(
+                "Failed to update workbook configuration. Please try again.",
+              )
+            },
           })
+        } else {
+          console.warn(
+            "Target column not selected. Please select a target column before proceeding.",
+          )
+          toast.error("Please select a target column before proceeding.")
         }
         break
       default:
+        console.log("Moving to next section")
         setActiveSection(activeSection + 1)
     }
   }
@@ -192,9 +224,14 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const getNextButtonText = () => {
     switch (activeSection) {
       case 0:
-        return "Start Preprocessing"
+        return workbookConfig.taskType
+          ? "Start Preprocessing"
+          : "Select Task Type"
       case 1:
-        return "Proceed to Model Creation"
+        return workbookConfig.targetColumn ||
+          workbookConfig.taskType === "Clustering"
+          ? "Proceed to Model Creation"
+          : "Select Target Column"
       case 2:
         return "Deploy Model"
       default:
