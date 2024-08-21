@@ -27,25 +27,27 @@ export function GlobalPreprocessing() {
   if (!workbookConfig.preProcessingConfig) {
     return null
   }
-  console.log("Inside GlobalPreprocessing", workbookConfig.preProcessingConfig)
+  console.log("GlobalPreprocessing config:", workbookConfig.preProcessingConfig)
   return (
     <div className="mb-4">
       <h3 className="mb-2 text-lg font-semibold">Global Preprocessing</h3>
       <div className="flex flex-wrap gap-4">
-        {GlobalPreprocessingOptions.map((option: GlobalPreprocessingOption) => (
-          <div key={option} className="flex items-center space-x-2">
-            <Checkbox
-              id={option}
-              checked={workbookConfig.preProcessingConfig?.global_preprocessing?.includes(
-                option,
-              )}
-              onCheckedChange={() =>
-                handleGlobalPreprocessingChange({ option })
-              }
-            />
-            <Label htmlFor={option}>{option.replace("_", " ")}</Label>
-          </div>
-        ))}
+        {workbookConfig.preProcessingConfig.global_preprocessing.map(
+          (option) => (
+            <div key={option} className="flex items-center space-x-2">
+              <Checkbox
+                id={option}
+                checked={workbookConfig.preProcessingConfig.global_preprocessing.includes(
+                  option,
+                )}
+                onCheckedChange={() =>
+                  handleGlobalPreprocessingChange({ option })
+                }
+              />
+              <Label htmlFor={option}>{option.replace("_", " ")}</Label>
+            </div>
+          ),
+        )}
       </div>
       {workbookConfig?.preProcessingConfig.global_preprocessing.includes(
         "pca",

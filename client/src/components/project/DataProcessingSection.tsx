@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import React, { useEffect, useState } from "react"
 import { useAtom } from "jotai"
 import { toast } from "sonner"
 
@@ -7,8 +6,7 @@ import { ColumnPreprocessing } from "../editor/ColumnPreprocessing"
 import { DatasetPreview, FileInputArea } from "../editor/DatasetPreview"
 import { GlobalPreprocessing } from "../editor/GlobalPreprocessing"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
-import { Hide } from "../util/ConditionalShow"
-import { fetchPreprocessingConfig } from "@/api/preprocessing"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -17,14 +15,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useFetchPreprocessing } from "@/hooks/usePreprocessing"
 import { useWorkbook } from "@/hooks/useWorkbook"
-import { useEnv } from "@/lib/clientEnvironment"
-import {
-  activeFileStore,
-  activeProjectAndWorkbook,
-  workbookConfigStore,
-} from "@/store/workbookStore"
+import { activeFileStore, workbookConfigStore } from "@/store/workbookStore"
 
 export function DataProcessingSection({
   projectId,
@@ -33,12 +25,7 @@ export function DataProcessingSection({
 }>) {
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
   const [activeFile] = useAtom(activeFileStore)
-  const [activeProject] = useAtom(activeProjectAndWorkbook)
-  const { workbookConfigQuery } = useWorkbook(projectId)
-  const queryClient = useQueryClient()
-  const env = useEnv()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-
   const {
     csvData,
     headers,
@@ -46,165 +33,148 @@ export function DataProcessingSection({
     error,
     handleFileUpload,
     analyzeFile,
-    projectWorkbook,
+    workbookQuery,
   } = useWorkbook(projectId)
 
-  useEffect(() => {
-    if (workbookConfigQuery.data) {
-      setWorkbookConfig((prev) => ({
-        ...prev,
-        preProcessingConfig: workbookConfigQuery.data.preProcessingConfig || {},
-      }))
-    }
-  }, [workbookConfigQuery.data, setWorkbookConfig])
+  const hasUploadedFile =
+    activeFile && activeFile.file_url && csvData.length > 0
+  const hasPreprocessingConfig =
+    workbookConfig.preProcessingConfig &&
+    Object.keys(workbookConfig.preProcessingConfig).length > 0
 
-  const triggerFileAnalysis = async (targetColumn: string) => {
-    if (!activeProject?.projectId) {
-      console.warn("No active project")
-      toast.error("No active project selected")
-      return
-    }
+  console.log("DataProcessingSection state:", {
+    hasUploadedFile,
+    activeFile,
+    csvDataLength: csvData.length,
+    workbookConfig,
+    hasPreprocessingConfig,
+    isAnalyzing,
+  })
 
-    console.log(
-      "Triggering file analysis for project:",
-      activeProject.projectId,
+  const isAnalyzeButtonDisabled = () => {
+    const reasons = []
+    if (isAnalyzing) reasons.push("isAnalyzing")
+    if (!hasUploadedFile) reasons.push("!hasUploadedFile")
+    if (!workbookConfig.taskType) reasons.push("!taskType")
+    if (
+      workbookConfig.taskType !== "Clustering" &&
+      !workbookConfig.targetColumn
     )
+      reasons.push("!targetColumn")
+
+    const isDisabled = reasons.length > 0
+    console.log("Analyze button disabled:", isDisabled, "Reasons:", reasons)
+    return isDisabled
+  }
+
+  const triggerFileAnalysis = async () => {
     if (!activeFile?.file_url) {
       console.warn("Missing file URL for analysis")
+      toast.error("No file selected for analysis")
       return
     }
     if (!workbookConfig.taskType) {
       console.warn("Missing task type for analysis")
+      toast.error("Please select a task type before analysis")
       return
     }
     try {
       setIsAnalyzing(true)
       const result = await analyzeFile.mutateAsync({
         taskType: workbookConfig.taskType,
-        targetColumn,
+        targetColumn: workbookConfig.targetColumn || "",
         fileUrl: activeFile.file_url,
-        projectId: activeProject.projectId,
+        projectId,
       })
       console.log("File analysis result:", result)
-      toast.success("File analysis completed successfully")
-      if (projectWorkbook?.workbookId) {
-        await queryClient.refetchQueries([
-          "workbookConfig",
-          projectWorkbook.workbookId,
-        ])
+      if (result.preProcessingConfig) {
+        setWorkbookConfig((prev) => ({
+          ...prev,
+          preProcessingConfig: result.preProcessingConfig,
+        }))
       }
+      toast.success("File analysis completed successfully")
     } catch (error) {
       console.error("Error in file analysis:", error)
-      toast.error(`Error analyzing file: ${error.message}`)
+      toast.error(`Error analyzing file: ${(error as Error).message}`)
     } finally {
       setIsAnalyzing(false)
     }
   }
 
-  const setTargetColumn = async (value: string) => {
-    setWorkbookConfig((prev: any) => ({ ...prev, targetColumn: value }))
-
-    // Trigger file analysis after setting the target column, except for clustering tasks
-    if (workbookConfig.taskType && workbookConfig.taskType !== "Clustering") {
-      await triggerFileAnalysis(value)
-    }
+  const setTargetColumn = (value: string) => {
+    setWorkbookConfig((prev) => ({ ...prev, targetColumn: value }))
   }
 
-  const handleFileUploadWrapper = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    await handleFileUpload(event)
-
-    // For clustering tasks, trigger analysis immediately after file upload
-    if (workbookConfig.taskType === "Clustering") {
-      await triggerFileAnalysis("") // No target column for clustering
+  // Add this effect to set a default task type if it's not set
+  useEffect(() => {
+    if (!workbookConfig.taskType) {
+      setWorkbookConfig((prev) => ({ ...prev, taskType: "Regression" }))
     }
+  }, [workbookConfig.taskType, setWorkbookConfig])
+
+  if (workbookQuery.isLoading) {
+    return <Skeleton className="h-[500px] w-full" />
   }
 
-  const isPreprocessingConfigReady =
-    workbookConfigQuery.isSuccess &&
-    workbookConfigQuery.data?.preProcessingConfig &&
-    !isAnalyzing
+  if (workbookQuery.isError) {
+    return (
+      <div>
+        Error loading workbook: {(workbookQuery.error as Error).message}
+      </div>
+    )
+  }
 
   return (
     <>
       {error && <div className="mb-4 text-red-500">{error}</div>}
-      <Hide when={headers.length > 0}>
-        <FileInputArea fileUpload={handleFileUploadWrapper} />
-      </Hide>
 
-      {csvData.length > 0 && (
+      {!hasUploadedFile ? (
+        <FileInputArea fileUpload={handleFileUpload} />
+      ) : (
         <>
           <DatasetPreview
-            name={activeFile?.name ?? "Untitled"}
+            name={activeFile.name ?? "Untitled"}
             headers={headers}
             data={csvData}
             loading={loading}
           />
+          {workbookConfig.taskType !== "Clustering" && (
+            <div className="mt-4">
+              <Select
+                value={workbookConfig.targetColumn ?? undefined}
+                onValueChange={setTargetColumn}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select target column" />
+                </SelectTrigger>
+                <SelectContent>
+                  {headers.map((header) => (
+                    <SelectItem key={header} value={header}>
+                      {header}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="mt-4">
-            <Select
-              value={workbookConfig.targetColumn ?? undefined}
-              onValueChange={setTargetColumn}
+            <Button
+              onClick={triggerFileAnalysis}
+              disabled={isAnalyzeButtonDisabled()}
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select target column" />
-              </SelectTrigger>
-              <SelectContent>
-                {headers.map((header) => (
-                  <SelectItem key={header} value={header}>
-                    {header}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {isAnalyzing ? "Analyzing..." : "Analyze File"}
+            </Button>
           </div>
-        </>
-      )}
-      <div className="mt-8">
-        {isAnalyzing ? (
-          <PreprocessingSkeleton />
-        ) : (
-          isPreprocessingConfigReady && (
-            <div>
+          {hasPreprocessingConfig && (
+            <div className="mt-8">
               <GlobalPreprocessing />
               <ColumnPreprocessing />
             </div>
-          )
-        )}
-      </div>
+          )}
+        </>
+      )}
     </>
-  )
-}
-
-export function PreprocessingSkeleton() {
-  return (
-    <div className="space-y-6">
-      {/* Global Preprocessing Skeleton */}
-      <div className="space-y-2">
-        <Skeleton className="h-6 w-48" />
-        <div className="flex flex-wrap gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-6 w-32" />
-          ))}
-        </div>
-      </div>
-
-      {/* Column Preprocessing Skeleton */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-8">
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-6 w-24" />
-        </div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="grid grid-cols-3 gap-8">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        ))}
-      </div>
-    </div>
   )
 }
 

@@ -1,4 +1,5 @@
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
+import { z } from "zod"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
@@ -23,6 +24,11 @@ export async function runProject(
   })
 }
 
+// Modify the WorkbookDataSchema to allow null config
+const WorkbookDataSchemaWithNullableConfig = WorkbookDataSchema.extend({
+  config: z.object({}).nullish().optional(),
+})
+
 export async function loadExistingWorkbook(
   supa: SupabaseClient,
   projectId: string,
@@ -39,13 +45,33 @@ export async function loadExistingWorkbook(
     .limit(1)
     .throwOnError()
 
-  if (data) {
-    if (data.length === 0) {
-      return null
+  if (data && data.length > 0) {
+    console.log("Raw workbook data:", data[0]) // Log the raw data
+    try {
+      // Use the modified schema that allows null config
+      const parsedData = WorkbookDataSchemaWithNullableConfig.parse(data[0])
+      console.log("Parsed workbook data:", parsedData)
+      return parsedData
+    } catch (error) {
+      console.error("Error parsing workbook data:", error)
+      if (error instanceof z.ZodError) {
+        console.error(
+          "Zod error issues:",
+          JSON.stringify(error.issues, null, 2),
+        )
+      }
+      // Instead of throwing, return null or a default workbook structure
+      return {
+        id: data[0].id,
+        project_id: data[0].project_id,
+        files: data[0].files || [],
+        preview_data: data[0].preview_data || [],
+        config: null,
+      }
     }
-    return WorkbookDataSchema.parse(data[0])
   } else {
-    throw new Error("No workbook data found")
+    console.log("No workbook data found")
+    return null
   }
 }
 

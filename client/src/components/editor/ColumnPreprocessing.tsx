@@ -31,7 +31,12 @@ import { workbookConfigStore } from "@/store/workbookStore"
 export function ColumnPreprocessing() {
   const [workbookConfig] = useAtom(workbookConfigStore)
   const { handleColumnTypeChange } = usePreProcessing()
-  if (!workbookConfig.preProcessingConfig) {
+  console.log("ColumnPreprocessing config:", workbookConfig.preProcessingConfig)
+
+  if (
+    !workbookConfig.preProcessingConfig ||
+    !workbookConfig.preProcessingConfig.columns
+  ) {
     return null
   }
   return (
@@ -39,7 +44,7 @@ export function ColumnPreprocessing() {
       <div className="font-bold">Column</div>
       <div className="font-bold">Type</div>
       <div className="font-bold">Preprocessing</div>
-      {workbookConfig?.preProcessingConfig?.columns?.map((column) => (
+      {workbookConfig.preProcessingConfig.columns.map((column) => (
         <React.Fragment key={column.name}>
           <div>{column.name}</div>
           <div>
