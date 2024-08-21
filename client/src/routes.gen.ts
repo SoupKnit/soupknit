@@ -16,30 +16,17 @@ import { Route as rootRoute } from "./app/__root"
 import { Route as SignupImport } from "./app/signup"
 import { Route as SigninImport } from "./app/signin"
 import { Route as IndexImport } from "./app/index"
-import { Route as HomeFrontImport } from "./app/home/_front"
 import { Route as AppEditorImport } from "./app/app/_editor"
-import { Route as HomeFrontIndexImport } from "./app/home/_front/index"
+import { Route as AppInternalIndexImport } from "./app/app/internal/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
 import { Route as AppEditorBlocksImport } from "./app/app/_editor/blocks"
 import { Route as AppEditorProjectIdImport } from "./app/app/_editor/$projectId"
-import { Route as HomeFrontBlogPostsImport } from "./app/home/_front/blog/_posts"
-import { Route as HomeFrontBlogPostsIndexImport } from "./app/home/_front/blog/_posts.index"
-import { Route as HomeFrontBlogPostIdPostImport } from "./app/home/_front/blog/$postId/_post"
-import { Route as HomeFrontBlogPostIdPostIndexImport } from "./app/home/_front/blog/$postId/_post.index"
 
 // Create Virtual Routes
 
-const HomeImport = createFileRoute("/home")()
 const AppImport = createFileRoute("/app")()
-const HomeFrontBlogImport = createFileRoute("/home/_front/blog")()
-const HomeFrontBlogPostIdImport = createFileRoute("/home/_front/blog/$postId")()
 
 // Create/Update Routes
-
-const HomeRoute = HomeImport.update({
-  path: "/home",
-  getParentRoute: () => rootRoute,
-} as any)
 
 const AppRoute = AppImport.update({
   path: "/app",
@@ -61,24 +48,14 @@ const IndexRoute = IndexImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const HomeFrontRoute = HomeFrontImport.update({
-  id: "/_front",
-  getParentRoute: () => HomeRoute,
-} as any)
-
 const AppEditorRoute = AppEditorImport.update({
   id: "/_editor",
   getParentRoute: () => AppRoute,
 } as any)
 
-const HomeFrontBlogRoute = HomeFrontBlogImport.update({
-  path: "/blog",
-  getParentRoute: () => HomeFrontRoute,
-} as any)
-
-const HomeFrontIndexRoute = HomeFrontIndexImport.update({
-  path: "/",
-  getParentRoute: () => HomeFrontRoute,
+const AppInternalIndexRoute = AppInternalIndexImport.update({
+  path: "/internal/",
+  getParentRoute: () => AppRoute,
 } as any)
 
 const AppEditorIndexRoute = AppEditorIndexImport.update({
@@ -95,32 +72,6 @@ const AppEditorProjectIdRoute = AppEditorProjectIdImport.update({
   path: "/$projectId",
   getParentRoute: () => AppEditorRoute,
 } as any)
-
-const HomeFrontBlogPostIdRoute = HomeFrontBlogPostIdImport.update({
-  path: "/$postId",
-  getParentRoute: () => HomeFrontBlogRoute,
-} as any)
-
-const HomeFrontBlogPostsRoute = HomeFrontBlogPostsImport.update({
-  id: "/_posts",
-  getParentRoute: () => HomeFrontBlogRoute,
-} as any)
-
-const HomeFrontBlogPostsIndexRoute = HomeFrontBlogPostsIndexImport.update({
-  path: "/",
-  getParentRoute: () => HomeFrontBlogPostsRoute,
-} as any)
-
-const HomeFrontBlogPostIdPostRoute = HomeFrontBlogPostIdPostImport.update({
-  id: "/_post",
-  getParentRoute: () => HomeFrontBlogPostIdRoute,
-} as any)
-
-const HomeFrontBlogPostIdPostIndexRoute =
-  HomeFrontBlogPostIdPostIndexImport.update({
-    path: "/",
-    getParentRoute: () => HomeFrontBlogPostIdPostRoute,
-  } as any)
 
 // Populate the FileRoutesByPath interface
 
@@ -161,20 +112,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppEditorImport
       parentRoute: typeof AppRoute
     }
-    "/home": {
-      id: "/home"
-      path: "/home"
-      fullPath: "/home"
-      preLoaderRoute: typeof HomeImport
-      parentRoute: typeof rootRoute
-    }
-    "/home/_front": {
-      id: "/home/_front"
-      path: "/home"
-      fullPath: "/home"
-      preLoaderRoute: typeof HomeFrontImport
-      parentRoute: typeof HomeRoute
-    }
     "/app/_editor/$projectId": {
       id: "/app/_editor/$projectId"
       path: "/$projectId"
@@ -196,54 +133,12 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppEditorIndexImport
       parentRoute: typeof AppEditorImport
     }
-    "/home/_front/": {
-      id: "/home/_front/"
-      path: "/"
-      fullPath: "/home/"
-      preLoaderRoute: typeof HomeFrontIndexImport
-      parentRoute: typeof HomeFrontImport
-    }
-    "/home/_front/blog": {
-      id: "/home/_front/blog"
-      path: "/blog"
-      fullPath: "/home/blog"
-      preLoaderRoute: typeof HomeFrontBlogImport
-      parentRoute: typeof HomeFrontImport
-    }
-    "/home/_front/blog/_posts": {
-      id: "/home/_front/blog/_posts"
-      path: "/blog"
-      fullPath: "/home/blog"
-      preLoaderRoute: typeof HomeFrontBlogPostsImport
-      parentRoute: typeof HomeFrontBlogRoute
-    }
-    "/home/_front/blog/$postId": {
-      id: "/home/_front/blog/$postId"
-      path: "/$postId"
-      fullPath: "/home/blog/$postId"
-      preLoaderRoute: typeof HomeFrontBlogPostIdImport
-      parentRoute: typeof HomeFrontBlogImport
-    }
-    "/home/_front/blog/$postId/_post": {
-      id: "/home/_front/blog/$postId/_post"
-      path: "/$postId"
-      fullPath: "/home/blog/$postId"
-      preLoaderRoute: typeof HomeFrontBlogPostIdPostImport
-      parentRoute: typeof HomeFrontBlogPostIdRoute
-    }
-    "/home/_front/blog/_posts/": {
-      id: "/home/_front/blog/_posts/"
-      path: "/"
-      fullPath: "/home/blog/"
-      preLoaderRoute: typeof HomeFrontBlogPostsIndexImport
-      parentRoute: typeof HomeFrontBlogPostsImport
-    }
-    "/home/_front/blog/$postId/_post/": {
-      id: "/home/_front/blog/$postId/_post/"
-      path: "/"
-      fullPath: "/home/blog/$postId/"
-      preLoaderRoute: typeof HomeFrontBlogPostIdPostIndexImport
-      parentRoute: typeof HomeFrontBlogPostIdPostImport
+    "/app/internal/": {
+      id: "/app/internal/"
+      path: "/internal"
+      fullPath: "/app/internal"
+      preLoaderRoute: typeof AppInternalIndexImport
+      parentRoute: typeof AppImport
     }
   }
 }
@@ -260,22 +155,7 @@ export const routeTree = rootRoute.addChildren({
       AppEditorBlocksRoute,
       AppEditorIndexRoute,
     }),
-  }),
-  HomeRoute: HomeRoute.addChildren({
-    HomeFrontRoute: HomeFrontRoute.addChildren({
-      HomeFrontIndexRoute,
-      HomeFrontBlogRoute: HomeFrontBlogRoute.addChildren({
-        HomeFrontBlogPostsRoute: HomeFrontBlogPostsRoute.addChildren({
-          HomeFrontBlogPostsIndexRoute,
-        }),
-        HomeFrontBlogPostIdRoute: HomeFrontBlogPostIdRoute.addChildren({
-          HomeFrontBlogPostIdPostRoute:
-            HomeFrontBlogPostIdPostRoute.addChildren({
-              HomeFrontBlogPostIdPostIndexRoute,
-            }),
-        }),
-      }),
-    }),
+    AppInternalIndexRoute,
   }),
 })
 
@@ -290,8 +170,7 @@ export const routeTree = rootRoute.addChildren({
         "/",
         "/signin",
         "/signup",
-        "/app",
-        "/home"
+        "/app"
       ]
     },
     "/": {
@@ -306,7 +185,8 @@ export const routeTree = rootRoute.addChildren({
     "/app": {
       "filePath": "app",
       "children": [
-        "/app/_editor"
+        "/app/_editor",
+        "/app/internal/"
       ]
     },
     "/app/_editor": {
@@ -316,20 +196,6 @@ export const routeTree = rootRoute.addChildren({
         "/app/_editor/$projectId",
         "/app/_editor/blocks",
         "/app/_editor/"
-      ]
-    },
-    "/home": {
-      "filePath": "home",
-      "children": [
-        "/home/_front"
-      ]
-    },
-    "/home/_front": {
-      "filePath": "home/_front.tsx",
-      "parent": "/home",
-      "children": [
-        "/home/_front/",
-        "/home/_front/blog"
       ]
     },
     "/app/_editor/$projectId": {
@@ -344,46 +210,9 @@ export const routeTree = rootRoute.addChildren({
       "filePath": "app/_editor/index.tsx",
       "parent": "/app/_editor"
     },
-    "/home/_front/": {
-      "filePath": "home/_front/index.tsx",
-      "parent": "/home/_front"
-    },
-    "/home/_front/blog": {
-      "filePath": "home/_front/blog",
-      "parent": "/home/_front",
-      "children": [
-        "/home/_front/blog/_posts",
-        "/home/_front/blog/$postId"
-      ]
-    },
-    "/home/_front/blog/_posts": {
-      "filePath": "home/_front/blog/_posts.tsx",
-      "parent": "/home/_front/blog",
-      "children": [
-        "/home/_front/blog/_posts/"
-      ]
-    },
-    "/home/_front/blog/$postId": {
-      "filePath": "home/_front/blog/$postId",
-      "parent": "/home/_front/blog",
-      "children": [
-        "/home/_front/blog/$postId/_post"
-      ]
-    },
-    "/home/_front/blog/$postId/_post": {
-      "filePath": "home/_front/blog/$postId/_post.tsx",
-      "parent": "/home/_front/blog/$postId",
-      "children": [
-        "/home/_front/blog/$postId/_post/"
-      ]
-    },
-    "/home/_front/blog/_posts/": {
-      "filePath": "home/_front/blog/_posts.index.tsx",
-      "parent": "/home/_front/blog/_posts"
-    },
-    "/home/_front/blog/$postId/_post/": {
-      "filePath": "home/_front/blog/$postId/_post.index.tsx",
-      "parent": "/home/_front/blog/$postId/_post"
+    "/app/internal/": {
+      "filePath": "app/internal/index.tsx",
+      "parent": "/app"
     }
   }
 }
