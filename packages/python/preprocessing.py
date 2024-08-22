@@ -3,11 +3,15 @@ import sys
 import logging
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler
-from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, RobustScaler, OrdinalEncoder, MinMaxScaler
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import SimpleImputer, KNNImputer, IterativeImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest, f_classif
+
+from scipy import stats
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,21 +24,51 @@ def get_column_preprocessing(preprocessing_config):
     for column in preprocessing_config['columns']:
         column_name = column['name']
         column_type = column['type']
-        preprocessing_steps = column['preprocessing']
+        preprocessing = column['preprocessing']
+        params = column.get('params', {})
         
         pipeline_steps = []
         
-        for step in preprocessing_steps:
-            if step == 'scale_robust':
-                pipeline_steps.append(('scaler', RobustScaler()))
-            elif step == 'scale_standard':
-                pipeline_steps.append(('scaler', StandardScaler()))
-            elif step.startswith('impute_'):
-                strategy = step.split('_')[1]
-                pipeline_steps.append(('imputer', SimpleImputer(strategy=strategy)))
+        # Imputation
+        if 'imputation' in preprocessing:
+            strategy = preprocessing['imputation']
+            if strategy in ['mean', 'median', 'most_frequent', 'constant']:
+                pipeline_steps.append(('imputer', SimpleImputer(strategy=strategy, **params)))
+            elif strategy == 'knn':
+                pipeline_steps.append(('imputer', KNNImputer(**params)))
+            elif strategy == 'iterative':
+                pipeline_steps.append(('imputer', IterativeImputer(**params)))
         
+        # Scaling
+        if 'scaling' in preprocessing:
+            if preprocessing['scaling'] == 'robust':
+                pipeline_steps.append(('scaler', RobustScaler()))
+            elif preprocessing['scaling'] == 'standard':
+                pipeline_steps.append(('scaler', StandardScaler()))
+            elif preprocessing['scaling'] == 'minmax':
+                pipeline_steps.append(('scaler', MinMaxScaler()))
+        
+        # Encoding
         if column_type == 'categorical':
-            pipeline_steps.append(('encoder', OneHotEncoder(handle_unknown='ignore')))
+            if preprocessing.get('encoding') == 'onehot':
+                pipeline_steps.append(('encoder', OneHotEncoder(handle_unknown='ignore')))
+            elif preprocessing.get('encoding') == 'ordinal':
+                pipeline_steps.append(('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)))
+        
+        # Date handling
+        if column_type == 'date':
+            pipeline_steps.append(('date_transformer', DateTransformer(preprocessing.get('date_features', ['year', 'month', 'day', 'dayofweek']))))
+        
+        # Outlier treatment
+        if 'outlier_treatment' in preprocessing:
+            if preprocessing['outlier_treatment'] == 'winsorize':
+                winsorize_limits = params.get('winsorize_limits', (0.05, 0.95))
+                pipeline_steps.append(('outlier_treatment', Winsorizer(limits=winsorize_limits)))
+        
+        # High cardinality handling
+        if 'high_cardinality' in preprocessing:
+            if preprocessing['high_cardinality'] == 'group_rare':
+                pipeline_steps.append(('high_cardinality', RareGrouper(**params)))
         
         if pipeline_steps:
             transformer = Pipeline(steps=pipeline_steps)
@@ -43,11 +77,60 @@ def get_column_preprocessing(preprocessing_config):
     logger.debug(f"Transformers created: {transformers}")
     return transformers
 
+class DateTransformer:
+    def __init__(self, features=['year', 'month', 'day', 'dayofweek']):
+        self.features = features
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X = pd.to_datetime(X)
+        result = pd.DataFrame()
+        for feature in self.features:
+            if feature == 'year':
+                result['year'] = X.dt.year
+            elif feature == 'month':
+                result['month'] = X.dt.month
+            elif feature == 'day':
+                result['day'] = X.dt.day
+            elif feature == 'dayofweek':
+                result['dayofweek'] = X.dt.dayofweek
+            elif feature == 'quarter':
+                result['quarter'] = X.dt.quarter
+        return result
+
+class Winsorizer:
+    def __init__(self, limits=(0.05, 0.95)):
+        self.limits = limits
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return np.clip(X, *np.percentile(X, [self.limits[0]*100, self.limits[1]*100]))
+    
+    def get_feature_names_out(self, input_features=None):
+        return input_features
+
+class RareGrouper:
+    def __init__(self, rare_threshold=0.01):
+        self.rare_threshold = rare_threshold
+        self.frequent_categories = None
+
+    def fit(self, X, y=None):
+        value_counts = X.value_counts(normalize=True)
+        self.frequent_categories = value_counts[value_counts >= self.rare_threshold].index
+        return self
+
+    def transform(self, X):
+        return X.map(lambda x: x if x in self.frequent_categories else 'Other')
+
 def preprocess_data(file_path, task_type, target_column, preprocessing_config):
     logger.info(f"Starting preprocessing for file: {file_path}")
     
     # Load data
-    data = pd.read_csv(file_path)
+    data = pd.read_csv(file_path, parse_dates=preprocessing_config.get('date_columns', []))
     logger.info(f"Loaded data shape: {data.shape}")
     
     # Separate features and target
@@ -71,7 +154,15 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
     for name, trans, cols in preprocessor.transformers_:
         if name != 'remainder':
             if hasattr(trans, 'get_feature_names_out'):
-                feature_names.extend(trans.get_feature_names_out(cols))
+                if isinstance(trans, Pipeline):
+                    # For pipeline transformers, use the last step that has get_feature_names_out
+                    last_step_with_features = next((step for step in reversed(trans.steps) if hasattr(step[1], 'get_feature_names_out')), None)
+                    if last_step_with_features:
+                        feature_names.extend(last_step_with_features[1].get_feature_names_out(cols))
+                    else:
+                        feature_names.extend(cols)
+                else:
+                    feature_names.extend(trans.get_feature_names_out(cols))
             else:
                 feature_names.extend(cols)
     
@@ -81,9 +172,6 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
     
     # Apply global preprocessing steps
     global_preprocessing = preprocessing_config['global_preprocessing']
-    if 'drop_missing' in global_preprocessing:
-        preprocessed_data = preprocessed_data.dropna()
-        logger.info(f"Data shape after dropping missing values: {preprocessed_data.shape}")
     if 'drop_constant' in global_preprocessing:
         preprocessed_data = preprocessed_data.loc[:, (preprocessed_data != preprocessed_data.iloc[0]).any()]
         logger.info(f"Data shape after dropping constant columns: {preprocessed_data.shape}")
@@ -96,6 +184,14 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         pca = PCA(n_components=n_components)
         preprocessed_data[numeric_columns] = pca.fit_transform(preprocessed_data[numeric_columns])
         logger.info(f"Data shape after PCA: {preprocessed_data.shape}")
+    if 'feature_selection' in global_preprocessing:
+        n_features = preprocessing_config['global_params'].get('n_features_to_select', 50)
+        selector = SelectKBest(f_classif, k=n_features)
+        selected_features = selector.fit_transform(preprocessed_data.drop(columns=[target_column]), preprocessed_data[target_column])
+        selected_columns = preprocessed_data.drop(columns=[target_column]).columns[selector.get_support()]
+        preprocessed_data = pd.DataFrame(selected_features, columns=selected_columns)
+        preprocessed_data[target_column] = y.reset_index(drop=True)
+        logger.info(f"Data shape after feature selection: {preprocessed_data.shape}")
     
     # Save preprocessed data
     output_csv = file_path.rsplit(".", 1)[0] + "_preprocessed.csv"
