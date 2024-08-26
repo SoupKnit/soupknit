@@ -530,6 +530,174 @@ export default async function workbookController(fastify: FastifyInstance) {
       }
     },
   );
+
+  // POST /create_model
+  fastify.post(
+    "/create_model",
+    async function (_request: FastifyRequest, reply: FastifyReply) {
+      const { projectId, modelConfig } = _request.body as {
+        projectId: string;
+        modelConfig: any;
+      };
+
+      try {
+        console.log(
+          "1. Received create_model request for projectId:",
+          projectId,
+        );
+
+        // Fetch the workbook data
+        const { data: workbookData, error: workbookError } = await supa
+          .from("workbook_data")
+          .select("id, files, config")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (workbookError) {
+          console.error("2. Error fetching workbook data:", workbookError);
+          throw workbookError;
+        }
+
+        if (
+          !workbookData ||
+          !workbookData.files ||
+          workbookData.files.length === 0
+        ) {
+          throw new Error("No workbook or file found for the given project_id");
+        }
+
+        // Get the preprocessed file if it exists, otherwise use the original file
+        const file =
+          workbookData.files.find((f) => f.preprocessed_file) ||
+          workbookData.files[0];
+
+        console.log("File: ", file);
+        // Download the file content
+        const { data: fileData, error: fileError } = await supa.storage
+          .from(file.file_url.split("/")[7]) // Assuming the bucket name is the 5th part of the URL
+          .download(file.file_url.split("/").slice(8).join("/"));
+
+        if (fileError) {
+          console.error("3. Error downloading file:", fileError);
+          throw fileError;
+        }
+
+        // Create a temporary file
+        const tempDir = os.tmpdir();
+        const tempFilePath = path.join(tempDir, `temp_${Date.now()}.csv`);
+        fs.writeFileSync(tempFilePath, await fileData.text());
+
+        console.log("4. Temporary file created:", tempFilePath);
+
+        // Prepare input for the Python script
+        const input = JSON.stringify({
+          filePath: tempFilePath,
+          params: {
+            ...modelConfig,
+            targetColumn:
+              modelConfig.targetColumn || workbookData.config.targetColumn,
+            taskType: modelConfig.taskType || workbookData.config.taskType,
+            // Add any other necessary parameters
+          },
+        });
+
+        console.log("5. Input prepared:", input);
+
+        // Run the Python script
+        const scriptPath = "../packages/python/create_model.py";
+        console.log("6. Running Python script");
+
+        const result: any = await new Promise((resolve, reject) => {
+          let stdout = "";
+          let stderr = "";
+
+          runInPythonSandbox({
+            input,
+            files: [tempFilePath],
+            scriptPath,
+            onData: (data: string) => {
+              stdout += data;
+            },
+            onError: (error: string) => {
+              stderr += error;
+            },
+            onClose: (code: number) => {
+              if (code !== 0) {
+                console.error("7. Python script error:", stderr);
+                reject(
+                  new Error(
+                    `Python script exited with code ${code}. Stderr: ${stderr}`,
+                  ),
+                );
+              } else {
+                try {
+                  const jsonResult = JSON.parse(stdout);
+                  console.log("8. Python script executed successfully");
+                  if (jsonResult.success) {
+                    resolve(jsonResult.results);
+                  } else {
+                    reject(new Error(jsonResult.error));
+                  }
+                } catch (error) {
+                  console.error("9. Failed to parse JSON result:", error);
+                  reject(
+                    new Error(
+                      `Failed to parse JSON result. Stdout: ${stdout}, Stderr: ${stderr}`,
+                    ),
+                  );
+                }
+              }
+            },
+          });
+        });
+
+        // Clean up the temporary file
+        fs.unlinkSync(tempFilePath);
+
+        // Update the workbook data with the model results
+        const updatedConfig = {
+          ...workbookData.config,
+          modelResults: result,
+        };
+
+        const { error: updateError } = await supa
+          .from("workbook_data")
+          .update({ config: updatedConfig })
+          .eq("id", workbookData.id);
+
+        if (updateError) {
+          console.error("10. Error updating workbook data:", updateError);
+          throw updateError;
+        }
+
+        console.log("11. Workbook data updated with model results");
+
+        reply
+          .header("Content-Type", "application/json; charset=utf-8")
+          .send(result);
+      } catch (error) {
+        console.error("12. Error in /create_model:", error);
+        if (error instanceof Error) {
+          reply
+            .status(500)
+            .send({
+              error: "Internal Server Error",
+              message: error.message,
+              stack: error.stack,
+            });
+        } else {
+          reply
+            .status(500)
+            .send({
+              error: "Internal Server Error",
+              message: "An unknown error occurred",
+            });
+        }
+      }
+    },
+  );
 }
 
 /**
