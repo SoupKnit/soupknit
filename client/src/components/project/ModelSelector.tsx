@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { useAtom } from "jotai"
 
 import { Button } from "@/components/ui/button"
@@ -24,12 +24,44 @@ import {
   workbookConfigStore,
 } from "@/store/workbookStore"
 
+const MODEL_MAP = {
+  Regression: {
+    linear_regression: "LinearRegression",
+    ridge: "Ridge",
+    lasso: "Lasso",
+    elastic_net: "ElasticNet",
+    decision_tree: "DecisionTreeRegressor",
+    random_forest: "RandomForestRegressor",
+    gradient_boosting: "GradientBoostingRegressor",
+    svr: "SVR",
+    knn: "KNeighborsRegressor",
+  },
+  Classification: {
+    logistic_regression: "LogisticRegression",
+    decision_tree: "DecisionTreeClassifier",
+    random_forest: "RandomForestClassifier",
+    gradient_boosting: "GradientBoostingClassifier",
+    svc: "SVC",
+    knn: "KNeighborsClassifier",
+  },
+  Clustering: {
+    kmeans: "KMeans",
+    dbscan: "DBSCAN",
+  },
+}
+
 export function ModelSelector() {
   const [isAutomated, setIsAutomated] = useState(false)
   const [selectedModel, setSelectedModel] = useState("")
   const [projectWorkbook] = useAtom(activeProjectAndWorkbook)
   const [workbookConfig] = useAtom(workbookConfigStore)
   const { createModel } = useWorkbook(projectWorkbook?.projectId || "")
+  const [modelResults, setModelResults] = useState(null)
+
+  const availableModels = useMemo(() => {
+    const taskType = workbookConfig.taskType
+    return MODEL_MAP[taskType] || {}
+  }, [workbookConfig.taskType])
 
   const handleCreateModel = async () => {
     if (!projectWorkbook?.projectId) {
@@ -51,6 +83,7 @@ export function ModelSelector() {
         modelConfig,
       })
       console.log("Model creation result:", result)
+      setModelResults(result)
     } catch (error) {
       console.error("Error creating model:", error)
     }
@@ -59,7 +92,7 @@ export function ModelSelector() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Model Selection</CardTitle>
+        <CardTitle>Model Selection for {workbookConfig.taskType}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -79,19 +112,25 @@ export function ModelSelector() {
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="linear_regression">
-                    Linear Regression
-                  </SelectItem>
-                  <SelectItem value="random_forest">Random Forest</SelectItem>
-                  <SelectItem value="gradient_boosting">
-                    Gradient Boosting
-                  </SelectItem>
+                  {Object.entries(availableModels).map(([key, value]) => (
+                    <SelectItem key={key} value={key}>
+                      {value}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           )}
           <Button onClick={handleCreateModel}>Create Model</Button>
         </div>
+        {modelResults && (
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold">Model Results:</h3>
+            <pre className="mt-2 whitespace-pre-wrap rounded bg-gray-100 p-2">
+              {JSON.stringify(modelResults, null, 2)}
+            </pre>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
