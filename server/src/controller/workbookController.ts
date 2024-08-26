@@ -570,7 +570,7 @@ export default async function workbookController(fastify: FastifyInstance) {
 
         // Get the preprocessed file if it exists, otherwise use the original file
         const file =
-          workbookData.files.find((f) => f.preprocessed_file) ||
+          workbookData.files.find((f: any) => f.preprocessed_file) ||
           workbookData.files[0];
 
         console.log("File: ", file);
@@ -680,20 +680,16 @@ export default async function workbookController(fastify: FastifyInstance) {
       } catch (error) {
         console.error("12. Error in /create_model:", error);
         if (error instanceof Error) {
-          reply
-            .status(500)
-            .send({
-              error: "Internal Server Error",
-              message: error.message,
-              stack: error.stack,
-            });
+          reply.status(500).send({
+            error: "Internal Server Error",
+            message: error.message,
+            stack: error.stack,
+          });
         } else {
-          reply
-            .status(500)
-            .send({
-              error: "Internal Server Error",
-              message: "An unknown error occurred",
-            });
+          reply.status(500).send({
+            error: "Internal Server Error",
+            message: "An unknown error occurred",
+          });
         }
       }
     },
