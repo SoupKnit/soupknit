@@ -44,6 +44,8 @@ export const cellsStore = atom<Cell[]>([])
  * TODO: unify types and schemas
  */
 export type WorkbookConfig = {
+  featureColumns: any
+  modelResults: any
   targetColumn: string | null
   taskType?: "Regression" | "Clustering" | "Classification" | "TimeSeries"
   preProcessingConfig: {

@@ -549,7 +549,7 @@ export default async function workbookController(fastify: FastifyInstance) {
         // Fetch the workbook data
         const { data: workbookData, error: workbookError } = await supa
           .from("workbook_data")
-          .select("id, files, config")
+          .select("id, files, config, created_by")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -653,8 +653,54 @@ export default async function workbookController(fastify: FastifyInstance) {
           });
         });
 
-        // Clean up the temporary file
+        // Clean up the temporary CSV file
         fs.unlinkSync(tempFilePath);
+
+        // Create a temporary file for the pickle
+        const tempPicklePath = path.join(tempDir, `model_${Date.now()}.pkl`);
+        fs.writeFileSync(
+          tempPicklePath,
+          Buffer.from(result.model_pickle, "base64"),
+        );
+
+        console.log("10. Temporary pickle file created:", tempPicklePath);
+
+        // Upload the pickle file to Supabase storage
+        const pickleFileName = `model_${workbookData.id}.pkl`;
+        const pickleFilePath = `${workbookData.created_by}/project-${projectId}/${pickleFileName}`;
+
+        try {
+          const { error: uploadError } = await supa.storage
+            .from("workbook-files")
+            .upload(pickleFilePath, fs.readFileSync(tempPicklePath), {
+              contentType: "application/octet-stream",
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error("11. Error uploading pickle file:", uploadError);
+            throw uploadError;
+          }
+
+          console.log("12. Pickle file uploaded successfully");
+
+          // Get the public URL of the uploaded pickle file
+          const {
+            data: { publicUrl },
+          } = supa.storage.from("workbook-files").getPublicUrl(pickleFilePath);
+
+          console.log("13. Got public URL for pickle file:", publicUrl);
+
+          // Clean up the temporary pickle file
+          fs.unlinkSync(tempPicklePath);
+
+          // Update the result object with the model URL
+          result.model_url = publicUrl;
+          delete result.model_pickle; // Remove the base64 pickle data from the result
+        } catch (error) {
+          console.error("14. Error in uploading pickle file:", error);
+          throw error;
+        }
 
         // Update the workbook data with the model results
         const updatedConfig = {
@@ -668,17 +714,17 @@ export default async function workbookController(fastify: FastifyInstance) {
           .eq("id", workbookData.id);
 
         if (updateError) {
-          console.error("10. Error updating workbook data:", updateError);
+          console.error("15. Error updating workbook data:", updateError);
           throw updateError;
         }
 
-        console.log("11. Workbook data updated with model results");
+        console.log("16. Workbook data updated with model results");
 
         reply
           .header("Content-Type", "application/json; charset=utf-8")
           .send(result);
       } catch (error) {
-        console.error("12. Error in /create_model:", error);
+        console.error("17. Error in /create_model:", error);
         if (error instanceof Error) {
           reply.status(500).send({
             error: "Internal Server Error",

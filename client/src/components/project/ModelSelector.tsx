@@ -89,6 +89,20 @@ export function ModelSelector() {
     }
   }
 
+  const handleDownloadPickle = () => {
+    if (modelResults && modelResults.model_url) {
+      // Create a temporary anchor element
+      const link = document.createElement("a")
+      link.href = modelResults.model_url
+      link.download = `model_${projectWorkbook?.projectId}.pkl`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } else {
+      console.error("No model URL available for download")
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -129,6 +143,11 @@ export function ModelSelector() {
             <pre className="mt-2 whitespace-pre-wrap rounded bg-gray-100 p-2">
               {JSON.stringify(modelResults, null, 2)}
             </pre>
+            {modelResults.model_url && (
+              <Button onClick={handleDownloadPickle} className="mt-2">
+                Download Model Pickle
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

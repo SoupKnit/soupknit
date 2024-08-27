@@ -12,6 +12,8 @@ import sys
 from typing import Dict, Any
 import logging
 import traceback
+import pickle
+import base64
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -87,11 +89,20 @@ def process_json_input(json_input: str) -> str:
         # Execute the generated code
         local_vars = {}
         exec(pipeline_code, globals(), local_vars)
-        
+
         # Extract the results
         results = local_vars.get('results', {})
-        logger.debug(f"Extracted results: {results}")
         
+        # Pickle the model
+        model = local_vars.get('model')
+        if model:
+            pickle_buffer = io.BytesIO()
+            pickle.dump(model, pickle_buffer)
+            pickle_buffer.seek(0)
+            results['model_pickle'] = base64.b64encode(pickle_buffer.getvalue()).decode('utf-8')
+
+        logger.debug(f"Extracted results: {results}")
+
         return json.dumps({
             "success": True,
             "results": results
@@ -104,6 +115,7 @@ def process_json_input(json_input: str) -> str:
             "error": str(e),
             "traceback": traceback.format_exc()
         })
+
 
 def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
     try:

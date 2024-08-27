@@ -10,6 +10,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectKBest, f_classif
+from scipy import sparse
+import sklearn
+
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -57,12 +60,23 @@ class RareGrouper:
         self.frequent_categories = None
 
     def fit(self, X, y=None):
-        value_counts = X.value_counts(normalize=True)
+        if sparse.issparse(X):
+            X = X.toarray()
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+        value_counts = X.iloc[:, 0].value_counts(normalize=True)
         self.frequent_categories = value_counts[value_counts >= self.rare_threshold].index
         return self
 
     def transform(self, X):
-        return X.map(lambda x: x if x in self.frequent_categories else 'Other')
+        if sparse.issparse(X):
+            X = X.toarray()
+        if not isinstance(X, pd.DataFrame):
+            X = pd.DataFrame(X)
+        return X.iloc[:, 0].map(lambda x: x if x in self.frequent_categories else 'Other').values.reshape(-1, 1)
+
+    def get_feature_names_out(self, input_features=None):
+        return ['grouped_' + (input_features[0] if input_features else 'feature')]
 
 def get_column_preprocessing(preprocessing_config, available_columns):
     logger.info("Generating column-specific preprocessing steps")
@@ -94,6 +108,19 @@ def get_column_preprocessing(preprocessing_config, available_columns):
             elif strategy == 'iterative':
                 pipeline_steps.append(('imputer', IterativeImputer()))
         
+        # Encoding (moved before high cardinality handling)
+        if column_type == 'categorical':
+            if preprocessing.get('encoding') == 'onehot':
+                pipeline_steps.append(('encoder', OneHotEncoder(handle_unknown='ignore')))
+            elif preprocessing.get('encoding') == 'ordinal':
+                pipeline_steps.append(('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)))
+        
+        # High cardinality handling
+        if 'high_cardinality' in preprocessing:
+            if preprocessing['high_cardinality'] == 'group_rare':
+                rare_threshold = params.get('rare_threshold', 0.01)
+                pipeline_steps.append(('high_cardinality', RareGrouper(rare_threshold=rare_threshold)))
+        
         # Scaling
         if 'scaling' in preprocessing:
             if preprocessing['scaling'] == 'robust':
@@ -102,13 +129,6 @@ def get_column_preprocessing(preprocessing_config, available_columns):
                 pipeline_steps.append(('scaler', StandardScaler()))
             elif preprocessing['scaling'] == 'minmax':
                 pipeline_steps.append(('scaler', MinMaxScaler()))
-        
-        # Encoding
-        if column_type == 'categorical':
-            if preprocessing.get('encoding') == 'onehot':
-                pipeline_steps.append(('encoder', OneHotEncoder(handle_unknown='ignore')))
-            elif preprocessing.get('encoding') == 'ordinal':
-                pipeline_steps.append(('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)))
         
         # Date handling
         if column_type == 'date':
@@ -119,12 +139,6 @@ def get_column_preprocessing(preprocessing_config, available_columns):
             if preprocessing['outlier_treatment'] == 'winsorize':
                 winsorize_limits = params.get('winsorize_limits', (0.05, 0.95))
                 pipeline_steps.append(('outlier_treatment', Winsorizer(limits=winsorize_limits)))
-        
-        # High cardinality handling
-        if 'high_cardinality' in preprocessing:
-            if preprocessing['high_cardinality'] == 'group_rare':
-                rare_threshold = params.get('rare_threshold', 0.01)
-                pipeline_steps.append(('high_cardinality', RareGrouper(rare_threshold=rare_threshold)))
         
         if pipeline_steps:
             transformer = Pipeline(steps=pipeline_steps)
@@ -222,6 +236,13 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         X_preprocessed = preprocessor.fit_transform(X)
         logger.info("Preprocessing completed successfully")
         logger.debug(f"Preprocessed X shape: {X_preprocessed.shape}")
+        logger.debug(f"Preprocessed X type: {type(X_preprocessed)}")
+        
+        # Convert to dense array if it's sparse
+        if sparse.issparse(X_preprocessed):
+            logger.info("Converting sparse matrix to dense array")
+            X_preprocessed = X_preprocessed.toarray()
+        
     except Exception as e:
         logger.error(f"Error during preprocessing: {str(e)}")
         logger.error(f"Dataframe columns: {X.columns.tolist()}")
@@ -229,10 +250,25 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         raise
     
     # Get feature names
-    feature_names = preprocessor.get_feature_names_out()
+    feature_names = []
+    for name, trans, cols in preprocessor.transformers_:
+        if name != 'remainder':
+            if hasattr(trans, 'get_feature_names_out'):
+                if isinstance(trans, Pipeline):
+                    # For pipeline transformers, use the last step that has get_feature_names_out
+                    last_step_with_features = next((step for step in reversed(trans.steps) if hasattr(step[1], 'get_feature_names_out')), None)
+                    if last_step_with_features:
+                        feature_names.extend(last_step_with_features[1].get_feature_names_out(cols))
+                    else:
+                        feature_names.extend(cols)
+                else:
+                    feature_names.extend(trans.get_feature_names_out(cols))
+            else:
+                feature_names.extend(cols)
     
     # Convert to DataFrame
     preprocessed_data = pd.DataFrame(X_preprocessed, columns=feature_names)
+    preprocessed_data[target_column] = y.reset_index(drop=True)
     
     # Apply additional global preprocessing steps
     if 'pca' in global_preprocessing:
@@ -295,10 +331,14 @@ if __name__ == "__main__":
             "preprocessed_file": output_csv,
             "preprocessed_data": preprocessed_json
         }
-        print(json.dumps(result))
+        # Instead of printing, write to stdout and exit with success code
+        sys.stdout.write(json.dumps(result))
+        sys.stdout.flush()
+        sys.exit(0)
     except Exception as e:
         logger.error(f"Error during preprocessing: {str(e)}")
-        print(json.dumps({"error": str(e)}))
+        # Instead of printing, write to stderr and exit with error code
+        error_result = {"error": str(e)}
+        sys.stderr.write(json.dumps(error_result))
+        sys.stderr.flush()
         sys.exit(1)
-    
-    logger.info("Script completed successfully")
