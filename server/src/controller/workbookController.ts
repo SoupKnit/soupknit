@@ -576,7 +576,7 @@ export default async function workbookController(fastify: FastifyInstance) {
         console.log("File: ", file);
         // Download the file content
         const { data: fileData, error: fileError } = await supa.storage
-          .from(file.file_url.split("/")[7]) // Assuming the bucket name is the 5th part of the URL
+          .from(file.file_url.split("/")[7])
           .download(file.file_url.split("/").slice(8).join("/"));
 
         if (fileError) {
@@ -592,14 +592,17 @@ export default async function workbookController(fastify: FastifyInstance) {
         console.log("4. Temporary file created:", tempFilePath);
 
         // Prepare input for the Python script
+        const taskType = modelConfig.taskType || workbookData.config.taskType;
         const input = JSON.stringify({
           filePath: tempFilePath,
           params: {
             ...modelConfig,
-            targetColumn:
-              modelConfig.targetColumn || workbookData.config.targetColumn,
-            taskType: modelConfig.taskType || workbookData.config.taskType,
-            // Add any other necessary parameters
+            task: taskType, // Changed from taskType to task to match Python script
+            y_column:
+              taskType === "clustering"
+                ? null
+                : modelConfig.targetColumn || workbookData.config.targetColumn,
+            X_columns: "all", // Use all columns for features
           },
         });
 

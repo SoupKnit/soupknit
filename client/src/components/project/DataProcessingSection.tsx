@@ -65,6 +65,11 @@ export function DataProcessingSection({
       !workbookConfig.targetColumn
     )
       reasons.push("!targetColumn")
+    if (
+      workbookConfig.taskType === "Clustering" &&
+      !workbookConfig.modelParams?.n_clusters
+    )
+      reasons.push("!n_clusters")
 
     const isDisabled = reasons.length > 0
     console.log("Analyze button disabled:", isDisabled, "Reasons:", reasons)
@@ -89,6 +94,7 @@ export function DataProcessingSection({
         targetColumn: workbookConfig.targetColumn || "",
         fileUrl: activeFile.file_url,
         projectId,
+        modelParams: workbookConfig.modelParams,
       })
       console.log("File analysis result:", result)
       if (result.preProcessingConfig) {
@@ -110,6 +116,16 @@ export function DataProcessingSection({
     setWorkbookConfig((prev) => ({ ...prev, targetColumn: value }))
   }
 
+  const setNumClusters = (value: string) => {
+    setWorkbookConfig((prev) => ({
+      ...prev,
+      modelParams: {
+        ...prev.modelParams,
+        n_clusters: parseInt(value, 10),
+      },
+    }))
+  }
+
   const handlePreprocess = async () => {
     if (!workbookConfig.preProcessingConfig) {
       toast.error("Please configure preprocessing steps first")
@@ -123,6 +139,7 @@ export function DataProcessingSection({
         targetColumn: workbookConfig.targetColumn || null,
         preProcessingConfig: workbookConfig.preProcessingConfig,
         projectId,
+        modelParams: workbookConfig.modelParams,
       })
 
       console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
@@ -178,7 +195,7 @@ export function DataProcessingSection({
             data={csvData}
             loading={loading}
           />
-          {workbookConfig.taskType !== "Clustering" && (
+          {workbookConfig.taskType !== "Clustering" ? (
             <div className="mt-4">
               <Select
                 value={workbookConfig.targetColumn ?? undefined}
@@ -191,6 +208,27 @@ export function DataProcessingSection({
                   {headers.map((header) => (
                     <SelectItem key={header} value={header}>
                       {header}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="mt-4">
+              <Select
+                value={
+                  workbookConfig.modelParams?.n_clusters?.toString() ??
+                  undefined
+                }
+                onValueChange={setNumClusters}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select number of clusters" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num} clusters
                     </SelectItem>
                   ))}
                 </SelectContent>

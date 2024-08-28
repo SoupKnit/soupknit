@@ -49,6 +49,9 @@ def process_json_input(json_input: str) -> str:
         file_path = data['filePath']
         params = data['params']
         
+        # Standardize task type to lowercase
+        params['task'] = params['task'].lower()
+        
         # Read the CSV file
         df = pd.read_csv(file_path)
         
@@ -58,10 +61,10 @@ def process_json_input(json_input: str) -> str:
         
         # Get the target column (y_column) if not clustering
         if params['task'] != 'clustering':
-            y_column = params.get('targetColumn')
+            y_column = params.get('target_column')
             if not y_column:
-                logger.error("No target column (y_column) specified in the parameters")
-                raise ValueError("No target column (y_column) specified in the parameters")
+                logger.error("No target column (y_column) specified in the parameters for non-clustering task")
+                raise ValueError("No target column (y_column) specified in the parameters for non-clustering task")
             
             # Update params with y_column
             params['y_column'] = y_column
@@ -73,6 +76,7 @@ def process_json_input(json_input: str) -> str:
             X_columns = df.columns.tolist()
             y_column = None
         
+        logger.debug(f"Task: {params['task']}")
         logger.debug(f"Derived X columns: {X_columns}")
         logger.debug(f"Y column: {y_column}")
         
@@ -89,7 +93,7 @@ def process_json_input(json_input: str) -> str:
         # Execute the generated code
         local_vars = {}
         exec(pipeline_code, globals(), local_vars)
-
+        
         # Extract the results
         results = local_vars.get('results', {})
         
@@ -100,14 +104,14 @@ def process_json_input(json_input: str) -> str:
             pickle.dump(model, pickle_buffer)
             pickle_buffer.seek(0)
             results['model_pickle'] = base64.b64encode(pickle_buffer.getvalue()).decode('utf-8')
-
+        
         logger.debug(f"Extracted results: {results}")
-
+        
         return json.dumps({
             "success": True,
             "results": results
         })
-
+        
     except Exception as e:
         logger.error(f"Error in process_json_input: {str(e)}", exc_info=True)
         return json.dumps({
@@ -115,8 +119,7 @@ def process_json_input(json_input: str) -> str:
             "error": str(e),
             "traceback": traceback.format_exc()
         })
-
-
+    
 def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
     try:
         code = generate_model_code(csv_file_path, params)
@@ -647,10 +650,11 @@ results['plots']['cluster_distribution'] = cluster_distribution_data
         raise ValueError(f"Unsupported task: {task}")
 
 def generate_pipeline_code(csv_file_path: str, params: Dict[str, Any]) -> str:
-    task = params['task']
+    task = params['task'].lower()  # Ensure task is lowercase
     model_type = params['model_type']
     X_columns = params['X_columns']
     y_column = params.get('y_column')
+    n_clusters = params.get('n_clusters', 3)  # Default to 3 clusters if not specified
 
     code = f"""
 import pandas as pd
@@ -692,7 +696,7 @@ X_train_scaled = scaler.fit_transform(X_train)
 
     code += f"""
 # Create and train the model
-if '{task}' == 'Regression':
+if '{task}' == 'regression':
     if '{model_type}' == 'linear_regression':
         model = LinearRegression()
     elif '{model_type}' == 'random_forest':
@@ -701,7 +705,7 @@ if '{task}' == 'Regression':
         model = LinearRegression()  # Default to linear regression
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
-elif '{task}' == 'Classification':
+elif '{task}' == 'classification':
     if '{model_type}' == 'logistic_regression':
         model = LogisticRegression()
     elif '{model_type}' == 'random_forest':
@@ -710,20 +714,20 @@ elif '{task}' == 'Classification':
         model = LogisticRegression()  # Default to logistic regression
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
-elif '{task}' == 'Clustering':
+elif '{task}' == 'clustering':
     if '{model_type}' == 'kmeans':
-        model = KMeans(n_clusters=3, random_state=42)
+        model = KMeans(n_clusters={n_clusters}, random_state=42)
     elif '{model_type}' == 'dbscan':
         model = DBSCAN(eps=0.5, min_samples=5)
     else:
-        model = KMeans(n_clusters=3, random_state=42)  # Default to KMeans
+        model = KMeans(n_clusters={n_clusters}, random_state=42)  # Default to KMeans
     labels = model.fit_predict(X_train_scaled)
 else:
     raise ValueError(f"Unsupported task: {task}")
 
 # Evaluate the model
 results = {{}}
-if '{task}' == 'Regression':
+if '{task}' == 'regression':
     mse = mean_squared_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
     mae = mean_absolute_error(y_test, y_pred)
@@ -732,14 +736,14 @@ if '{task}' == 'Regression':
         'r2': r2,
         'mae': mae
     }}
-elif '{task}' == 'Classification':
+elif '{task}' == 'classification':
     accuracy = accuracy_score(y_test, y_pred)
     classification_rep = classification_report(y_test, y_pred, output_dict=True)
     results = {{
         'accuracy': accuracy,
         'classification_report': classification_rep
     }}
-elif '{task}' == 'Clustering':
+elif '{task}' == 'clustering':
     if hasattr(model, 'inertia_'):
         results['inertia'] = float(model.inertia_)
     silhouette_avg = silhouette_score(X_train_scaled, labels)
