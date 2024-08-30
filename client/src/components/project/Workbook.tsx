@@ -129,8 +129,12 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: async () =>
-      workbookActions.deleteProject(env.supa, projectAndWorkbook),
+    mutationFn: async () => {
+      if (!activeProject) {
+        throw new Error("No active project")
+      }
+      return workbookActions.deleteProject(env.supa, activeProject)
+    },
     onSuccess: () => {
       toast.success("Project deleted successfully")
       // Redirect to projects list or handle post-deletion navigation

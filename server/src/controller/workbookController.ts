@@ -375,8 +375,6 @@ export default async function workbookController(fastify: FastifyInstance) {
           preProcessingConfig,
         });
 
-        console.log(input);
-
         // Specify the path to your Python script
         const scriptPath = "../packages/python/preprocessing.py";
 
@@ -421,12 +419,6 @@ export default async function workbookController(fastify: FastifyInstance) {
             },
           });
         });
-
-        const parsedData = Papa.parse(result.preprocessed_data, {
-          header: true,
-          skipEmptyLines: true,
-        });
-        console.log("Parsed data:", parsedData);
 
         console.log("16. Uploading preprocessed file to storage");
         // Upload the preprocessed file to storage
