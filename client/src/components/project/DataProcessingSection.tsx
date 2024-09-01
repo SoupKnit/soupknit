@@ -113,7 +113,10 @@ export function DataProcessingSection({
   }
 
   const setTargetColumn = (value: string) => {
-    setWorkbookConfig((prev) => ({ ...prev, targetColumn: value }))
+    setWorkbookConfig((prev) => {
+      const featureColumns = headers.filter((header) => header !== value)
+      return { ...prev, targetColumn: value, featureColumns }
+    })
   }
 
   const setNumClusters = (value: string) => {
@@ -168,6 +171,18 @@ export function DataProcessingSection({
       setWorkbookConfig((prev) => ({ ...prev, taskType: "Regression" }))
     }
   }, [workbookConfig.taskType, setWorkbookConfig])
+
+  useEffect(() => {
+    if (headers.length > 0 && workbookConfig.targetColumn) {
+      const featureColumns = headers.filter(
+        (header) => header !== workbookConfig.targetColumn,
+      )
+      setWorkbookConfig((prev) => ({
+        ...prev,
+        featureColumns,
+      }))
+    }
+  }, [headers, workbookConfig.targetColumn, setWorkbookConfig])
 
   if (workbookQuery.isLoading) {
     return <Skeleton className="h-[500px] w-full" />

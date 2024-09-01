@@ -14,6 +14,7 @@ import {
   DataProcessingSectionHeader,
 } from "./DataProcessingSection"
 import { ModelDeploySection, ModelDeploySectionHeader } from "./ModelDeployMain"
+import { ModelPrediction, ModelPredictionHeader } from "./ModelPrediction"
 import { ModelSelector, ModelSelectorHeader } from "./ModelSelector"
 import {
   SelectTaskTypeSection,
@@ -59,6 +60,7 @@ const sections = [
   "Overview",
   "Preprocessing",
   "Model Creation",
+  "Model Prediction",
   "Deploy",
 ] as const
 
@@ -237,6 +239,8 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
           ? "Proceed to Model Creation"
           : "Select Target Column"
       case 2:
+        return "Predict Values"
+      case 3:
         return "Deploy Model"
       default:
         return "Next"
@@ -370,6 +374,15 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
           )}
 
           {activeSection === 3 && (
+            <>
+              <ModelPredictionHeader />
+              <CardContent>
+                <ModelPrediction />
+              </CardContent>
+            </>
+          )}
+
+          {activeSection === 4 && (
             <>
               <ModelDeploySectionHeader />
               <CardContent>
