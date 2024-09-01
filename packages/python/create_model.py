@@ -117,7 +117,8 @@ def process_json_input(json_input: str) -> str:
         return json.dumps({
             "success": False,
             "error": str(e),
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
+            "available_columns": df.columns.tolist() if 'df' in locals() else "DataFrame not created"
         })
     
 def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
@@ -131,6 +132,12 @@ def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Error in create_model_file: {str(e)}")
         raise
+    
+def get_column_case_insensitive(df, column_name):
+    for col in df.columns:
+        if col.lower() == column_name.lower():
+            return col
+    raise KeyError(f"Column '{column_name}' not found in DataFrame. Available columns: {df.columns.tolist()}")
 
 def execute_pipeline_and_collect_results(pipeline_code: str, df: pd.DataFrame, params: dict) -> dict:
     try:
@@ -155,7 +162,8 @@ def execute_pipeline_and_collect_results(pipeline_code: str, df: pd.DataFrame, p
             raise ValueError(f"The y column '{y_column}' is missing from the DataFrame")
 
         X = df[X_columns]
-        y = df[y_column]
+        target_column = get_column_case_insensitive(df, params['target_column'])
+        y = df[target_column]
 
         logger.debug(f"X shape: {X.shape}")
         logger.debug(f"y shape: {y.shape}")
@@ -771,7 +779,7 @@ def create_cluster_distribution_data(y_pred):
     return {
         'clusters': unique.tolist(),
         'counts': counts.tolist()
-    }
+    } 
     
 if __name__ == "__main__":
     logger.info("Script started")

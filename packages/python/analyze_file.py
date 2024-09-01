@@ -68,11 +68,6 @@ def generate_preprocessing_config(df, target_column=None, task=None):
         "global_params": {},
         "columns": []
     }
-    
-    # Normalize column names
-    df.columns = df.columns.str.strip().str.lower()
-    if target_column:
-        target_column = target_column.strip().lower()
 
     # Function to check if a column should be dropped
     def should_drop_column(col):
@@ -202,9 +197,9 @@ if __name__ == "__main__":
     df = pd.read_csv(io.StringIO(file_content))
 
     # Normalize column names in the dataframe
-    df.columns = df.columns.str.strip().str.lower()
+    df.columns = df.columns.str.strip()
     if target_column:
-        target_column = target_column.strip().lower()
+        target_column = target_column.strip()
 
     # Generate the preprocessing config
     preprocessing_config = generate_preprocessing_config(df, target_column, task_type)

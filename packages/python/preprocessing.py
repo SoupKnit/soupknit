@@ -201,11 +201,6 @@ def apply_global_preprocessing(data, preprocessing_config):
 
     return data
 
-def normalize_column_name(col):
-    if col is None or str(col).strip() == "":
-        return None
-    return str(col).strip().lower()
-
 def get_feature_names(column_transformer):
     """Get feature names from all transformers."""
     feature_names = []
@@ -237,37 +232,33 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         logger.error(f"Error loading data from {file_path}: {str(e)}")
         raise
 
-    # Normalize column names
-    data.columns = [normalize_column_name(col) for col in data.columns]
-    normalized_target_column = normalize_column_name(target_column)
-
     logger.debug(f"Normalized columns in dataframe: {data.columns.tolist()}")
-    logger.debug(f"Normalized target column: {normalized_target_column}")
+    logger.debug(f"Normalized target column: {target_column}")
 
     # Handle target column based on task type
     if task_type.lower() in ['regression', 'classification']:
         # Supervised learning task
-        if normalized_target_column not in data.columns:
-            error_message = f"Target column '{normalized_target_column}' not found in the dataframe."
+        if target_column not in data.columns:
+            error_message = f"Target column '{target_column}' not found in the dataframe."
             logger.error(error_message)
             raise ValueError(error_message)
 
         # Handle missing values in target column
         target_imputation = preprocessing_config.get('target_imputation', 'drop')
         if target_imputation == 'drop':
-            data = data.dropna(subset=[normalized_target_column])
+            data = data.dropna(subset=[target_column])
             logger.info(f"Dropped rows with missing target values. New shape: {data.shape}")
         elif target_imputation in ['mean', 'median', 'most_frequent']:
             imputer = SimpleImputer(strategy=target_imputation)
-            data[normalized_target_column] = imputer.fit_transform(data[[normalized_target_column]])
+            data[target_column] = imputer.fit_transform(data[[target_column]])
             logger.info(f"Imputed missing target values using {target_imputation} strategy")
         else:
             error_message = f"Unsupported target imputation strategy: {target_imputation}"
             logger.error(error_message)
             raise ValueError(error_message)
 
-        y = data[normalized_target_column]
-        X = data.drop(columns=[normalized_target_column])
+        y = data[target_column]
+        X = data.drop(columns=[target_column])
     elif task_type.lower() == 'clustering':
         # Unsupervised learning task (clustering)
         logger.info("Clustering task detected. No target column will be used.")
@@ -330,7 +321,7 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
 
     # Add target column back if it exists
     if y is not None:
-        preprocessed_data[normalized_target_column] = y.reset_index(drop=True)
+        preprocessed_data[target_column] = y.reset_index(drop=True)
 
     # Save preprocessed data
     output_csv = file_path.rsplit(".", 1)[0] + "_preprocessed.csv"

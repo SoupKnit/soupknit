@@ -621,18 +621,33 @@ export default async function workbookController(fastify: FastifyInstance) {
             onClose: (code: number) => {
               if (code !== 0) {
                 console.error("7. Python script error:", stderr);
-                reject(
-                  new Error(
-                    `Python script exited with code ${code}. Stderr: ${stderr}`,
-                  ),
-                );
+                try {
+                  const errorDetails = JSON.parse(stderr);
+                  console.error("Error details:", errorDetails);
+                  reject(
+                    new Error(
+                      `Python script error: ${errorDetails.error}\nAvailable columns: ${errorDetails.available_columns}`,
+                    ),
+                  );
+                } catch {
+                  reject(
+                    new Error(
+                      `Python script exited with code ${code}. Stderr: ${stderr}`,
+                    ),
+                  );
+                }
               } else {
                 try {
                   const jsonResult = JSON.parse(stdout);
-                  console.log("8. Python script executed successfully");
+                  console.log("8. Python script executed");
                   if (jsonResult.success) {
                     resolve(jsonResult.results);
                   } else {
+                    console.error(
+                      "Python script returned an error:",
+                      jsonResult.error,
+                      jsonResult.available_columns,
+                    );
                     reject(new Error(jsonResult.error));
                   }
                 } catch (error) {
