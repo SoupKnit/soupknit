@@ -375,8 +375,6 @@ export default async function workbookController(fastify: FastifyInstance) {
           preProcessingConfig,
         });
 
-        console.log(input);
-
         // Specify the path to your Python script
         const scriptPath = "../packages/python/preprocessing.py";
 
@@ -421,12 +419,6 @@ export default async function workbookController(fastify: FastifyInstance) {
             },
           });
         });
-
-        const parsedData = Papa.parse(result.preprocessed_data, {
-          header: true,
-          skipEmptyLines: true,
-        });
-        console.log("Parsed data:", parsedData);
 
         console.log("16. Uploading preprocessed file to storage");
         // Upload the preprocessed file to storage
@@ -526,6 +518,234 @@ export default async function workbookController(fastify: FastifyInstance) {
           reply
             .status(500)
             .send({ error: "Internal Server Error", message: error.message });
+        }
+      }
+    },
+  );
+
+  // POST /create_model
+  fastify.post(
+    "/create_model",
+    async function (_request: FastifyRequest, reply: FastifyReply) {
+      const { projectId, modelConfig } = _request.body as {
+        projectId: string;
+        modelConfig: any;
+      };
+
+      try {
+        console.log(
+          "1. Received create_model request for projectId:",
+          projectId,
+        );
+
+        // Fetch the workbook data
+        const { data: workbookData, error: workbookError } = await supa
+          .from("workbook_data")
+          .select("id, files, config, created_by")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (workbookError) {
+          console.error("2. Error fetching workbook data:", workbookError);
+          throw workbookError;
+        }
+
+        if (
+          !workbookData ||
+          !workbookData.files ||
+          workbookData.files.length === 0
+        ) {
+          throw new Error("No workbook or file found for the given project_id");
+        }
+
+        // Get the preprocessed file if it exists, otherwise use the original file
+        const file =
+          workbookData.files.find((f: any) => f.preprocessed_file) ||
+          workbookData.files[0];
+
+        console.log("File: ", file);
+        // Download the file content
+        const { data: fileData, error: fileError } = await supa.storage
+          .from(file.file_url.split("/")[7])
+          .download(file.file_url.split("/").slice(8).join("/"));
+
+        if (fileError) {
+          console.error("3. Error downloading file:", fileError);
+          throw fileError;
+        }
+
+        // Create a temporary file
+        const tempDir = os.tmpdir();
+        const tempFilePath = path.join(tempDir, `temp_${Date.now()}.csv`);
+        fs.writeFileSync(tempFilePath, await fileData.text());
+
+        console.log("4. Temporary file created:", tempFilePath);
+
+        // Prepare input for the Python script
+        const taskType = modelConfig.taskType || workbookData.config.taskType;
+        const input = JSON.stringify({
+          filePath: tempFilePath,
+          params: {
+            ...modelConfig,
+            task: taskType, // Changed from taskType to task to match Python script
+            y_column:
+              taskType === "clustering"
+                ? null
+                : modelConfig.targetColumn || workbookData.config.targetColumn,
+            X_columns: "all", // Use all columns for features
+          },
+        });
+
+        console.log("5. Input prepared:", input);
+
+        // Run the Python script
+        const scriptPath = "../packages/python/create_model.py";
+        console.log("6. Running Python script");
+
+        const result: any = await new Promise((resolve, reject) => {
+          let stdout = "";
+          let stderr = "";
+
+          runInPythonSandbox({
+            input,
+            files: [tempFilePath],
+            scriptPath,
+            onData: (data: string) => {
+              stdout += data;
+            },
+            onError: (error: string) => {
+              stderr += error;
+            },
+            onClose: (code: number) => {
+              if (code !== 0) {
+                console.error("7. Python script error:", stderr);
+                try {
+                  const errorDetails = JSON.parse(stderr);
+                  console.error("Error details:", errorDetails);
+                  reject(
+                    new Error(
+                      `Python script error: ${errorDetails.error}\nAvailable columns: ${errorDetails.available_columns}`,
+                    ),
+                  );
+                } catch {
+                  reject(
+                    new Error(
+                      `Python script exited with code ${code}. Stderr: ${stderr}`,
+                    ),
+                  );
+                }
+              } else {
+                try {
+                  const jsonResult = JSON.parse(stdout);
+                  console.log("8. Python script executed");
+                  if (jsonResult.success) {
+                    resolve(jsonResult.results);
+                  } else {
+                    console.error(
+                      "Python script returned an error:",
+                      jsonResult.error,
+                      jsonResult.available_columns,
+                    );
+                    reject(new Error(jsonResult.error));
+                  }
+                } catch (error) {
+                  console.error("9. Failed to parse JSON result:", error);
+                  reject(
+                    new Error(
+                      `Failed to parse JSON result. Stdout: ${stdout}, Stderr: ${stderr}`,
+                    ),
+                  );
+                }
+              }
+            },
+          });
+        });
+
+        // Clean up the temporary CSV file
+        fs.unlinkSync(tempFilePath);
+
+        // Create a temporary file for the pickle
+        const tempPicklePath = path.join(tempDir, `model_${Date.now()}.pkl`);
+        fs.writeFileSync(
+          tempPicklePath,
+          Buffer.from(result.model_pickle, "base64"),
+        );
+
+        console.log("10. Temporary pickle file created:", tempPicklePath);
+
+        // Upload the pickle file to Supabase storage
+        const pickleFileName = `model_${workbookData.id}.pkl`;
+        const pickleFilePath = `${workbookData.created_by}/project-${projectId}/${pickleFileName}`;
+
+        try {
+          const { error: uploadError } = await supa.storage
+            .from("workbook-files")
+            .upload(pickleFilePath, fs.readFileSync(tempPicklePath), {
+              contentType: "application/octet-stream",
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error("11. Error uploading pickle file:", uploadError);
+            throw uploadError;
+          }
+
+          console.log("12. Pickle file uploaded successfully");
+
+          // Get the public URL of the uploaded pickle file
+          const {
+            data: { publicUrl },
+          } = supa.storage.from("workbook-files").getPublicUrl(pickleFilePath);
+
+          console.log("13. Got public URL for pickle file:", publicUrl);
+
+          // Clean up the temporary pickle file
+          fs.unlinkSync(tempPicklePath);
+
+          // Update the result object with the model URL
+          result.model_url = publicUrl;
+          delete result.model_pickle; // Remove the base64 pickle data from the result
+        } catch (error) {
+          console.error("14. Error in uploading pickle file:", error);
+          throw error;
+        }
+
+        // Update the workbook data with the model results
+        const updatedConfig = {
+          ...workbookData.config,
+          modelResults: result,
+        };
+
+        const { error: updateError } = await supa
+          .from("workbook_data")
+          .update({ config: updatedConfig })
+          .eq("id", workbookData.id);
+
+        if (updateError) {
+          console.error("15. Error updating workbook data:", updateError);
+          throw updateError;
+        }
+
+        console.log("16. Workbook data updated with model results");
+
+        reply
+          .header("Content-Type", "application/json; charset=utf-8")
+          .send(result);
+      } catch (error) {
+        console.error("17. Error in /create_model:", error);
+        if (error instanceof Error) {
+          reply.status(500).send({
+            error: "Internal Server Error",
+            message: error.message,
+            stack: error.stack,
+          });
+        } else {
+          reply.status(500).send({
+            error: "Internal Server Error",
+            message: "An unknown error occurred",
+          });
         }
       }
     },

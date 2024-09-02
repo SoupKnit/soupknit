@@ -1,27 +1,35 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, classification_report, confusion_matrix, silhouette_score
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.svm import SVR, SVC
 from sklearn.cluster import KMeans, DBSCAN
-import matplotlib.pyplot as plt
-import seaborn as sns
 import json
 import io
-from typing import Dict, Any, List
+import sys
+from typing import Dict, Any
 import logging
+import traceback
+import pickle
 import base64
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+class CaptureStdout:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = self._stringio = io.StringIO()
+        return self
+
+    def __exit__(self, *args):
+        sys.stdout = self._original_stdout
+
+    def get_output(self):
+        return self._stringio.getvalue()
 
 try:
     from xgboost import XGBRegressor, XGBClassifier
@@ -32,68 +40,87 @@ except ImportError:
 
 def process_json_input(json_input: str) -> str:
     try:
+        logger.debug(f"Received JSON input: {json_input}")
         data = json.loads(json_input)
         
-        logger.debug(f"Received data: {json.dumps(data, indent=2)}")
+        logger.debug(f"Parsed data: {json.dumps(data, indent=2)}")
         
-        # Extract the dataframe and parameters
-        df_json = data['dataframe']
+        # Extract the file path and parameters
+        file_path = data['filePath']
         params = data['params']
         
-        # Convert the dataframe from JSON to pandas DataFrame
-        df = pd.read_json(io.StringIO(df_json))
+        # Standardize task type to lowercase
+        params['task'] = params['task'].lower()
         
-        logger.debug(f"Original DataFrame columns: {df.columns.tolist()}")
-        logger.debug(f"Original DataFrame info:\n{df.info()}")
-        logger.debug(f"First few rows of the DataFrame:\n{df.head().to_string()}")
-
-        # Get all columns that should be included
-        X_columns = params['X_columns']
-        y_column = params['y_column']
-        all_columns = X_columns + [y_column]
+        # Read the CSV file
+        df = pd.read_csv(file_path)
         
-        logger.debug(f"Requested X columns: {X_columns}")
-        logger.debug(f"Requested y column: {y_column}")
-        logger.debug(f"All requested columns: {all_columns}")
+        logger.debug(f"DataFrame shape: {df.shape}")
+        logger.debug(f"DataFrame columns: {df.columns.tolist()}")
+        logger.debug(f"DataFrame info:\n{df.info(buf=io.StringIO())}")
         
-        # Check for missing columns
-        missing_columns = set(all_columns) - set(df.columns)
-        if missing_columns:
-            logger.error(f"Missing columns: {missing_columns}")
-            logger.error(f"DataFrame columns: {df.columns.tolist()}")
-            logger.error(f"Requested columns: {all_columns}")
-            logger.error(f"Column name comparison:")
-            for col in all_columns:
-                if col in df.columns:
-                    logger.debug(f"Column '{col}' is present in the DataFrame")
-                else:
-                    logger.error(f"Column '{col}' is NOT present in the DataFrame")
-                    # Check for case sensitivity issues
-                    lower_case_match = col.lower() in [c.lower() for c in df.columns]
-                    if lower_case_match:
-                        logger.error(f"However, a case-insensitive match for '{col}' was found")
-            raise ValueError(f"The following columns are not in the dataframe: {missing_columns}")
-
+        # Get the target column (y_column) if not clustering
+        if params['task'] != 'clustering':
+            y_column = params.get('target_column')
+            if not y_column:
+                logger.error("No target column (y_column) specified in the parameters for non-clustering task")
+                raise ValueError("No target column (y_column) specified in the parameters for non-clustering task")
+            
+            # Update params with y_column
+            params['y_column'] = y_column
+            
+            # Derive X_columns by dropping the y_column
+            X_columns = df.columns.drop(y_column).tolist()
+        else:
+            # For clustering, use all columns
+            X_columns = df.columns.tolist()
+            y_column = None
+        
+        logger.debug(f"Task: {params['task']}")
+        logger.debug(f"Derived X columns: {X_columns}")
+        logger.debug(f"Y column: {y_column}")
+        
         # Filter the DataFrame to include only the necessary columns
-        df = df[all_columns]
+        df = df[X_columns + ([y_column] if y_column else [])]
         
-        logger.debug(f"Filtered DataFrame columns: {df.columns.tolist()}")
-        logger.debug(f"Filtered DataFrame info:\n{df.info()}")
-
-        csv_file_path = 'dataframe.csv'
-        df.to_csv(csv_file_path, index=False)
-        logger.info(f"DataFrame saved to {csv_file_path}")
+        # Update params with the derived X_columns
+        params['X_columns'] = X_columns
         
-        code = generate_pipeline_code(csv_file_path, params)
+        # Generate and execute the pipeline code
+        pipeline_code = generate_pipeline_code(file_path, params)
+        logger.debug(f"Generated pipeline code:\n{pipeline_code}")
         
-        logger.info("Pipeline code has been generated successfully.")
-
-        return code
-
+        # Execute the generated code
+        local_vars = {}
+        exec(pipeline_code, globals(), local_vars)
+        
+        # Extract the results
+        results = local_vars.get('results', {})
+        
+        # Pickle the model
+        model = local_vars.get('model')
+        if model:
+            pickle_buffer = io.BytesIO()
+            pickle.dump(model, pickle_buffer)
+            pickle_buffer.seek(0)
+            results['model_pickle'] = base64.b64encode(pickle_buffer.getvalue()).decode('utf-8')
+        
+        logger.debug(f"Extracted results: {results}")
+        
+        return json.dumps({
+            "success": True,
+            "results": results
+        })
+        
     except Exception as e:
         logger.error(f"Error in process_json_input: {str(e)}", exc_info=True)
-        raise
-
+        return json.dumps({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "available_columns": df.columns.tolist() if 'df' in locals() else "DataFrame not created"
+        })
+    
 def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
     try:
         code = generate_model_code(csv_file_path, params)
@@ -105,6 +132,12 @@ def create_model_file(csv_file_path: str, params: Dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Error in create_model_file: {str(e)}")
         raise
+    
+def get_column_case_insensitive(df, column_name):
+    for col in df.columns:
+        if col.lower() == column_name.lower():
+            return col
+    raise KeyError(f"Column '{column_name}' not found in DataFrame. Available columns: {df.columns.tolist()}")
 
 def execute_pipeline_and_collect_results(pipeline_code: str, df: pd.DataFrame, params: dict) -> dict:
     try:
@@ -129,7 +162,8 @@ def execute_pipeline_and_collect_results(pipeline_code: str, df: pd.DataFrame, p
             raise ValueError(f"The y column '{y_column}' is missing from the DataFrame")
 
         X = df[X_columns]
-        y = df[y_column]
+        target_column = get_column_case_insensitive(df, params['target_column'])
+        y = df[target_column]
 
         logger.debug(f"X shape: {X.shape}")
         logger.debug(f"y shape: {y.shape}")
@@ -536,7 +570,7 @@ model.fit(X_train_scaled if 'X_train_scaled' in locals() else X_train, y_train)
 
 def get_model(task: str, model_type: str, model_params: Dict[str, Any]) -> str:
     model_map = {
-        'regression': {
+        'Regression': {
             'linear_regression': 'LinearRegression',
             'ridge': 'Ridge',
             'lasso': 'Lasso',
@@ -547,7 +581,7 @@ def get_model(task: str, model_type: str, model_params: Dict[str, Any]) -> str:
             'svr': 'SVR',
             'knn': 'KNeighborsRegressor'
         },
-        'classification': {
+        'Classification': {
             'logistic_regression': 'LogisticRegression',
             'decision_tree': 'DecisionTreeClassifier',
             'random_forest': 'RandomForestClassifier',
@@ -555,7 +589,7 @@ def get_model(task: str, model_type: str, model_params: Dict[str, Any]) -> str:
             'svc': 'SVC',
             'knn': 'KNeighborsClassifier'
         },
-        'clustering': {
+        'Clustering': {
             'kmeans': 'KMeans',
             'dbscan': 'DBSCAN'
         }
@@ -567,7 +601,7 @@ def get_model(task: str, model_type: str, model_params: Dict[str, Any]) -> str:
     return f"{model_map[task][model_type]}(**{model_params})"
 
 def get_evaluation_code(task: str) -> str:
-    if task == 'regression':
+    if task == 'Regression':
         return """
 mse = mean_squared_error(y_test, y_pred)
 r2 = r2_score(y_test, y_pred)
@@ -584,7 +618,7 @@ print(f'Mean Absolute Error: {mae}')
 actual_vs_predicted_data = create_actual_vs_predicted_data(y_test, y_pred)
 results['plots']['actual_vs_predicted'] = actual_vs_predicted_data
         """
-    elif task == 'classification':
+    elif task == 'Classification':
         return """
 print(f'Shape of y_test: {y_test.shape}')
 print(f'Shape of y_pred: {y_pred.shape}')
@@ -604,7 +638,7 @@ print(classification_report(y_test, y_pred))
 confusion_matrix_data = create_confusion_matrix_data(y_test, y_pred)
 results['plots']['confusion_matrix'] = confusion_matrix_data
         """
-    elif task == 'clustering':
+    elif task == 'Clustering':
         return """
 if hasattr(model, 'labels_'):
     labels = model.labels_
@@ -624,95 +658,111 @@ results['plots']['cluster_distribution'] = cluster_distribution_data
         raise ValueError(f"Unsupported task: {task}")
 
 def generate_pipeline_code(csv_file_path: str, params: Dict[str, Any]) -> str:
-    task = params['task']
+    task = params['task'].lower()  # Ensure task is lowercase
     model_type = params['model_type']
-    y_column = params['y_column']
+    X_columns = params['X_columns']
+    y_column = params.get('y_column')
+    n_clusters = params.get('n_clusters', 3)  # Default to 3 clusters if not specified
 
-    imports = """
+    code = f"""
 import pandas as pd
 import numpy as np
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, r2_score, accuracy_score, classification_report, silhouette_score
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingRegressor, GradientBoostingClassifier
-from sklearn.svm import SVR, SVC
-from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, classification_report, silhouette_score
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.cluster import KMeans, DBSCAN
-import logging
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-    """
-
-    data_loading = f"""
-# Load data
-data = pd.read_csv('{csv_file_path}')
-logger.info(f"Loaded data shape: {{data.shape}}")
-logger.info(f"Loaded data columns: {{data.columns.tolist()}}")
-logger.info(f"Data info:\\n{{data.info()}}")
-logger.info(f"Data head:\\n{{data.head()}}")
-    """
-
-    pipeline_creation = f"""
-
-
-# Define model
-model = {get_model(task, model_type, params.get('model_params', {}))}
-
-# Create full pipeline
-pipeline = Pipeline([
-    ('model', model)
-])
+# Read the CSV file
+df = pd.read_csv('{csv_file_path}')
 
 # Prepare data
-X_columns = {params['X_columns']}
-y_column = '{y_column}'
+X = df[{X_columns}]
+"""
 
-logger.info(f"X columns: {{X_columns}}")
-logger.info(f"y column: {{y_column}}")
-
-missing_X_columns = set(X_columns) - set(data.columns)
-if missing_X_columns:
-    raise ValueError(f"The following X columns are missing from the data: {{missing_X_columns}}")
-
-if y_column not in data.columns:
-    raise ValueError(f"The y column '{{y_column}}' is missing from the data")
-
-X = data[X_columns]
-y = data[y_column]
-
-logger.info(f"X shape: {{X.shape}}")
-logger.info(f"y shape: {{y.shape}}")
-
+    if task != 'clustering':
+        code += f"y = df['{y_column}']\n"
+        code += """
 # Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size={params.get('test_size', 0.2)}, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+"""
+    else:
+        code += """
+# For clustering, we don't need to split the data
+X_train = X
+"""
 
-logger.info(f"X_train shape: {{X_train.shape}}")
-logger.info(f"X_test shape: {{X_test.shape}}")
-logger.info(f"y_train shape: {{y_train.shape}}")
-logger.info(f"y_test shape: {{y_test.shape}}")
+    code += """
+# Scale features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+"""
 
-# Fit the pipeline
-pipeline.fit(X_train, y_train)
+    if task != 'clustering':
+        code += "X_test_scaled = scaler.transform(X_test)\n"
 
-# Make predictions
-y_pred = pipeline.predict(X_test)
-
-logger.info(f"y_pred shape: {{y_pred.shape}}")
+    code += f"""
+# Create and train the model
+if '{task}' == 'regression':
+    if '{model_type}' == 'linear_regression':
+        model = LinearRegression()
+    elif '{model_type}' == 'random_forest':
+        model = RandomForestRegressor()
+    else:
+        model = LinearRegression()  # Default to linear regression
+    model.fit(X_train_scaled, y_train)
+    y_pred = model.predict(X_test_scaled)
+elif '{task}' == 'classification':
+    if '{model_type}' == 'logistic_regression':
+        model = LogisticRegression()
+    elif '{model_type}' == 'random_forest':
+        model = RandomForestClassifier()
+    else:
+        model = LogisticRegression()  # Default to logistic regression
+    model.fit(X_train_scaled, y_train)
+    y_pred = model.predict(X_test_scaled)
+elif '{task}' == 'clustering':
+    if '{model_type}' == 'kmeans':
+        model = KMeans(n_clusters={n_clusters}, random_state=42)
+    elif '{model_type}' == 'dbscan':
+        model = DBSCAN(eps=0.5, min_samples=5)
+    else:
+        model = KMeans(n_clusters={n_clusters}, random_state=42)  # Default to KMeans
+    labels = model.fit_predict(X_train_scaled)
+else:
+    raise ValueError(f"Unsupported task: {task}")
 
 # Evaluate the model
-results = {{'metrics': {{}}, 'plots': {{}}}}
-{get_evaluation_code(task)}
+results = {{}}
+if '{task}' == 'regression':
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    mae = mean_absolute_error(y_test, y_pred)
+    results = {{
+        'mse': mse,
+        'r2': r2,
+        'mae': mae
+    }}
+elif '{task}' == 'classification':
+    accuracy = accuracy_score(y_test, y_pred)
+    classification_rep = classification_report(y_test, y_pred, output_dict=True)
+    results = {{
+        'accuracy': accuracy,
+        'classification_report': classification_rep
+    }}
+elif '{task}' == 'clustering':
+    if hasattr(model, 'inertia_'):
+        results['inertia'] = float(model.inertia_)
+    silhouette_avg = silhouette_score(X_train_scaled, labels)
+    results['silhouette_score'] = float(silhouette_avg)
+    results['num_clusters'] = int(len(np.unique(labels)))
 
-logger.info('Pipeline execution completed.')
-    """
+results['task'] = '{task}'
+results['model_type'] = '{model_type}'
+"""
 
-    return imports + "\n\n" + data_loading + "\n\n" + pipeline_creation
+    return code
 
 def create_actual_vs_predicted_data(y_true, y_pred):
     return {
@@ -729,4 +779,14 @@ def create_cluster_distribution_data(y_pred):
     return {
         'clusters': unique.tolist(),
         'counts': counts.tolist()
-    }
+    } 
+    
+if __name__ == "__main__":
+    logger.info("Script started")
+    json_input = sys.stdin.read()
+    logger.debug(f"Received input: {json_input}")
+    result = process_json_input(json_input)
+    logger.debug(f"Sending result: {result}")
+    print(result, flush=True)
+    sys.stdout.flush()
+    logger.info("Script finished")

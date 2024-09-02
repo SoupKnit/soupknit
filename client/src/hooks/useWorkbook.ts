@@ -316,6 +316,50 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
+  const createModel = useMutation({
+    mutationFn: async (data: { projectId: string; modelConfig: any }) => {
+      console.log("Creating model with", data)
+      const response = await fetch(`${env.serverUrl}/app/create_model`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
+        },
+        body: JSON.stringify(data),
+      })
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || "Failed to create model")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      toast.success("Model created successfully")
+      console.log("Model creation result:", data)
+
+      // Update the workbook config with the new model results
+      setWorkbookConfig((prevConfig) => ({
+        ...prevConfig,
+        modelResults: data,
+      }))
+
+      // Invalidate the workbook query to trigger a refetch
+      if (_projectId) {
+        queryClient.invalidateQueries({
+          queryKey: ["workbook", _projectId, env.supa],
+        })
+      }
+
+      // Invalidate the workbook config query to trigger a refetch
+      queryClient.invalidateQueries({
+        queryKey: ["workbookConfig", _projectId],
+      })
+    },
+    onError: (error) => {
+      toast.error(`Error creating model: ${error.message}`)
+    },
+  })
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -411,6 +455,7 @@ export function useWorkbook(_projectId: string) {
     setCSVData,
     setHeaders,
     setWorkbookConfig,
+    createModel,
     // workbookId,
     // workbookName,
     // workbookFileType,
