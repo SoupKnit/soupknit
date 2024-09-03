@@ -27,6 +27,8 @@ export function DataProcessingSection({
   const [activeFile] = useAtom(activeFileStore)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isPreprocessing, setIsPreprocessing] = useState(false)
+  const [preprocessedData, setPreprocessedData] = useState<any[]>([])
+  const [preprocessedHeaders, setPreprocessedHeaders] = useState<string[]>([])
   const {
     csvData,
     headers,
@@ -147,13 +149,11 @@ export function DataProcessingSection({
 
       console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
 
+      // In handlePreprocess:
       if (result.previewDataPreprocessed) {
-        // Update the csvData state with the new preprocessed data
         const newHeaders = Object.keys(result.previewDataPreprocessed[0])
-        const newData = result.previewDataPreprocessed.map(Object.values)
-
-        setCSVData(newData)
-        setHeaders(newHeaders)
+        setPreprocessedHeaders(newHeaders)
+        setPreprocessedData(result.previewDataPreprocessed)
       }
 
       toast.success("Data preprocessed successfully")
@@ -272,13 +272,13 @@ export function DataProcessingSection({
                   {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
                 </Button>
               </div>
-              {preprocessFile.isSuccess && csvData.length > 0 && (
+              {preprocessFile.isSuccess && preprocessedData.length > 0 && (
                 <div className="mt-4">
                   <h3>Preprocessed Data Preview</h3>
                   <DatasetPreview
                     name="Preprocessed Data"
-                    headers={headers}
-                    data={csvData}
+                    headers={preprocessedHeaders}
+                    data={preprocessedData}
                     loading={false}
                   />
                 </div>
