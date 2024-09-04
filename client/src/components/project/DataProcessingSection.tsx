@@ -131,6 +131,41 @@ export function DataProcessingSection({
     }))
   }
 
+  const globalPreprocessingOptions = [
+    "drop_constant",
+    "drop_duplicate",
+    "pca",
+    "feature_selection",
+  ]
+
+  const handleGlobalPreprocessingChange = (option: string) => {
+    setWorkbookConfig((prev) => ({
+      ...prev,
+      preProcessingConfig: {
+        ...prev.preProcessingConfig,
+        global_preprocessing:
+          prev.preProcessingConfig.global_preprocessing.includes(option)
+            ? prev.preProcessingConfig.global_preprocessing.filter(
+                (item) => item !== option,
+              )
+            : [...prev.preProcessingConfig.global_preprocessing, option],
+      },
+    }))
+  }
+
+  const handleGlobalParamChange = (param: string, value: number) => {
+    setWorkbookConfig((prev) => ({
+      ...prev,
+      preProcessingConfig: {
+        ...prev.preProcessingConfig,
+        global_params: {
+          ...prev.preProcessingConfig.global_params,
+          [param]: value,
+        },
+      },
+    }))
+  }
+
   const handlePreprocess = async () => {
     if (!workbookConfig.preProcessingConfig) {
       toast.error("Please configure preprocessing steps first")
@@ -260,8 +295,30 @@ export function DataProcessingSection({
           </div>
           {analyzeFile.isSuccess && hasPreprocessingConfig && (
             <div className="mt-8">
-              <GlobalPreprocessing />
-              <ColumnPreprocessing />
+              <GlobalPreprocessing
+                options={globalPreprocessingOptions}
+                selectedOptions={
+                  workbookConfig.preProcessingConfig.global_preprocessing
+                }
+                onOptionChange={handleGlobalPreprocessingChange}
+                globalParams={workbookConfig.preProcessingConfig.global_params}
+                onParamChange={handleGlobalParamChange}
+              />
+              <ColumnPreprocessing
+                columns={workbookConfig.preProcessingConfig.columns}
+                onColumnChange={(columnName, changes) => {
+                  setWorkbookConfig((prev) => ({
+                    ...prev,
+                    preProcessingConfig: {
+                      ...prev.preProcessingConfig,
+                      columns: prev.preProcessingConfig.columns.map((col) =>
+                        col.name === columnName ? { ...col, ...changes } : col,
+                      ),
+                    },
+                  }))
+                }}
+              />
+
               <div className="mt-4">
                 <Button
                   onClick={handlePreprocess}
