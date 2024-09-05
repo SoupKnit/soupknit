@@ -1,17 +1,24 @@
-import React from "react"
+import React, { useRef } from "react"
 import { Link } from "@tanstack/react-router"
+import { motion, useInView } from "framer-motion"
 
-import { ArrowRight, BarChart, Code, Users, Zap } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
+import HowItWorks from "./HowItWorks"
+import aiAnimation from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/AI.gif"
+import lookingForInsights from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/lookingForInsights.gif"
+import soupKnitArt from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/soupKnit_Art.gif"
+import aiTools from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/tools.gif"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 export function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#fef2f225] to-[#fef3c720]">
-      <header className="container mx-auto max-w-screen-lg px-4 py-8">
+      <header className="container mx-auto px-4 py-8">
         <nav className="flex items-center justify-between">
-          <div className="text-2xl font-bold text-indigo-600">Soupknit</div>
+          <div className="text-2xl font-bold" style={{ color: "#422c75" }}>
+            Soupknit
+          </div>
           <div className="space-x-4">
             <Link to="/signin">
               <Button variant="ghost">Sign In</Button>
@@ -23,95 +30,102 @@ export function LandingPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto max-w-screen-lg px-4 py-16">
-        <section className="mb-16 text-left">
-          <h1 className="mb-6 font-headline text-8xl font-semibold leading-none text-gray-700 dark:text-blue-100">
-            <span>No-Code</span>
+      <main className="container mx-auto px-16 py-16">
+        <section className="flex text-left">
+          <div className="mr-8 flex-grow gap-y-2">
+            <h1 className="mb-6 font-headline text-6xl font-semibold leading-none text-gray-700 dark:text-blue-100">
+              <span>No-Code</span>
+              <br />
+              <span>Machine Learning</span>
+              <br />
+              <span className="">for Everyone</span>
+            </h1>
+            <p className="mb-8 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
+              <span>Build, train, and deploy machine learning models</span>
+              <br />
+              <span>without writing a single line of code.</span>
+            </p>
+          </div>
+          <img
+            src={soupKnitArt}
+            alt="soupKnit Art"
+            className="h-auto w-full sm:max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl"
+            style={{ filter: "grayscale(50%)" }}
+          />
+        </section>
+        <section className="mb-20">
+          <Link to="/signup">
+            <Button size="lg" className="px-8 py-6 text-lg">
+              Get Started. It's free <ArrowRight className="ml-2" />
+            </Button>
+          </Link>
+          <p className="mt-4 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+            Built for Data Scientists, Enthusiasts, and noobs!
+          </p>
+        </section>
+
+        <div className="flex w-full flex-col items-center bg-[#FFFFFF] p-4">
+          <h1 className="my-6 text-center font-headline text-4xl font-semibold text-gray-700 dark:text-blue-100">
+            <span>Need data insights, </span>
             <br />
-            <span>Machine Learning</span>
+            <span>but don’t have the tools or the team?</span>
             <br />
-            <span className="">for Everyone</span>
           </h1>
-          <p className="mb-8 max-w-2xl text-3xl text-gray-600 dark:text-gray-400">
-            Build, train, and deploy machine learning models without writing a
-            single line of code.
-          </p>
-          <Link to="/signup">
-            <Button size="lg" className="px-8 py-6 text-lg">
-              Get Started <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
-        </section>
+          <section className="mb-16 mt-4 flex gap-8">
+            {[
+              {
+                gif: lookingForInsights,
+                description:
+                  "Looking to find insights from data, but can’t afford a data scientist ?",
+              },
+              {
+                gif: aiAnimation,
+                description:
+                  "AI is a priority for you, but don’t know where to start ?",
+              },
+              {
+                gif: aiTools,
+                description:
+                  "Want to impress your clients using AI, but don’t have the tools ?",
+              },
+            ].map((feature, index) => (
+              <FeatureCard index={index} description={feature.description}>
+                <img
+                  src={feature.gif}
+                  alt="GIF"
+                  className="mb-4 h-12 w-12"
+                  style={{
+                    height: "200px",
+                    width: "auto",
+                    filter: "grayscale(40%)",
+                  }}
+                />{" "}
+              </FeatureCard>
+            ))}
+          </section>
 
-        <section className="mb-16 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {[
-            {
-              icon: Code,
-              title: "No Coding Required",
-              description:
-                "Build complex ML models using our intuitive drag-and-drop interface.",
-            },
-            {
-              icon: Zap,
-              title: "Rapid Prototyping",
-              description:
-                "Go from idea to working model in minutes, not weeks.",
-            },
-            {
-              icon: BarChart,
-              title: "Powerful Analytics",
-              description:
-                "Gain insights with our built-in data visualization tools.",
-            },
-            {
-              icon: Users,
-              title: "Collaboration",
-              description:
-                "Work together seamlessly with your team on ML projects.",
-            },
-          ].map((feature, index) => (
-            <FeatureCard
-              key={index}
-              title={feature.title}
-              description={feature.description}
-            >
-              <feature.icon className="mb-4 h-12 w-12 text-indigo-500" />
-            </FeatureCard>
-          ))}
-        </section>
-
-        <FeatureCard className="text-lg text-gray-700 dark:text-gray-200">
-          <h2 className="mb-6 text-3xl font-bold">How It Works</h2>
-          <ol className="list-inside list-decimal space-y-4">
-            <li>Upload your data or connect to your data source</li>
-            <li>
-              Choose your machine learning task (classification, regression,
-              clustering, etc.)
-            </li>
-            <li>Select and configure your model using our visual interface</li>
-            <li>Train and evaluate your model with just a few clicks</li>
-            <li>
-              Deploy your model to production or export it for use in your
-              applications
-            </li>
-          </ol>
-        </FeatureCard>
-
-        <section className="mt-20">
-          <h2 className="mb-6 text-3xl font-bold">
-            Ready to Transform Your Data?
+          <h2 className="pb-6 text-xl font-semibold">
+            Soupknit is the no code AI solution you are looking for.
           </h2>
-          <p className="mx-auto mb-8 max-w-2xl text-xl text-gray-600">
-            Join thousands of data scientists, analysts, and business
-            professionals who are already using Soupknit to unlock the power of
-            machine learning.
-          </p>
+
           <Link to="/signup">
-            <Button size="lg" className="px-8 py-6 text-lg">
-              Start Your Free Trial <ArrowRight className="ml-2" />
+            <Button size="sm" className="mb-5 px-8 py-6 text-sm">
+              Get Started. It's free <ArrowRight className="ml-2" />
             </Button>
           </Link>
-        </section>
+        </div>
+        <div className="soupknit-steps-container">
+          <h2
+            className="mt-8 text-center font-headline text-4xl font-semibold text-gray-700 dark:text-blue-100"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+            }}
+          >
+            How SoupKnit works
+          </h2>
+          {<HowItWorks />}
+        </div>
       </main>
 
       <footer className="mt-16 bg-gray-800 py-8 text-white">
@@ -128,22 +142,53 @@ function FeatureCard({
   description,
   children,
   className,
+  index,
 }: {
   title?: string
   description?: string
   children?: React.ReactNode
   className?: string
+  index: number
 }) {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, amount: 0.5 })
+
   return (
-    <div
-      className={cn(
-        "rounded-lg border-2 border-black bg-[#e8ece528] p-6 shadow-[8px_8px_1px] shadow-zinc-500",
-        className,
-      )}
-    >
-      {children}
-      <h3 className="mb-2 text-xl font-semibold">{title}</h3>
-      <p className="text-gray-600 dark:text-gray-200">{description}</p>
+    <div ref={ref} className="flex flex-col items-center justify-center gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: 0, scale: 0 }}
+        animate={
+          isInView
+            ? { opacity: 1, y: 0, scale: 1 }
+            : { opacity: 0, y: 300, scale: 0.7 }
+        }
+        transition={{
+          duration: 1.1,
+          delay: index * 1.5,
+          ease: "easeIn",
+          type: "spring",
+          stiffness: 35,
+          damping: 10,
+        }}
+      >
+        {children}
+      </motion.div>
+
+      <motion.p
+        className="max-w-xs text-center text-gray-600 dark:text-gray-200"
+        initial={{ opacity: 0 }}
+        animate={isInView ? { opacity: 1 } : { opacity: 0, y: 60 }}
+        transition={{
+          duration: 1.1,
+          delay: index * 1.5,
+          ease: "easeOut",
+          type: "spring",
+          stiffness: 100,
+          damping: 10,
+        }}
+      >
+        {description}
+      </motion.p>
     </div>
   )
 }
