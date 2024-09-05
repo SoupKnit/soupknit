@@ -17,6 +17,9 @@ import traceback
 import pickle
 import base64
 
+# Import the get_column_preprocessing function from preprocessing.py
+from preprocessing import get_column_preprocessing
+
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -97,6 +100,7 @@ def generate_pipeline_code(file_path: str, params: Dict[str, Any]) -> str:
     model_type = params['model_type']
     model_params = params.get('model_params', {})
     target_column = params.get('y_column')
+    preprocessing_config = params.get('preprocessing_config', {})
     
     imports = """
 import pandas as pd
@@ -104,6 +108,8 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, classification_report, silhouette_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import Pipeline
+from preprocessing import get_column_preprocessing
     """
 
     data_loading = f"""
@@ -137,13 +143,23 @@ logger.debug(f"y_train shape: {{y_train.shape if y_train is not None else None}}
     """
 
     model_creation = f"""
+# Create preprocessor
+preprocessor = get_column_preprocessing({preprocessing_config}, X.columns, '{task}')
+
 # Create and train the model
 model = get_model('{task}', '{model_type}', {model_params})
+
+# Create a pipeline with preprocessor and model
+pipeline = Pipeline([
+    ('preprocessor', preprocessor),
+    ('model', model)
+])
+
 if '{task}' != 'clustering':
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+    pipeline.fit(X_train, y_train)
+    y_pred = pipeline.predict(X_test)
 else:
-    labels = model.fit_predict(X_train)
+    labels = pipeline.fit_predict(X_train)
     """
 
     evaluation = f"""

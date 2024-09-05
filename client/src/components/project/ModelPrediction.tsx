@@ -21,13 +21,11 @@ import {
 export function ModelPrediction() {
   const [workbookConfig] = useAtom(workbookConfigStore)
   const [projectWorkbook] = useAtom(activeProjectAndWorkbook)
-  const { runPrediction } = useWorkbook(projectWorkbook?.projectId || "")
+  const { predictMutation } = useWorkbook(projectWorkbook?.projectId || "")
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [predictionResult, setPredictionResult] = useState<any>(null)
 
   useEffect(() => {
-    console.log("Feature columns:", workbookConfig.featureColumns)
-    // Initialize formData with empty strings for each feature column
     if (workbookConfig.featureColumns) {
       const initialFormData = workbookConfig.featureColumns.reduce(
         (acc, column) => {
@@ -52,13 +50,9 @@ export function ModelPrediction() {
     }
 
     try {
-      const result = await runPrediction.mutateAsync({
-        projectId: projectWorkbook.projectId,
-        inputData: formData,
-      })
-      console.log("Prediction result:", result)
-      setPredictionResult(result)
-      toast.success("Prediction completed successfully")
+      const result = await predictMutation.mutateAsync(formData)
+      console.log("Prediction result:", result) // Add this line for debugging
+      setPredictionResult(result.prediction)
     } catch (error) {
       console.error("Error running prediction:", error)
       toast.error("Error running prediction")
@@ -98,10 +92,14 @@ export function ModelPrediction() {
               />
             </div>
           ))}
-          <Button type="submit">Run Prediction</Button>
+          <Button type="submit" disabled={predictMutation.isLoading}>
+            {predictMutation.isLoading
+              ? "Running Prediction..."
+              : "Run Prediction"}
+          </Button>
         </form>
 
-        {predictionResult && (
+        {predictionResult !== null && (
           <div className="mt-4">
             <h3 className="text-lg font-semibold">Prediction Result:</h3>
             <pre className="mt-2 whitespace-pre-wrap rounded bg-gray-100 p-2">

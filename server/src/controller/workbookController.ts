@@ -595,6 +595,7 @@ export default async function workbookController(fastify: FastifyInstance) {
                 ? null
                 : modelConfig.targetColumn || workbookData.config.targetColumn,
             X_columns: "all", // Use all columns for features
+            preprocessing_config: workbookData.config.preProcessingConfig,
           },
         });
 
@@ -750,6 +751,137 @@ export default async function workbookController(fastify: FastifyInstance) {
       }
     },
   );
+
+  // POST /predict
+  fastify.post(
+    "/predict",
+    async function (_request: FastifyRequest, reply: FastifyReply) {
+      const { projectId, inputData } = _request.body as {
+        projectId: string;
+        inputData: Record<string, string>;
+      };
+
+      try {
+        console.log("1. Received prediction request for projectId:", projectId);
+
+        // Fetch the workbook data
+        const { data: workbookData, error: workbookError } = await supa
+          .from("workbook_data")
+          .select("id, config")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (workbookError) {
+          console.error("2. Error fetching workbook data:", workbookError);
+          throw workbookError;
+        }
+
+        if (
+          !workbookData ||
+          !workbookData.config ||
+          !workbookData.config.modelResults
+        ) {
+          throw new Error("No model found for the given project_id");
+        }
+
+        const modelUrl = workbookData.config.modelResults.model_url;
+
+        // Download the model file
+        const { data: modelData, error: modelError } = await supa.storage
+          .from(modelUrl.split("/")[7])
+          .download(modelUrl.split("/").slice(8).join("/"));
+
+        if (modelError) {
+          console.error("3. Error downloading model:", modelError);
+          throw modelError;
+        }
+
+        // Create a temporary file for the model
+        const tempDir = os.tmpdir();
+        const tempModelPath = path.join(tempDir, `model_${Date.now()}.pkl`);
+
+        // Convert Blob to Buffer and write to file
+        const modelBuffer = await blobToBuffer(modelData);
+        fs.writeFileSync(tempModelPath, modelBuffer);
+
+        console.log("4. Temporary model file created:", tempModelPath);
+
+        // Prepare input for the Python script
+        const input = JSON.stringify({
+          model_path: tempModelPath,
+          feature_data: inputData,
+        });
+
+        console.log("5. Input prepared:", input);
+
+        // Run the Python script
+        const scriptPath = "../packages/python/predict.py";
+        console.log("6. Running Python script");
+
+        const result: any = await new Promise((resolve, reject) => {
+          let stdout = "";
+          let stderr = "";
+
+          runInPythonSandbox({
+            input,
+            files: [tempModelPath],
+            scriptPath,
+            onData: (data: string) => {
+              stdout += data;
+            },
+            onError: (error: string) => {
+              stderr += error;
+            },
+            onClose: (code: number) => {
+              if (code !== 0) {
+                console.error("7. Python script error:", stderr);
+                reject(
+                  new Error(
+                    `Python script exited with code ${code}. Stderr: ${stderr}`,
+                  ),
+                );
+              } else {
+                try {
+                  const jsonResult = JSON.parse(stdout);
+                  console.log("8. Python script executed successfully");
+                  resolve(jsonResult);
+                } catch (error) {
+                  console.error("9. Failed to parse JSON result:", error);
+                  reject(
+                    new Error(
+                      `Failed to parse JSON result. Stdout: ${stdout}, Stderr: ${stderr}`,
+                    ),
+                  );
+                }
+              }
+            },
+          });
+        });
+
+        // Clean up the temporary model file
+        fs.unlinkSync(tempModelPath);
+
+        reply
+          .header("Content-Type", "application/json; charset=utf-8")
+          .send(result);
+      } catch (error) {
+        console.error("10. Error in /predict:", error);
+        if (error instanceof Error) {
+          reply
+            .status(500)
+            .send({ error: "Internal Server Error", message: error.message });
+        }
+      }
+    },
+  );
+
+  // Helper function to convert Blob to Buffer
+  async function blobToBuffer(blob: Blob): Promise<Buffer> {
+    const arrayBuffer = await blob.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
 }
 
 /**

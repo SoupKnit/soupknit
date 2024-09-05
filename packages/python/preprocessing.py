@@ -270,6 +270,19 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
                 imputer = SimpleImputer(strategy=strategy)
                 data[target_column] = imputer.fit_transform(data[[target_column]])
                 logger.info(f"Imputed missing target values using {strategy} strategy")
+            elif strategy == 'new_category' and task_type.lower() == 'classification':
+                data[target_column] = data[target_column].fillna('Unknown')
+                logger.info(f"Filled missing target values with 'Unknown' category")
+            else:
+                error_message = f"Unsupported imputation strategy for target column: {strategy}"
+                logger.error(error_message)
+                raise ValueError(error_message)
+            
+        # Verify that there are no NaN values in the target column after preprocessing
+        if data[target_column].isnull().any():
+            error_message = f"Target column '{target_column}' still contains NaN values after preprocessing."
+            logger.error(error_message)
+            raise ValueError(error_message)
 
         # Store the target column separately
         y = data[target_column]
@@ -385,3 +398,5 @@ if __name__ == "__main__":
         sys.stderr.write(json.dumps(error_result))
         sys.stderr.flush()
         sys.exit(1)
+else:
+    __all__ = ['get_column_preprocessing']
