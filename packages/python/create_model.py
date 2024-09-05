@@ -9,6 +9,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
 import json
 import io
 import sys
@@ -169,6 +170,12 @@ results = {{}}
 
 results['task'] = '{task}'
 results['model_type'] = '{model_type}'
+
+# Save the entire pipeline
+pickle_buffer = io.BytesIO()
+pickle.dump(pipeline, pickle_buffer)
+pickle_buffer.seek(0)
+results['model_pickle'] = base64.b64encode(pickle_buffer.getvalue()).decode('utf-8')
     """
 
     return imports + data_loading + model_creation + evaluation
@@ -194,14 +201,6 @@ def process_json_input(json_input: str) -> str:
         
         # Extract the results
         results = local_vars.get('results', {})
-        model = local_vars.get('model')
-        
-        # Serialize the model if it exists
-        if model:
-            pickle_buffer = io.BytesIO()
-            pickle.dump(model, pickle_buffer)
-            pickle_buffer.seek(0)
-            results['model_pickle'] = base64.b64encode(pickle_buffer.getvalue()).decode('utf-8')
         
         logger.debug(f"Extracted results: {results}")
         

@@ -758,11 +758,12 @@ export default async function workbookController(fastify: FastifyInstance) {
     async function (_request: FastifyRequest, reply: FastifyReply) {
       const { projectId, inputData } = _request.body as {
         projectId: string;
-        inputData: Record<string, string>;
+        inputData: Record<string, string | number>;
       };
 
       try {
         console.log("1. Received prediction request for projectId:", projectId);
+        console.log("Input data:", inputData);
 
         // Fetch the workbook data
         const { data: workbookData, error: workbookError } = await supa
@@ -811,7 +812,9 @@ export default async function workbookController(fastify: FastifyInstance) {
         // Prepare input for the Python script
         const input = JSON.stringify({
           model_path: tempModelPath,
-          feature_data: inputData,
+          feature_data: {
+            inputData: inputData,
+          },
         });
 
         console.log("5. Input prepared:", input);

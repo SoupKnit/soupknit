@@ -50,8 +50,11 @@ export function ModelPrediction() {
     }
 
     try {
-      const result = await predictMutation.mutateAsync(formData)
-      console.log("Prediction result:", result) // Add this line for debugging
+      const result = await predictMutation.mutateAsync({
+        inputData: formData,
+        preprocessingConfig: workbookConfig.preProcessingConfig,
+      })
+      console.log("Prediction result:", result)
       setPredictionResult(result.prediction)
     } catch (error) {
       console.error("Error running prediction:", error)
