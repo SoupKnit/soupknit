@@ -1,9 +1,14 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, Any
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
+from sklearn.discriminant_analysis import StandardScaler
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error, accuracy_score, classification_report, confusion_matrix, silhouette_score
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, GradientBoostingRegressor, GradientBoostingClassifier
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.svm import SVR, SVC
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
@@ -56,6 +61,87 @@ def get_model(task: str, model_type: str, model_params: Dict[str, Any]):
         raise ValueError(f"Unsupported model type '{model_type}' for task '{task}'")
     
     return model_map[task][model_type](**model_params)
+
+class ColumnPreservingTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, preprocessor):
+        self.preprocessor = preprocessor
+        self.input_features_ = None
+        self.output_features_ = None
+
+    def fit(self, X, y=None):
+        self.input_features_ = X.columns.tolist()
+        self.preprocessor.fit(X, y)
+        self.output_features_ = self.get_feature_names_out()
+        return self
+
+    def transform(self, X):
+        # Ensure input features match what the transformer expects
+        missing_cols = set(self.input_features_) - set(X.columns)
+        if missing_cols:
+            raise ValueError(f"Missing columns in input data: {missing_cols}")
+
+        # Reorder columns to match the order during fitting
+        X = X[self.input_features_]
+
+        X_transformed = self.preprocessor.transform(X)
+        return pd.DataFrame(X_transformed, columns=self.output_features_, index=X.index)
+
+    def get_feature_names_out(self, input_features=None):
+        if input_features is not None and input_features != self.input_features_:
+            raise ValueError("input_features is not equal to feature_names_in_")
+        
+        feature_names = []
+        for name, transformer, columns in self.preprocessor.transformers_:
+            if name != 'remainder':
+                if hasattr(transformer, 'get_feature_names_out'):
+                    feature_names.extend(transformer.get_feature_names_out(columns))
+                else:
+                    feature_names.extend(columns)
+        
+        if self.preprocessor.remainder != 'drop':
+            feature_names.extend([col for col in self.input_features_ if col not in feature_names])
+        
+        return feature_names
+
+
+def get_column_preprocessing(preprocessing_config, columns, task_type):
+    transformers = []
+    
+    for column in preprocessing_config['columns']:
+        column_name = column['name']
+        if column_name not in columns:
+            continue
+        
+        pipeline_steps = []
+        
+        # Imputation
+        if 'imputation' in column['preprocessing']:
+            strategy = column['preprocessing']['imputation']
+            if strategy in ['mean', 'median', 'most_frequent']:
+                pipeline_steps.append(('imputer', SimpleImputer(strategy=strategy)))
+            elif strategy == 'constant':
+                fill_value = column['params'].get('fill_value', 'Unknown')
+                pipeline_steps.append(('imputer', SimpleImputer(strategy='constant', fill_value=fill_value)))
+
+        # Encoding
+        if column['type'] == 'categorical':
+            if column['preprocessing'].get('encoding') == 'onehot':
+                encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
+                pipeline_steps.append(('encoder', encoder))
+            elif column['preprocessing'].get('encoding') == 'ordinal':
+                encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+                pipeline_steps.append(('encoder', encoder))
+
+        # Scaling
+        if 'scaling' in column['preprocessing']:
+            if column['preprocessing']['scaling'] == 'standard':
+                pipeline_steps.append(('scaler', StandardScaler()))
+
+        if pipeline_steps:
+            transformer = Pipeline(steps=pipeline_steps)
+            transformers.append((column_name, transformer, [column_name]))
+    
+    return ColumnTransformer(transformers, remainder='passthrough')
 
 def get_evaluation_code(task: str) -> str:
     if task == 'regression':
@@ -147,12 +233,15 @@ logger.debug(f"y_train shape: {{y_train.shape if y_train is not None else None}}
 # Create preprocessor
 preprocessor = get_column_preprocessing({preprocessing_config}, X.columns, '{task}')
 
+# Wrap the preprocessor in a ColumnPreservingTransformer
+column_preserving_preprocessor = ColumnPreservingTransformer(preprocessor)
+
 # Create and train the model
 model = get_model('{task}', '{model_type}', {model_params})
 
 # Create a pipeline with preprocessor and model
 pipeline = Pipeline([
-    ('preprocessor', preprocessor),
+    ('preprocessor', column_preserving_preprocessor),
     ('model', model)
 ])
 
@@ -161,7 +250,12 @@ if '{task}' != 'clustering':
     y_pred = pipeline.predict(X_test)
 else:
     labels = pipeline.fit_predict(X_train)
+
+# Log the input and output features
+logger.debug(f"Input features: {{column_preserving_preprocessor.input_features_}}")
+logger.debug(f"Output features: {{column_preserving_preprocessor.output_features_}}")
     """
+
 
     evaluation = f"""
 # Evaluate the model

@@ -3,11 +3,9 @@ import numpy as np
 import pickle
 import json
 import sys
-import io
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder
 import logging
+from sklearn.compose import ColumnTransformer
+from create_model import ColumnPreservingTransformer
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,59 +15,82 @@ def load_model(model_path):
     with open(model_path, 'rb') as file:
         return pickle.load(file)
 
-def preprocess_input(pipeline, input_data):
-    # Create a DataFrame with the input data
-    df = pd.DataFrame([input_data])
-    
-    # Extract the preprocessor from the pipeline
-    preprocessor = pipeline.named_steps['preprocessor']
-    
-    # Get the feature names expected by the model
-    expected_features = preprocessor.get_feature_names_out()
-    
-    # Initialize the preprocessed DataFrame with zeros
-    preprocessed_df = pd.DataFrame(0, index=[0], columns=expected_features)
-    
-    # Process each transformer in the ColumnTransformer
-    for name, trans, columns in preprocessor.transformers_:
-        if name != 'remainder':
-            if isinstance(trans, Pipeline):
-                # If it's a pipeline, get the last step (usually the actual transformer)
-                trans = trans.steps[-1][1]
-            
-            if isinstance(trans, OneHotEncoder):
-                # Handle OneHotEncoder
-                for col in columns:
-                    if col in df.columns:
-                        encoded_features = [f for f in expected_features if f.startswith(f'transformer_{name}__{col}')]
-                        value = df[col].iloc[0]
-                        for feature in encoded_features:
-                            if feature.endswith(f'_{value}'):
-                                preprocessed_df[feature] = 1
-                                break
-            else:
-                # Handle other transformers (e.g., StandardScaler)
-                for col in columns:
-                    if col in df.columns:
-                        feature_name = f'transformer_{name}__{col}'
-                        if feature_name in expected_features:
-                            preprocessed_df[feature_name] = df[col]
-    
-    logger.debug(f"Preprocessed data:\n{preprocessed_df}")
-    return preprocessed_df
+def extract_feature_data(input_data):
+    logger.debug(f"Extracting feature data from: {input_data}")
+    if isinstance(input_data, dict):
+        if 'inputData' in input_data:
+            return extract_feature_data(input_data['inputData'])
+        else:
+            # Keep the original data types
+            return input_data
+    return input_data
+
+def map_column_names(input_columns, expected_features):
+    # Create a mapping from input column names to expected feature names
+    mapping = {}
+    for expected in expected_features:
+        for input_col in input_columns:
+            if input_col in expected:
+                mapping[input_col] = expected
+                break
+    return mapping
 
 def predict(pipeline, input_data):
-    logger.debug(f"Input data: {input_data}")
+    logger.debug(f"Raw input data: {input_data}")
     
-    # Preprocess the input data
-    preprocessed_data = preprocess_input(pipeline, input_data)
+    # Extract the actual feature data
+    feature_data = extract_feature_data(input_data)
+    logger.debug(f"Extracted feature data: {feature_data}")
+    
+    # Create a DataFrame with the feature data
+    df = pd.DataFrame([feature_data])
+    logger.debug(f"Input DataFrame:\n{df}")
+    
+    # Get the expected input features from the pipeline
+    preprocessor = pipeline.named_steps['preprocessor']
+    expected_features = preprocessor.input_features_
+    logger.debug(f"Expected features: {expected_features}")
+    logger.debug(f"Input data columns: {df.columns}")
+    
+    # Map input column names to expected feature names
+    column_mapping = map_column_names(df.columns, expected_features)
+    logger.debug(f"Column mapping: {column_mapping}")
+    
+    # Rename columns based on the mapping
+    df = df.rename(columns=column_mapping)
+    logger.debug(f"DataFrame after renaming:\n{df}")
+    
+    # Check for missing columns and add them with None values
+    missing_cols = set(expected_features) - set(df.columns)
+    if missing_cols:
+        logger.warning(f"Missing columns in input data: {missing_cols}")
+        for col in missing_cols:
+            df[col] = None
+    
+    # Reorder columns to match the expected order
+    df = df[expected_features]
+    logger.debug(f"Reordered DataFrame:\n{df}")
+    
+    # Log the pipeline steps
+    logger.debug("Pipeline steps:")
+    for name, step in pipeline.named_steps.items():
+        logger.debug(f"  {name}: {type(step).__name__}")
     
     # Make prediction using the pipeline
     try:
-        prediction = pipeline.named_steps['model'].predict(preprocessed_data)
-        logger.debug(f"Prediction successful: {prediction}")
+        # Transform the data through each step of the pipeline
+        for name, step in pipeline.named_steps.items():
+            if name != 'model':  # Skip the final model step
+                df = step.transform(df)
+                logger.debug(f"After {name} step:\n{df}")
+        
+        # Make the final prediction
+        prediction = pipeline.named_steps['model'].predict(df)
+        logger.debug(f"Raw prediction: {prediction}")
     except Exception as e:
         logger.error(f"Error during prediction: {str(e)}")
+        logger.error(f"Input data shape: {df.shape}")
+        logger.error(f"Input data columns: {df.columns}")
         raise
     
     # Convert numpy types to native Python types for JSON serialization
@@ -78,6 +99,7 @@ def predict(pipeline, input_data):
     elif np.isscalar(prediction):
         prediction = prediction.item()
     
+    logger.debug(f"Final prediction: {prediction}")
     return prediction
 
 def main():
@@ -86,16 +108,13 @@ def main():
     input_data = json.loads(input_json)
     
     model_path = input_data['model_path']
-    feature_data = input_data['feature_data']['inputData']
+    feature_data = input_data['feature_data']
     
     logger.debug(f"Model path: {model_path}")
     logger.debug(f"Feature data: {feature_data}")
     
     # Load the model (pipeline)
     pipeline = load_model(model_path)
-    
-    if not isinstance(pipeline, Pipeline):
-        raise ValueError("Loaded model is not a scikit-learn Pipeline")
     
     # Predict
     result = predict(pipeline, feature_data)
