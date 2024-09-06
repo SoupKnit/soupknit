@@ -26,14 +26,36 @@ def extract_feature_data(input_data):
     return input_data
 
 def map_column_names(input_columns, expected_features):
-    # Create a mapping from input column names to expected feature names
     mapping = {}
     for expected in expected_features:
-        for input_col in input_columns:
-            if input_col in expected:
-                mapping[input_col] = expected
-                break
+        parts = expected.split('__')
+        if len(parts) > 1:
+            input_col = parts[1].split('_')[0]  # Get the original column name
+            if input_col in input_columns:
+                if parts[0].startswith('transformer_') and parts[1].startswith(input_col + '_'):
+                    # This is likely a OneHotEncoder column
+                    category = '_'.join(parts[1].split('_')[1:])  # Get the category
+                    mapping[input_col] = {category: expected}
+                else:
+                    mapping[input_col] = expected
     return mapping
+
+def prepare_input_data(df, column_mapping, expected_features):
+    for col, mapping in column_mapping.items():
+        if isinstance(mapping, dict):  # OneHotEncoder column
+            for category, expected_col in mapping.items():
+                df[expected_col] = (df[col] == category).astype(int)
+            df = df.drop(columns=[col])
+        else:  # Other columns
+            df = df.rename(columns={col: mapping})
+    
+    # Add missing columns with 0 values
+    missing_cols = set(expected_features) - set(df.columns)
+    for col in missing_cols:
+        df[col] = 0
+    
+    # Reorder columns to match expected features
+    return df[expected_features]
 
 def predict(pipeline, input_data):
     logger.debug(f"Raw input data: {input_data}")
@@ -57,7 +79,7 @@ def predict(pipeline, input_data):
     logger.debug(f"Column mapping: {column_mapping}")
     
     # Rename columns based on the mapping
-    df = df.rename(columns=column_mapping)
+    df = prepare_input_data(df, column_mapping, expected_features)
     logger.debug(f"DataFrame after renaming:\n{df}")
     
     # Check for missing columns and add them with None values
