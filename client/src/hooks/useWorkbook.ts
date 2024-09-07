@@ -1,22 +1,22 @@
-import { useEffect, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useAtom, useSetAtom } from "jotai"
+import { useState } from "react"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import Papa from "papaparse"
 import { toast } from "sonner"
 
+import * as dataProcessingActions from "@/actions/dataProcessingActions"
+import * as modelActions from "@/actions/modelActions"
 import * as workbookActions from "@/actions/workbookActions"
-import {
-  analyzeFilePost,
-  loadExistingWorkbook,
-} from "@/actions/workbookActions"
+import { analyzeFilePost } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
+import { isNonEmptyArray } from "@/lib/utils"
 import { userSettingsStore } from "@/store/userSettingsStore"
 import {
-  activeFileAtom,
   activeProjectAndWorkbook,
+  setActiveFileWithPreviewAtom,
+  setDataPreviewAtom,
   workbookConfigStore,
-  workbookStore,
 } from "@/store/workbookStore"
 
 import type { AnalyzePostData } from "@/actions/workbookActions"
@@ -33,22 +33,15 @@ import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
  * {@link workbookActions}
  */
 export function useWorkbook(_projectId: string) {
-  const [csvData, setCSVData] = useState<Record<string, any>[]>([])
-  const [headers, setHeaders] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  // const [workbookId, setWorkbookId] = useState<string | null>(null)
-  // const [workbookName, setWorkbookName] = useState<string | null>(null)
-  // const [workbookFileType, setWorkbookFileType] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const env = useEnv()
-  const [projectWorkbook, setProjectAndWorkbook] = useAtom(
-    activeProjectAndWorkbook,
-  )
-  const [workbook] = useAtom(workbookStore)
+  const projectWorkbook = useAtomValue(activeProjectAndWorkbook)
   const [userSettings] = useAtom(userSettingsStore)
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
   const [predictionResult, setPredictionResult] = useState<any>(null)
-  const setActiveFile = useSetAtom(activeFileAtom)
+  const setActiveFileWithPreview = useSetAtom(setActiveFileWithPreviewAtom)
+  const setDataPreview = useSetAtom(setDataPreviewAtom)
+
   const queryClient = useQueryClient()
 
   // Add a new mutation for saving the workbook config
@@ -71,43 +64,14 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
-  // Add a new query for loading the workbook config
-  const workbookConfigQuery = useQuery({
-    queryKey: ["workbookConfig", projectWorkbook?.workbookId, env.supa],
-    queryFn: async () => {
-      if (!projectWorkbook?.workbookId) {
-        throw new Error("No workbook ID found for loading config")
-      }
-      return await workbookActions.loadWorkbookConfig(
-        env.supa,
-        projectWorkbook.workbookId,
-      )
-    },
-    enabled: !!projectWorkbook?.workbookId,
-  })
-
   // Effect to save workbook config when component unmounts
-  useEffect(() => {
-    return () => {
-      if (projectWorkbook?.workbookId && workbookConfig) {
-        saveWorkbookConfig.mutate(workbookConfig)
-      }
-    }
-  }, [projectWorkbook?.workbookId, workbookConfig])
-
-  const workbookQuery = useQuery({
-    queryKey: ["workbook", _projectId, env.supa],
-    queryFn: async () => {
-      console.log("Fetching workbook for project:", _projectId)
-      const workbook = await loadExistingWorkbook(env.supa, _projectId)
-      console.log("Fetched workbook:", workbook)
-      if (workbook && workbook.files && workbook.files.length > 0) {
-        return workbook
-      }
-      return null
-    },
-    enabled: !!_projectId,
-  })
+  // useEffect(() => {
+  //   return () => {
+  //     if (projectWorkbook?.workbookId && workbookConfig) {
+  //       saveWorkbookConfig.mutate(workbookConfig)
+  //     }
+  //   }
+  // }, [projectWorkbook?.workbookId, saveWorkbookConfig, workbookConfig])
 
   const createWorkbook = useMutation({
     mutationFn: async (data: { preview_data: any; file: WorkbookDataFile }) => {
@@ -131,64 +95,6 @@ export function useWorkbook(_projectId: string) {
       toast.error("Failed to create workbook")
     },
   })
-
-  // Effect to update local state when workbook is fetched
-  useEffect(() => {
-    if (workbookQuery.isFetched && workbookQuery.isSuccess) {
-      const data = workbookQuery.data
-      console.log("Workbook query data:", data)
-      if (data && data.id && data.project_id) {
-        console.log("Setting workbook data")
-        toast.success("Workbook loaded successfully")
-        setProjectAndWorkbook({
-          projectId: data.project_id,
-          workbookId: data.id,
-          files: data.files?.map((f) => ({
-            name: f.name,
-            file_url: f.file_url,
-            file_type: f.file_type,
-          })),
-        })
-        console.log(projectWorkbook)
-
-        // Prioritize preprocessed data if available
-        if (
-          data.preview_data_preprocessed &&
-          Array.isArray(data.preview_data_preprocessed) &&
-          data.preview_data_preprocessed.length > 0
-        ) {
-          setHeaders(Object.keys(data.preview_data_preprocessed[0]))
-          setCSVData(data.preview_data_preprocessed)
-        } else if (
-          data.preview_data &&
-          Array.isArray(data.preview_data) &&
-          data.preview_data.length > 0
-        ) {
-          setHeaders(Object.keys(data.preview_data[0]))
-          setCSVData(data.preview_data)
-        }
-
-        if (data.config) {
-          setWorkbookConfig((prevConfig) => ({
-            ...prevConfig,
-            ...data.config,
-            preProcessingConfig:
-              prevConfig.preProcessingConfig || data.config.preProcessingConfig,
-          }))
-        }
-      } else {
-        console.log("No existing workbook found")
-        toast.info("No existing workbook found")
-      }
-    }
-  }, [
-    workbookQuery.isFetched,
-    workbookQuery.data,
-    setProjectAndWorkbook,
-    setWorkbookConfig,
-    setCSVData,
-    setHeaders,
-  ])
 
   // setWorkbookId(workbook.id)
   // setWorkbookName(workbook.name)
@@ -252,42 +158,19 @@ export function useWorkbook(_projectId: string) {
       preProcessingConfig: any
       projectId: string
     }) => {
-      console.log("Preprocessing file with", data)
-      const response = await fetch(`${env.serverUrl}/app/preprocess_file`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
-        },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to preprocess file")
-      }
-      return response.json()
+      return await dataProcessingActions.preprocessFile(env, data)
     },
     onSuccess: (data) => {
-      toast.success("File preprocessing completed successfully")
-      console.log("File preprocessing result:", data)
-
       // Update the active file to the preprocessed file
       if (data.preprocessedFileUrl) {
-        setActiveFile({
+        setActiveFileWithPreview({
           name:
             data.preprocessedFileUrl.split("/").pop() ||
             "preprocessed_file.csv",
           file_url: data.preprocessedFileUrl,
           file_type: "text/csv",
+          preview: data.previewDataPreprocessed,
         })
-      }
-
-      // Update the preview data
-      if (data.previewDataPreprocessed) {
-        setCSVData(data.previewDataPreprocessed)
-        if (data.previewDataPreprocessed.length > 0) {
-          setHeaders(Object.keys(data.previewDataPreprocessed[0]))
-        }
       }
 
       // Update the workbook config with the new preprocessing config
@@ -318,21 +201,8 @@ export function useWorkbook(_projectId: string) {
   })
 
   const createModel = useMutation({
-    mutationFn: async (data: { projectId: string; modelConfig: any }) => {
-      console.log("Creating model with", data)
-      const response = await fetch(`${env.serverUrl}/app/create_model`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
-        },
-        body: JSON.stringify(data),
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || "Failed to create model")
-      }
-      return response.json()
+    mutationFn: async (data: any) => {
+      return await modelActions.createModel(env, data)
     },
     onSuccess: (data) => {
       toast.success("Model created successfully")
@@ -395,7 +265,6 @@ export function useWorkbook(_projectId: string) {
     const file = event.target.files?.[0]
     if (!file) return
 
-    setLoading(true)
     setError(null)
 
     try {
@@ -413,26 +282,26 @@ export function useWorkbook(_projectId: string) {
 
       const text = await file.text()
       const { data: parsedData, meta } = Papa.parse(text, { header: true })
-      setHeaders(meta.fields ?? [])
-      const previewData = parsedData.slice(0, 15)
-      setCSVData(previewData as any)
 
-      const newActiveFile = {
+      if (!isNonEmptyArray(parsedData)) {
+        throw new Error("Failed to parse file data")
+      }
+
+      setActiveFileWithPreview({
         name: file.name,
         file_url: publicUrl,
         file_type: file.type,
-      }
-      setActiveFile(newActiveFile)
+        preview: parsedData,
+      })
 
       console.log("File uploaded:", {
-        newActiveFile,
-        csvDataLength: previewData.length,
+        csvDataLength: parsedData.length,
         headers: meta.fields,
       })
 
       // Create workbook
       await createWorkbook.mutateAsync({
-        preview_data: previewData,
+        preview_data: parsedData,
         file: {
           name: file.name,
           file_url: publicUrl,
@@ -441,11 +310,7 @@ export function useWorkbook(_projectId: string) {
       })
 
       // Analyze file
-      if (
-        workbookConfig &&
-        workbookConfig.taskType &&
-        workbookConfig.targetColumn
-      ) {
+      if (workbookConfig?.taskType && workbookConfig?.targetColumn) {
         await analyzeFile.mutateAsync({
           taskType: workbookConfig.taskType,
           targetColumn: workbookConfig.targetColumn,
@@ -464,36 +329,18 @@ export function useWorkbook(_projectId: string) {
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
-    } finally {
-      setLoading(false)
     }
   }
 
   return {
-    csvData,
-    headers,
-    loading,
     error,
     handleFileUpload,
     analyzeFile,
     projectWorkbook,
     saveWorkbookConfig,
-    workbookConfigQuery,
-    workbookQuery,
     preprocessFile,
-    setCSVData,
-    setHeaders,
     setWorkbookConfig,
     createModel,
     predictMutation,
-    // workbookId,
-    // workbookName,
-    // workbookFileType,
-    // fetchFirstRows,
-    // deleteProject,
   }
-}
-
-function isNonEmptyArray<T>(arr: T[] | null | undefined): arr is T[] {
-  return Array.isArray(arr) && arr.length > 0
 }

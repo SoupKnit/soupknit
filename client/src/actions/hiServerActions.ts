@@ -2,7 +2,6 @@ import { helloMessageSchema } from "@soupknit/model/src/helloMessage"
 import { validate } from "@soupknit/model/src/validate"
 
 import { api } from "./baseApi"
-import { hiServerApi } from "@/actions/hiServerApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 
 import type { ClientEnvironment } from "../lib/clientEnvironment"

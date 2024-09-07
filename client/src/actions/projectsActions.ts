@@ -1,8 +1,7 @@
-import { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
-
 import { createNewWorkbook } from "@/actions/workbookActions"
 
 import type { DBProject } from "@soupknit/model/src/dbTables"
+import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 export const updateProjectTitle = async (
@@ -65,7 +64,7 @@ export const createNewProject = async (
 
     if (initialFile) {
       const workbookData = await createNewWorkbook(supa, projectId, initialFile)
-      return { projectId, workbookId: workbookData.id, activeFile: initialFile }
+      return { projectId, workbookId: workbookData.id }
     }
 
     return { projectId }

@@ -1,16 +1,15 @@
-import { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
 import { z } from "zod"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
-import { WorkbookConfig } from "@/store/workbookStore"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
-import type { DBWorkbookData } from "@soupknit/model/src/dbTables"
+import type { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
 import type {
   ActiveProject,
   Workbook,
+  WorkbookConfig,
   WorkbookData,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
@@ -40,10 +39,6 @@ export async function analyzeFilePost(
     token: await getSupabaseAccessToken(),
   })) as PreProcessingColumnConfig
 }
-// Modify the WorkbookDataSchema to allow null config
-const WorkbookDataSchemaWithNullableConfig = WorkbookDataSchema.extend({
-  config: z.object({}).nullish().optional(),
-})
 
 export async function loadExistingWorkbook(
   supa: SupabaseClient,
@@ -58,37 +53,12 @@ export async function loadExistingWorkbook(
     .select("*")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
-    .limit(1)
+    .single()
     .throwOnError()
 
-  if (data && data.length > 0) {
-    console.log("Raw workbook data:", data[0]) // Log the raw data
-    try {
-      // Use the modified schema that allows null config
-      const parsedData = WorkbookDataSchemaWithNullableConfig.parse(data[0])
-      console.log("Parsed workbook data:", parsedData)
-      return parsedData
-    } catch (error) {
-      console.error("Error parsing workbook data:", error)
-      if (error instanceof z.ZodError) {
-        console.error(
-          "Zod error issues:",
-          JSON.stringify(error.issues, null, 2),
-        )
-      }
-      // Instead of throwing, return null or a default workbook structure
-      return {
-        id: data[0].id,
-        project_id: data[0].project_id,
-        files: data[0].files || [],
-        preview_data: data[0].preview_data || [],
-        config: null,
-      }
-    }
-  } else {
-    console.log("No workbook data found")
-    return null
-  }
+  console.log("Raw workbook data:", data) // Log the raw data
+  const parsedData = WorkbookDataSchema.parse(data)
+  return parsedData
 }
 
 export async function createNewWorkbook(
@@ -149,20 +119,6 @@ export async function saveWorkbookConfig(
   return data
 }
 
-export async function loadWorkbookConfig(
-  supa: SupabaseClient,
-  workbookId: string,
-) {
-  const { data, error } = await supa
-    .from("workbook_data")
-    .select("config")
-    .eq("id", workbookId)
-    .single()
-
-  if (error) throw error
-  return data?.config
-}
-
 export async function deleteProject(
   supa: SupabaseClient,
   workbook: ActiveProject,
@@ -177,12 +133,15 @@ export async function deleteProject(
 
   // 2. Delete files from storage
 
-  if (workbook.files?.length > 0 && workbook.files[0]?.file_url) {
+  if (workbook.files?.length && workbook.files[0]?.file_url) {
     const filePathMatch = workbook.files[0]?.file_url.match(
       /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
     )
     if (filePathMatch) {
       const filePath = filePathMatch[1]
+      if (!filePath) {
+        throw new Error("Failed to extract file path from URL")
+      }
       const { error: deleteFileError } = await supa.storage
         .from("workbook-files")
         .remove([filePath])

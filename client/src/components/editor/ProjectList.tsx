@@ -15,16 +15,14 @@ import { HoverCard } from "@/components/HoverCard"
 import { Button } from "@/components/ui/button"
 import { useEnv } from "@/lib/clientEnvironment"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import {
-  activeFileAtom,
-  activeProjectAndWorkbookAtom,
-} from "@/store/workbookStore"
+import { activeProjectAndWorkbook } from "@/store/workbookStore"
+
+import type { DBProject } from "@soupknit/model/src/dbTables"
 
 export function ProjectList() {
   const { supa } = useEnv()
   const navigate = useNavigate({ from: "/app/$projectId" })
-  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbookAtom)
-  const setActiveFile = useSetAtom(activeFileAtom)
+  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbook)
 
   const {
     isPending,
@@ -39,18 +37,18 @@ export function ProjectList() {
 
   const createProject = useMutation({
     mutationFn: async () => {
-      const initialFile = {
-        name: "New File",
-        file_url: "",
-        type: "csv",
-      }
-      return await createNewProject(supa, initialFile)
+      // const initialFile = {
+      //   name: "New File",
+      //   file_url: "",
+      //   type: "csv",
+      // }
+      return await createNewProject(supa)
     },
-    onSuccess: ({ projectId, workbookId, activeFile }) => {
+    onSuccess: ({ projectId, workbookId }) => {
       setActiveProjectAndWorkbook({ projectId, workbookId })
-      if (activeFile) {
-        setActiveFile(activeFile)
-      }
+      // if (activeFile) {
+      //   setActiveFile(activeFile)
+      // }
       navigate({ to: "/app/$projectId", params: { projectId } })
     },
     onError: (error) => {

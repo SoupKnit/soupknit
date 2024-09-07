@@ -57,3 +57,9 @@ export function createDedupeFn<
     return promise as R
   }
 }
+
+export function isNonEmptyArray<T>(
+  arr: T[] | null | undefined,
+): arr is [T, ...T[]] {
+  return Array.isArray(arr) && arr.length > 0
+}

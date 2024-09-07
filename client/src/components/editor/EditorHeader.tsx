@@ -1,9 +1,9 @@
 import { Link } from "@tanstack/react-router"
-import { useAtom } from "jotai"
+import { useAtom, useAtomValue } from "jotai"
 
 import { ScanFace, Search, Sidebar } from "lucide-react"
 
-import DarkModeSwitcher from "../DarkModeSwitcher"
+import ThemeSwitcher from "../DarkModeSwitcher"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,7 +26,7 @@ import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
 export function EditorHeader() {
   // TODO: get the project name from here and display it in the breadcrumb
-  const currentProject = useAtom(activeProjectAndWorkbook)
+  const currentProject = useAtomValue(activeProjectAndWorkbook)
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-muted/40 px-4 dark:bg-green-200/15 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:py-2">
       <Sidebar />
@@ -39,12 +39,12 @@ export function EditorHeader() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Notebook Name</BreadcrumbPage>
+            <BreadcrumbPage>{currentProject?.projectTitle}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto md:grow-0">
-        <DarkModeSwitcher />
+        <ThemeSwitcher />
       </div>
       <div className="relative flex-1 md:grow-0">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

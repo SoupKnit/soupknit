@@ -15,8 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+// import { useFetchWorkbook } from "@/hooks/useFetchWorkbook"
 import { useWorkbook } from "@/hooks/useWorkbook"
-import { activeFileStore, workbookConfigStore } from "@/store/workbookStore"
+import { filesStore, workbookConfigStore } from "@/store/workbookStore"
 
 export function DataProcessingSection({
   projectId,
@@ -24,23 +25,13 @@ export function DataProcessingSection({
   projectId: string
 }>) {
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [activeFile] = useAtom(activeFileStore)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isPreprocessing, setIsPreprocessing] = useState(false)
-  const [preprocessedData, setPreprocessedData] = useState<any[]>([])
-  const [preprocessedHeaders, setPreprocessedHeaders] = useState<string[]>([])
-  const {
-    csvData,
-    headers,
-    loading,
-    error,
-    handleFileUpload,
-    analyzeFile,
-    workbookQuery,
-    preprocessFile,
-    setCSVData,
-    setHeaders,
-  } = useWorkbook(projectId)
+  const [activeFile] = useAtom(filesStore)
+  // const [isAnalyzing, setIsAnalyzing] = useState(false)
+  // const [isPreprocessing, setIsPreprocessing] = useState(false)
+  // const { setCSVData, setHeaders, workbookQuery, csvData, headers } =
+  //   useFetchWorkbook(projectId)
+  const { error, handleFileUpload, analyzeFile, preprocessFile } =
+    useWorkbook(projectId)
 
   const hasUploadedFile =
     activeFile && activeFile.file_url && csvData.length > 0
@@ -286,7 +277,7 @@ export function DataProcessingSection({
             name={activeFile.name ?? "Untitled"}
             headers={headers}
             data={csvData}
-            loading={loading}
+            loading={workbookQuery.isLoading}
           />
           {workbookConfig.taskType !== "Clustering" ? (
             <div className="mt-4">

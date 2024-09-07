@@ -2,13 +2,6 @@ import { useAtom } from "jotai"
 
 import SelectCards from "../SelectCards"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select"
 import { workbookConfigStore } from "@/store/workbookStore"
 
 const options = [
