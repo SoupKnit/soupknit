@@ -27,6 +27,8 @@ export function DataProcessingSection({
   const [activeFile] = useAtom(activeFileStore)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isPreprocessing, setIsPreprocessing] = useState(false)
+  const [preprocessedData, setPreprocessedData] = useState<any[]>([])
+  const [preprocessedHeaders, setPreprocessedHeaders] = useState<string[]>([])
   const {
     csvData,
     headers,
@@ -129,6 +131,41 @@ export function DataProcessingSection({
     }))
   }
 
+  const globalPreprocessingOptions = [
+    "drop_constant",
+    "drop_duplicate",
+    "pca",
+    "feature_selection",
+  ]
+
+  const handleGlobalPreprocessingChange = (option: string) => {
+    setWorkbookConfig((prev) => ({
+      ...prev,
+      preProcessingConfig: {
+        ...prev.preProcessingConfig,
+        global_preprocessing:
+          prev.preProcessingConfig.global_preprocessing.includes(option)
+            ? prev.preProcessingConfig.global_preprocessing.filter(
+                (item) => item !== option,
+              )
+            : [...prev.preProcessingConfig.global_preprocessing, option],
+      },
+    }))
+  }
+
+  const handleGlobalParamChange = (param: string, value: number) => {
+    setWorkbookConfig((prev) => ({
+      ...prev,
+      preProcessingConfig: {
+        ...prev.preProcessingConfig,
+        global_params: {
+          ...prev.preProcessingConfig.global_params,
+          [param]: value,
+        },
+      },
+    }))
+  }
+
   const handlePreprocess = async () => {
     if (!workbookConfig.preProcessingConfig) {
       toast.error("Please configure preprocessing steps first")
@@ -148,21 +185,62 @@ export function DataProcessingSection({
       console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
 
       if (result.previewDataPreprocessed) {
-        // Update the csvData state with the new preprocessed data
         const newHeaders = Object.keys(result.previewDataPreprocessed[0])
-        const newData = result.previewDataPreprocessed.map(Object.values)
-
-        setCSVData(newData)
-        setHeaders(newHeaders)
+        setPreprocessedHeaders(newHeaders)
+        setPreprocessedData(result.previewDataPreprocessed)
       }
 
       toast.success("Data preprocessed successfully")
     } catch (error) {
       console.error("Error preprocessing data:", error)
-      toast.error(`Error preprocessing data`) //: ${(error as Error).message}`)
+      toast.error(`Error preprocessing data`)
     } finally {
       setIsPreprocessing(false)
     }
+  }
+
+  const handleDeleteColumn = (columnName: string) => {
+    setWorkbookConfig((prev) => {
+      // Remove the column from the preprocessing config
+      const updatedColumns = prev.preProcessingConfig.columns.filter(
+        (col) => col.name !== columnName,
+      )
+
+      // Update the target column if it's the deleted column
+      let updatedTargetColumn = prev.targetColumn
+      if (prev.targetColumn === columnName) {
+        updatedTargetColumn = ""
+      }
+
+      // Update feature columns
+      const updatedFeatureColumns =
+        prev.featureColumns?.filter((col) => col !== columnName) || []
+
+      return {
+        ...prev,
+        preProcessingConfig: {
+          ...prev.preProcessingConfig,
+          columns: updatedColumns,
+        },
+        targetColumn: updatedTargetColumn,
+        featureColumns: updatedFeatureColumns,
+      }
+    })
+
+    // Remove the column from preprocessed data if it exists
+    if (preprocessedData.length > 0) {
+      setPreprocessedData(
+        preprocessedData.map((row) => {
+          const { [columnName]: _, ...rest } = row
+          return rest
+        }),
+      )
+      setPreprocessedHeaders(
+        preprocessedHeaders.filter((h) => h !== columnName),
+      )
+    }
+
+    toast.success(`Column "${columnName}" removed from preprocessing`)
   }
 
   // Add this effect to set a default task type if it's not set
@@ -260,8 +338,31 @@ export function DataProcessingSection({
           </div>
           {analyzeFile.isSuccess && hasPreprocessingConfig && (
             <div className="mt-8">
-              <GlobalPreprocessing />
-              <ColumnPreprocessing />
+              <GlobalPreprocessing
+                options={globalPreprocessingOptions}
+                selectedOptions={
+                  workbookConfig.preProcessingConfig.global_preprocessing
+                }
+                onOptionChange={handleGlobalPreprocessingChange}
+                globalParams={workbookConfig.preProcessingConfig.global_params}
+                onParamChange={handleGlobalParamChange}
+              />
+              <ColumnPreprocessing
+                columns={workbookConfig.preProcessingConfig.columns}
+                onColumnChange={(columnName, changes) => {
+                  setWorkbookConfig((prev) => ({
+                    ...prev,
+                    preProcessingConfig: {
+                      ...prev.preProcessingConfig,
+                      columns: prev.preProcessingConfig.columns.map((col) =>
+                        col.name === columnName ? { ...col, ...changes } : col,
+                      ),
+                    },
+                  }))
+                }}
+                onDeleteColumn={handleDeleteColumn}
+              />
+
               <div className="mt-4">
                 <Button
                   onClick={handlePreprocess}
@@ -272,13 +373,13 @@ export function DataProcessingSection({
                   {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
                 </Button>
               </div>
-              {preprocessFile.isSuccess && csvData.length > 0 && (
+              {preprocessedData.length > 0 && (
                 <div className="mt-4">
                   <h3>Preprocessed Data Preview</h3>
                   <DatasetPreview
                     name="Preprocessed Data"
-                    headers={headers}
-                    data={csvData}
+                    headers={preprocessedHeaders}
+                    data={preprocessedData}
                     loading={false}
                   />
                 </div>

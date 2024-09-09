@@ -66,7 +66,8 @@ def generate_preprocessing_config(df, target_column=None, task=None):
     preprocessing_config = {
         "global_preprocessing": [],
         "global_params": {},
-        "columns": []
+        "columns": [],
+        "target_preprocessing": {}
     }
 
     # Function to check if a column should be dropped
@@ -101,7 +102,7 @@ def generate_preprocessing_config(df, target_column=None, task=None):
             target_imputation = "new_category"
         else:
             target_imputation = "drop"
-        preprocessing_config["target_imputation"] = target_imputation
+        preprocessing_config["target_preprocessing"]["imputation"] = target_imputation
 
     # Analyze each column, including the target column
     for column in df.columns:

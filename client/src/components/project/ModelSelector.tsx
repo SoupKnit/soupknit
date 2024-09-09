@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useAtom } from "jotai"
 
+import ModelResultsDisplay from "./ModelResults"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -89,20 +90,6 @@ export function ModelSelector() {
     }
   }
 
-  const handleDownloadPickle = () => {
-    if (modelResults && modelResults.model_url) {
-      // Create a temporary anchor element
-      const link = document.createElement("a")
-      link.href = modelResults.model_url
-      link.download = `model_${projectWorkbook?.projectId}.pkl`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } else {
-      console.error("No model URL available for download")
-    }
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -137,19 +124,7 @@ export function ModelSelector() {
           )}
           <Button onClick={handleCreateModel}>Create Model</Button>
         </div>
-        {modelResults && (
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold">Model Results:</h3>
-            <pre className="mt-2 whitespace-pre-wrap rounded bg-gray-100 p-2">
-              {JSON.stringify(modelResults, null, 2)}
-            </pre>
-            {modelResults.model_url && (
-              <Button onClick={handleDownloadPickle} className="mt-2">
-                Download Model Pickle
-              </Button>
-            )}
-          </div>
-        )}
+        {modelResults && <ModelResultsDisplay results={modelResults} />}
       </CardContent>
     </Card>
   )

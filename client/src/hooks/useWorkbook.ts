@@ -47,6 +47,7 @@ export function useWorkbook(_projectId: string) {
   const [workbook] = useAtom(workbookStore)
   const [userSettings] = useAtom(userSettingsStore)
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const [predictionResult, setPredictionResult] = useState<any>(null)
   const setActiveFile = useSetAtom(activeFileAtom)
   const queryClient = useQueryClient()
 
@@ -360,6 +361,34 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
+  const predictMutation = useMutation({
+    mutationFn: async (inputData: Record<string, string>) => {
+      const response = await fetch(`${env.serverUrl}/app/predict`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
+        },
+        body: JSON.stringify({
+          projectId: projectWorkbook?.projectId,
+          inputData,
+        }),
+      })
+      if (!response.ok) {
+        throw new Error("Prediction failed")
+      }
+      return response.json()
+    },
+    onSuccess: (data) => {
+      setPredictionResult(data.prediction)
+      toast.success("Prediction completed successfully")
+    },
+    onError: (error) => {
+      console.error("Error running prediction:", error)
+      toast.error("Error running prediction")
+    },
+  })
+
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -456,6 +485,7 @@ export function useWorkbook(_projectId: string) {
     setHeaders,
     setWorkbookConfig,
     createModel,
+    predictMutation,
     // workbookId,
     // workbookName,
     // workbookFileType,
