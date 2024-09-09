@@ -69,12 +69,16 @@ class ColumnPreservingTransformer(BaseEstimator, TransformerMixin):
         self.output_features_ = None
 
     def fit(self, X, y=None):
+        # Convert column names to strings
+        X = X.rename(columns=lambda x: str(x))
         self.input_features_ = X.columns.tolist()
         self.preprocessor.fit(X, y)
-        self.output_features_ = self.get_feature_names_out()
+        self.output_features_ = self._get_output_feature_names()
         return self
 
     def transform(self, X):
+        # Convert column names to strings
+        X = X.rename(columns=lambda x: str(x))
         # Ensure input features match what the transformer expects
         missing_cols = set(self.input_features_) - set(X.columns)
         if missing_cols:
@@ -86,23 +90,37 @@ class ColumnPreservingTransformer(BaseEstimator, TransformerMixin):
         X_transformed = self.preprocessor.transform(X)
         return pd.DataFrame(X_transformed, columns=self.output_features_, index=X.index)
 
-    def get_feature_names_out(self, input_features=None):
-        if input_features is not None and input_features != self.input_features_:
-            raise ValueError("input_features is not equal to feature_names_in_")
-        
+    def _get_output_feature_names(self):
         feature_names = []
         for name, transformer, columns in self.preprocessor.transformers_:
-            if name != 'remainder':
-                if hasattr(transformer, 'get_feature_names_out'):
-                    feature_names.extend(transformer.get_feature_names_out(columns))
+            if name == 'remainder':
+                if self.preprocessor.remainder != 'drop':
+                    feature_names.extend(map(str, columns))
+            elif isinstance(transformer, OneHotEncoder):
+                feature_names.extend([f"{str(col)}_{cat}" for col in columns for cat in transformer.categories_[0]])
+            elif isinstance(transformer, OrdinalEncoder):
+                feature_names.extend([f"{str(col)}_encoded" for col in columns])
+            elif isinstance(transformer, StandardScaler):
+                feature_names.extend(map(str, columns))
+            elif isinstance(transformer, Pipeline):
+                # Handle pipeline transformers
+                last_step = transformer.steps[-1][1]
+                if isinstance(last_step, OneHotEncoder):
+                    feature_names.extend([f"{str(col)}_{cat}" for col in columns for cat in last_step.categories_[0]])
+                elif isinstance(last_step, OrdinalEncoder):
+                    feature_names.extend([f"{str(col)}_encoded" for col in columns])
                 else:
-                    feature_names.extend(columns)
-        
-        if self.preprocessor.remainder != 'drop':
-            feature_names.extend([col for col in self.input_features_ if col not in feature_names])
+                    feature_names.extend(map(str, columns))
+            else:
+                # For any other transformer, use the input column names
+                feature_names.extend(map(str, columns))
         
         return feature_names
 
+    def get_feature_names_out(self, input_features=None):
+        if self.output_features_ is None:
+            raise ValueError("Transformer has not been fitted yet. Call 'fit' before using this method.")
+        return self.output_features_
 
 def get_column_preprocessing(preprocessing_config, columns, task_type):
     transformers = []
@@ -122,6 +140,9 @@ def get_column_preprocessing(preprocessing_config, columns, task_type):
             elif strategy == 'constant':
                 fill_value = column['params'].get('fill_value', 'Unknown')
                 pipeline_steps.append(('imputer', SimpleImputer(strategy='constant', fill_value=fill_value)))
+            elif strategy == 'none':
+                # No imputation, skip this step
+                pass
 
         # Encoding
         if column['type'] == 'categorical':
@@ -136,10 +157,16 @@ def get_column_preprocessing(preprocessing_config, columns, task_type):
         if 'scaling' in column['preprocessing']:
             if column['preprocessing']['scaling'] == 'standard':
                 pipeline_steps.append(('scaler', StandardScaler()))
+            elif column['preprocessing']['scaling'] == 'none':
+                # No scaling, skip this step
+                pass
 
         if pipeline_steps:
             transformer = Pipeline(steps=pipeline_steps)
             transformers.append((column_name, transformer, [column_name]))
+        else:
+            # If no preprocessing steps are applied, pass the column through unchanged
+            transformers.append((column_name, 'passthrough', [column_name]))
     
     return ColumnTransformer(transformers, remainder='passthrough')
 
@@ -203,6 +230,9 @@ from preprocessing import get_column_preprocessing
 # Read the CSV file
 df = pd.read_csv('{file_path}')
 logger.debug(f"Loaded data shape: {{df.shape}}")
+
+# Convert all column names to strings
+df.columns = df.columns.astype(str)
 
 # Prepare data
 if '{task}' != 'clustering':

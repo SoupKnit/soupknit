@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useAtom } from "jotai"
 import { toast } from "sonner"
 
@@ -25,47 +25,66 @@ export function ModelPrediction() {
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [predictionResult, setPredictionResult] = useState<any>(null)
 
+  const currentFeatureColumns = useMemo(
+    () =>
+      workbookConfig.preProcessingConfig?.columns
+        .map((col) => col.name)
+        .filter((col) => col !== workbookConfig.targetColumn) || [],
+    [workbookConfig],
+  )
+
   useEffect(() => {
-    if (workbookConfig.featureColumns) {
-      const initialFormData = workbookConfig.featureColumns.reduce(
-        (acc, column) => {
-          acc[column] = ""
-          return acc
-        },
-        {} as Record<string, string>,
+    const initialFormData = currentFeatureColumns.reduce(
+      (acc, column) => {
+        acc[column] = ""
+        return acc
+      },
+      {} as Record<string, string>,
+    )
+    setFormData(initialFormData)
+  }, [currentFeatureColumns])
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }))
+    },
+    [],
+  )
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault()
+      if (!projectWorkbook?.projectId) {
+        console.error("No project ID found")
+        return
+      }
+
+      const filteredFormData = Object.fromEntries(
+        Object.entries(formData).filter(([key]) =>
+          currentFeatureColumns.includes(key),
+        ),
       )
-      setFormData(initialFormData)
-    }
-  }, [workbookConfig.featureColumns])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+      try {
+        const result = await predictMutation.mutateAsync({
+          projectId: projectWorkbook.projectId,
+          inputData: filteredFormData,
+        })
+        console.log("Prediction result:", result)
+        setPredictionResult(result.prediction)
+      } catch (error) {
+        console.error("Error running prediction:", error)
+        toast.error("Error running prediction")
+      }
+    },
+    [formData, projectWorkbook, predictMutation, currentFeatureColumns],
+  )
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!projectWorkbook?.projectId) {
-      console.error("No project ID found")
-      return
-    }
-
-    try {
-      const result = await predictMutation.mutateAsync({
-        inputData: formData,
-        preprocessingConfig: workbookConfig.preProcessingConfig,
-      })
-      console.log("Prediction result:", result)
-      setPredictionResult(result.prediction)
-    } catch (error) {
-      console.error("Error running prediction:", error)
-      toast.error("Error running prediction")
-    }
-  }
-
-  if (
-    !workbookConfig.featureColumns ||
-    workbookConfig.featureColumns.length === 0
-  ) {
+  if (currentFeatureColumns.length === 0) {
     return (
       <Card>
         <CardContent>
@@ -80,9 +99,15 @@ export function ModelPrediction() {
 
   return (
     <Card>
+      <CardHeader>
+        <CardTitle>Model Prediction</CardTitle>
+        <CardDescription>
+          Enter feature values to get a prediction from your trained model
+        </CardDescription>
+      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit}>
-          {workbookConfig.featureColumns.map((column) => (
+          {currentFeatureColumns.map((column) => (
             <div key={column} className="mb-4">
               <Label htmlFor={column}>{column}</Label>
               <Input

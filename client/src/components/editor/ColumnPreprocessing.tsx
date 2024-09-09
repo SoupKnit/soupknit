@@ -1,128 +1,169 @@
-// ColumnPreprocessing.tsx
 import React from "react"
 
+import { Trash2 } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 
-export function ColumnPreprocessing({ columns, onColumnChange }) {
+interface ColumnPreprocessingProps {
+  columns: Array<{
+    name: string
+    type: string
+    preprocessing: {
+      imputation?: string
+      scaling?: string
+      encoding?: string
+    }
+    params: {
+      [key: string]: any
+    }
+  }>
+  onColumnChange: (columnName: string, changes: any) => void
+  onDeleteColumn: (columnName: string) => void
+}
+
+export function ColumnPreprocessing({
+  columns,
+  onColumnChange,
+  onDeleteColumn,
+}: ColumnPreprocessingProps) {
   return (
-    <div className="grid grid-cols-3 gap-8">
-      <div className="font-bold">Column</div>
-      <div className="font-bold">Type</div>
-      <div className="font-bold">Preprocessing</div>
+    <div className="mt-4">
+      <h3 className="mb-2 text-lg font-semibold">Column Preprocessing</h3>
       {columns.map((column) => (
-        <React.Fragment key={column.name}>
-          <div>{column.name}</div>
-          <div>
-            <Select
-              value={column.type}
-              onValueChange={(value) =>
-                onColumnChange(column.name, { type: value })
-              }
+        <div key={column.name} className="mb-4 rounded border p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h4 className="font-semibold">{column.name}</h4>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onDeleteColumn(column.name)}
             >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="numeric">Numeric</SelectItem>
-                <SelectItem value="categorical">Categorical</SelectItem>
-              </SelectContent>
-            </Select>
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
-          <div>
-            {column.type === "numeric" ? (
-              <div className="space-y-2">
-                <Select
-                  value={column.preprocessing.imputation}
-                  onValueChange={(value) =>
+          <p>Type: {column.type}</p>
+          {column.type === "numeric" && (
+            <>
+              <Select
+                value={column.preprocessing.imputation}
+                onValueChange={(value) =>
+                  onColumnChange(column.name, {
+                    preprocessing: {
+                      ...column.preprocessing,
+                      imputation: value,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select imputation method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="mean">Mean</SelectItem>
+                  <SelectItem value="median">Median</SelectItem>
+                  <SelectItem value="mode">Mode</SelectItem>
+                  <SelectItem value="constant">Constant</SelectItem>
+                </SelectContent>
+              </Select>
+              {column.preprocessing.imputation === "constant" && (
+                <Input
+                  type="number"
+                  placeholder="Constant value"
+                  value={column.params.fill_value || ""}
+                  onChange={(e) =>
                     onColumnChange(column.name, {
-                      preprocessing: {
-                        ...column.preprocessing,
-                        imputation: value,
+                      params: {
+                        ...column.params,
+                        fill_value: parseFloat(e.target.value),
                       },
                     })
                   }
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Imputation" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {[
-                        "mean",
-                        "median",
-                        "most_frequent",
-                        "constant",
-                        "knn",
-                      ].map((method) => (
-                        <SelectItem key={method} value={method}>
-                          {method}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={column.preprocessing.scaling}
-                  onValueChange={(value) =>
+                  className="mt-2"
+                />
+              )}
+              <Select
+                value={column.preprocessing.scaling}
+                onValueChange={(value) =>
+                  onColumnChange(column.name, {
+                    preprocessing: { ...column.preprocessing, scaling: value },
+                  })
+                }
+              >
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select scaling method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="standard">Standard Scaling</SelectItem>
+                  <SelectItem value="minmax">Min-Max Scaling</SelectItem>
+                  <SelectItem value="robust">Robust Scaling</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+          {column.type === "categorical" && (
+            <>
+              <Select
+                value={column.preprocessing.imputation}
+                onValueChange={(value) =>
+                  onColumnChange(column.name, {
+                    preprocessing: {
+                      ...column.preprocessing,
+                      imputation: value,
+                    },
+                  })
+                }
+              >
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select imputation method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="mode">Mode</SelectItem>
+                  <SelectItem value="constant">Constant</SelectItem>
+                </SelectContent>
+              </Select>
+              {column.preprocessing.imputation === "constant" && (
+                <Input
+                  type="text"
+                  placeholder="Constant value"
+                  value={column.params.fill_value || ""}
+                  onChange={(e) =>
                     onColumnChange(column.name, {
-                      preprocessing: {
-                        ...column.preprocessing,
-                        scaling: value,
-                      },
+                      params: { ...column.params, fill_value: e.target.value },
                     })
                   }
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Scaling" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {["standard", "robust", "minmax"].map((method) => (
-                        <SelectItem key={method} value={method}>
-                          {method}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div>
-                <Select
-                  value={column.preprocessing.encoding}
-                  onValueChange={(value) =>
-                    onColumnChange(column.name, {
-                      preprocessing: {
-                        ...column.preprocessing,
-                        encoding: value,
-                      },
-                    })
-                  }
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Encoding" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {["onehot", "ordinal"].map((method) => (
-                        <SelectItem key={method} value={method}>
-                          {method}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        </React.Fragment>
+                  className="mt-2"
+                />
+              )}
+              <Select
+                value={column.preprocessing.encoding}
+                onValueChange={(value) =>
+                  onColumnChange(column.name, {
+                    preprocessing: { ...column.preprocessing, encoding: value },
+                  })
+                }
+              >
+                <SelectTrigger className="mt-2 w-full">
+                  <SelectValue placeholder="Select encoding method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="onehot">One-Hot Encoding</SelectItem>
+                  <SelectItem value="ordinal">Ordinal Encoding</SelectItem>
+                </SelectContent>
+              </Select>
+            </>
+          )}
+        </div>
       ))}
     </div>
   )

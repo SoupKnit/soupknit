@@ -79,6 +79,7 @@ class RareGrouper:
     def get_feature_names_out(self, input_features=None):
         return ['grouped_' + (input_features[0] if input_features else 'feature')]
 
+
 def get_column_preprocessing(preprocessing_config, available_columns, task_type):
     transformers = []
     
@@ -97,6 +98,9 @@ def get_column_preprocessing(preprocessing_config, available_columns, task_type)
             elif strategy == 'constant':
                 fill_value = column['params'].get('fill_value', 'Unknown')
                 pipeline_steps.append(('imputer', SimpleImputer(strategy='constant', fill_value=fill_value)))
+            elif strategy == 'none':
+                # No imputation, use identity transformer to pass data through
+                pipeline_steps.append(('imputer', IdentityTransformer()))
 
         # Encoding
         if column['type'] == 'categorical':
@@ -116,6 +120,13 @@ def get_column_preprocessing(preprocessing_config, available_columns, task_type)
         if 'scaling' in column['preprocessing']:
             if column['preprocessing']['scaling'] == 'standard':
                 pipeline_steps.append(('scaler', StandardScaler()))
+            elif column['preprocessing']['scaling'] == 'minmax':
+                pipeline_steps.append(('scaler', MinMaxScaler()))
+            elif column['preprocessing']['scaling'] == 'robust':
+                pipeline_steps.append(('scaler', RobustScaler()))
+            elif column['preprocessing']['scaling'] == 'none':
+                # No scaling, use identity transformer to pass data through
+                pipeline_steps.append(('scaler', IdentityTransformer()))
 
         if pipeline_steps:
             transformer = Pipeline(steps=pipeline_steps)
@@ -151,6 +162,13 @@ class FrequencyEncoder(BaseEstimator, TransformerMixin):
 
     def get_feature_names_out(self, input_features=None):
         return [f'{input_features[0]}_freq'] if input_features else ['frequency']
+    
+class IdentityTransformer(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return X
 
 def apply_global_preprocessing(data, preprocessing_config):
     """Apply global preprocessing steps to the entire dataset."""
@@ -252,6 +270,24 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         logger.error(f"Error loading data from {file_path}: {str(e)}")
         raise
 
+    # Get the list of columns to keep from the preprocessing config
+    columns_to_keep = [col['name'] for col in preprocessing_config['columns']]
+    
+    # Ensure target column is in columns_to_keep if it exists
+    if target_column and target_column not in columns_to_keep:
+        columns_to_keep.append(target_column)
+    
+    # Filter the data to keep only the specified columns
+    try:
+        data = data[columns_to_keep]
+        logger.info(f"Filtered data shape: {data.shape}")
+        logger.debug(f"Columns after filtering: {data.columns.tolist()}")
+    except KeyError as e:
+        logger.error(f"Error filtering columns: {str(e)}")
+        logger.debug(f"Requested columns: {columns_to_keep}")
+        logger.debug(f"Available columns: {data.columns.tolist()}")
+        raise ValueError(f"Column not found in dataset: {str(e)}")
+
     # Handle target column based on task type
     if task_type.lower() in ['regression', 'classification']:
         if target_column not in data.columns:
@@ -273,6 +309,8 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
             elif strategy == 'new_category' and task_type.lower() == 'classification':
                 data[target_column] = data[target_column].fillna('Unknown')
                 logger.info(f"Filled missing target values with 'Unknown' category")
+            elif strategy == 'none':
+                logger.info("No imputation applied to target column")
             else:
                 error_message = f"Unsupported imputation strategy for target column: {strategy}"
                 logger.error(error_message)

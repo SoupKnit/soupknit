@@ -184,7 +184,6 @@ export function DataProcessingSection({
 
       console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
 
-      // In handlePreprocess:
       if (result.previewDataPreprocessed) {
         const newHeaders = Object.keys(result.previewDataPreprocessed[0])
         setPreprocessedHeaders(newHeaders)
@@ -194,10 +193,54 @@ export function DataProcessingSection({
       toast.success("Data preprocessed successfully")
     } catch (error) {
       console.error("Error preprocessing data:", error)
-      toast.error(`Error preprocessing data`) //: ${(error as Error).message}`)
+      toast.error(`Error preprocessing data`)
     } finally {
       setIsPreprocessing(false)
     }
+  }
+
+  const handleDeleteColumn = (columnName: string) => {
+    setWorkbookConfig((prev) => {
+      // Remove the column from the preprocessing config
+      const updatedColumns = prev.preProcessingConfig.columns.filter(
+        (col) => col.name !== columnName,
+      )
+
+      // Update the target column if it's the deleted column
+      let updatedTargetColumn = prev.targetColumn
+      if (prev.targetColumn === columnName) {
+        updatedTargetColumn = ""
+      }
+
+      // Update feature columns
+      const updatedFeatureColumns =
+        prev.featureColumns?.filter((col) => col !== columnName) || []
+
+      return {
+        ...prev,
+        preProcessingConfig: {
+          ...prev.preProcessingConfig,
+          columns: updatedColumns,
+        },
+        targetColumn: updatedTargetColumn,
+        featureColumns: updatedFeatureColumns,
+      }
+    })
+
+    // Remove the column from preprocessed data if it exists
+    if (preprocessedData.length > 0) {
+      setPreprocessedData(
+        preprocessedData.map((row) => {
+          const { [columnName]: _, ...rest } = row
+          return rest
+        }),
+      )
+      setPreprocessedHeaders(
+        preprocessedHeaders.filter((h) => h !== columnName),
+      )
+    }
+
+    toast.success(`Column "${columnName}" removed from preprocessing`)
   }
 
   // Add this effect to set a default task type if it's not set
@@ -317,6 +360,7 @@ export function DataProcessingSection({
                     },
                   }))
                 }}
+                onDeleteColumn={handleDeleteColumn}
               />
 
               <div className="mt-4">
@@ -329,7 +373,7 @@ export function DataProcessingSection({
                   {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
                 </Button>
               </div>
-              {preprocessFile.isSuccess && preprocessedData.length > 0 && (
+              {preprocessedData.length > 0 && (
                 <div className="mt-4">
                   <h3>Preprocessed Data Preview</h3>
                   <DatasetPreview
