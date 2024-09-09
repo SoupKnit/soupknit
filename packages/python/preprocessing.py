@@ -79,64 +79,60 @@ class RareGrouper:
     def get_feature_names_out(self, input_features=None):
         return ['grouped_' + (input_features[0] if input_features else 'feature')]
 
-def get_column_preprocessing(preprocessing_config, available_columns, task_type):
-    logger.info("Generating column-specific preprocessing steps")
-    transformers = []
 
+def get_column_preprocessing(preprocessing_config, available_columns, task_type):
+    transformers = []
+    
     for column in preprocessing_config['columns']:
         column_name = column['name']
         if column_name not in available_columns:
-            logger.warning(f"Column {column_name} specified in config is not in the dataframe. Skipping.")
             continue
-
-        column_type = column['type']
-        preprocessing = column['preprocessing']
-        params = column.get('params', {})
-
+        
         pipeline_steps = []
+        
+        # Imputation
+        if 'imputation' in column['preprocessing']:
+            strategy = column['preprocessing']['imputation']
+            if strategy in ['mean', 'median', 'most_frequent']:
+                pipeline_steps.append(('imputer', SimpleImputer(strategy=strategy)))
+            elif strategy == 'constant':
+                fill_value = column['params'].get('fill_value', 'Unknown')
+                pipeline_steps.append(('imputer', SimpleImputer(strategy='constant', fill_value=fill_value)))
+            elif strategy == 'none':
+                # No imputation, use identity transformer to pass data through
+                pipeline_steps.append(('imputer', IdentityTransformer()))
 
-        try:
-            # Imputation
-            if 'imputation' in preprocessing:
-                strategy = preprocessing['imputation']
-                if strategy in ['mean', 'median', 'most_frequent']:
-                    pipeline_steps.append(('imputer', SimpleImputer(strategy=strategy)))
-                elif strategy == 'constant':
-                    fill_value = params.get('fill_value', 'Unknown')
-                    pipeline_steps.append(('imputer', SimpleImputer(strategy='constant', fill_value=fill_value)))
+        # Encoding
+        if column['type'] == 'categorical':
+            if column['preprocessing'].get('encoding') == 'onehot':
+                try:
+                    # Try the new API
+                    encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
+                except TypeError:
+                    # Fall back to the old API if 'sparse_output' is not recognized
+                    encoder = OneHotEncoder(sparse=False, handle_unknown='ignore')
+                pipeline_steps.append(('encoder', encoder))
+            elif column['preprocessing'].get('encoding') == 'ordinal':
+                encoder = OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)
+                pipeline_steps.append(('encoder', encoder))
 
-            # Encoding (adjusted for clustering tasks)
-            if column_type == 'categorical':
-                if task_type.lower() == 'clustering':
-                    if preprocessing.get('encoding') == 'ordinal' or preprocessing.get('high_cardinality') == 'group_rare':
-                        pipeline_steps.append(('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)))
-                    else:
-                        # Default to frequency encoding for clustering
-                        pipeline_steps.append(('encoder', FrequencyEncoder()))
-                else:
-                    if preprocessing.get('encoding') == 'onehot':
-                        pipeline_steps.append(('encoder', OneHotEncoder(handle_unknown='ignore')))
-                    elif preprocessing.get('encoding') == 'ordinal':
-                        pipeline_steps.append(('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=-1)))
+        # Scaling
+        if 'scaling' in column['preprocessing']:
+            if column['preprocessing']['scaling'] == 'standard':
+                pipeline_steps.append(('scaler', StandardScaler()))
+            elif column['preprocessing']['scaling'] == 'minmax':
+                pipeline_steps.append(('scaler', MinMaxScaler()))
+            elif column['preprocessing']['scaling'] == 'robust':
+                pipeline_steps.append(('scaler', RobustScaler()))
+            elif column['preprocessing']['scaling'] == 'none':
+                # No scaling, use identity transformer to pass data through
+                pipeline_steps.append(('scaler', IdentityTransformer()))
 
-            # Scaling
-            if 'scaling' in preprocessing:
-                if preprocessing['scaling'] == 'standard':
-                    pipeline_steps.append(('scaler', StandardScaler()))
-                elif preprocessing['scaling'] == 'minmax':
-                    pipeline_steps.append(('scaler', MinMaxScaler()))
-
-            if pipeline_steps:
-                transformer = Pipeline(steps=pipeline_steps)
-                transformers.append((f'transformer_{column_name}', transformer, [column_name]))
-
-        except Exception as e:
-            logger.error(f"Error creating pipeline for column {column_name}: {str(e)}")
-            logger.error(f"Pipeline steps: {pipeline_steps}")
-            raise
-
-    logger.debug(f"Transformers created: {transformers}")
-    return transformers
+        if pipeline_steps:
+            transformer = Pipeline(steps=pipeline_steps)
+            transformers.append((f'transformer_{column_name}', transformer, [column_name]))
+    
+    return ColumnTransformer(transformers, remainder='passthrough')
 
 class FrequencyEncoder(BaseEstimator, TransformerMixin):
     def __init__(self):
@@ -166,6 +162,13 @@ class FrequencyEncoder(BaseEstimator, TransformerMixin):
 
     def get_feature_names_out(self, input_features=None):
         return [f'{input_features[0]}_freq'] if input_features else ['frequency']
+    
+class IdentityTransformer(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        return X
 
 def apply_global_preprocessing(data, preprocessing_config):
     """Apply global preprocessing steps to the entire dataset."""
@@ -201,23 +204,58 @@ def apply_global_preprocessing(data, preprocessing_config):
 
     return data
 
-def get_feature_names(column_transformer):
-    """Get feature names from all transformers."""
+
+def get_feature_names(column_transformer, original_features):
+    logger.debug("Entering get_feature_names function")
+    logger.debug(f"Original features: {original_features}")
     feature_names = []
-    for name, trans, column in column_transformer.transformers_:
-        if name != 'remainder':
-            if isinstance(trans, Pipeline):
-                # Get feature names from last step of the pipeline
-                if hasattr(trans.steps[-1][1], 'get_feature_names_out'):
-                    feature_names.extend(trans.steps[-1][1].get_feature_names_out(column))
-                else:
-                    feature_names.extend(column)
-            elif hasattr(trans, 'get_feature_names_out'):
-                feature_names.extend(trans.get_feature_names_out(column))
+
+    try:
+        # First, try to use get_feature_names_out method if available (scikit-learn >= 1.0)
+        if hasattr(column_transformer, 'get_feature_names_out'):
+            logger.debug("Using get_feature_names_out method")
+            return column_transformer.get_feature_names_out(original_features)
+    except Exception as e:
+        logger.debug(f"get_feature_names_out failed: {str(e)}. Falling back to manual method.")
+
+    # Fall back to manual method
+    for name, transformer, column in column_transformer.transformers_:
+        logger.debug(f"Processing transformer: {name}, type: {type(transformer)}")
+        
+        if name == 'remainder':
+            logger.debug("Processing 'remainder' transformer")
+            if column == 'drop':
+                continue
+            if isinstance(column, str):
+                feature_names.append(column)
             else:
                 feature_names.extend(column)
-    if column_transformer.remainder != 'drop':
-        feature_names.extend(column_transformer.feature_names_in_[column_transformer.remainder])
+        elif isinstance(transformer, Pipeline):
+            logger.debug("Processing Pipeline transformer")
+            current_features = column
+            for step_name, step_transformer in transformer.steps:
+                logger.debug(f"Processing pipeline step: {step_name}, type: {type(step_transformer)}")
+                if hasattr(step_transformer, 'get_feature_names_out'):
+                    current_features = step_transformer.get_feature_names_out(current_features)
+                elif isinstance(step_transformer, OneHotEncoder):
+                    current_features = [f"{feat}_{val}" for feat in current_features for val in step_transformer.categories_[0]]
+                elif isinstance(step_transformer, OrdinalEncoder):
+                    current_features = [f"{feat}_encoded" for feat in current_features]
+            feature_names.extend(current_features)
+        elif hasattr(transformer, 'get_feature_names_out'):
+            logger.debug(f"Using get_feature_names_out for {type(transformer)}")
+            feature_names.extend(transformer.get_feature_names_out(column))
+        elif isinstance(transformer, OneHotEncoder):
+            logger.debug("Processing OneHotEncoder transformer")
+            feature_names.extend([f"{feat}_{val}" for feat in column for val in transformer.categories_[0]])
+        elif isinstance(transformer, OrdinalEncoder):
+            logger.debug("Processing OrdinalEncoder transformer")
+            feature_names.extend([f"{feat}_encoded" for feat in column])
+        else:
+            logger.debug(f"Using original column names for {type(transformer)}")
+            feature_names.extend(column)
+    
+    logger.debug(f"Final feature names: {feature_names}")
     return feature_names
 
 def preprocess_data(file_path, task_type, target_column, preprocessing_config):
@@ -232,35 +270,62 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
         logger.error(f"Error loading data from {file_path}: {str(e)}")
         raise
 
-    logger.debug(f"Normalized columns in dataframe: {data.columns.tolist()}")
-    logger.debug(f"Normalized target column: {target_column}")
+    # Get the list of columns to keep from the preprocessing config
+    columns_to_keep = [col['name'] for col in preprocessing_config['columns']]
+    
+    # Ensure target column is in columns_to_keep if it exists
+    if target_column and target_column not in columns_to_keep:
+        columns_to_keep.append(target_column)
+    
+    # Filter the data to keep only the specified columns
+    try:
+        data = data[columns_to_keep]
+        logger.info(f"Filtered data shape: {data.shape}")
+        logger.debug(f"Columns after filtering: {data.columns.tolist()}")
+    except KeyError as e:
+        logger.error(f"Error filtering columns: {str(e)}")
+        logger.debug(f"Requested columns: {columns_to_keep}")
+        logger.debug(f"Available columns: {data.columns.tolist()}")
+        raise ValueError(f"Column not found in dataset: {str(e)}")
 
     # Handle target column based on task type
     if task_type.lower() in ['regression', 'classification']:
-        # Supervised learning task
         if target_column not in data.columns:
             error_message = f"Target column '{target_column}' not found in the dataframe."
             logger.error(error_message)
             raise ValueError(error_message)
 
-        # Handle missing values in target column
-        target_imputation = preprocessing_config.get('target_imputation', 'drop')
-        if target_imputation == 'drop':
-            data = data.dropna(subset=[target_column])
-            logger.info(f"Dropped rows with missing target values. New shape: {data.shape}")
-        elif target_imputation in ['mean', 'median', 'most_frequent']:
-            imputer = SimpleImputer(strategy=target_imputation)
-            data[target_column] = imputer.fit_transform(data[[target_column]])
-            logger.info(f"Imputed missing target values using {target_imputation} strategy")
-        else:
-            error_message = f"Unsupported target imputation strategy: {target_imputation}"
+        # Preprocess target column if needed
+        target_preprocessing = preprocessing_config.get('target_preprocessing', {})
+        if 'imputation' in target_preprocessing:
+            strategy = target_preprocessing['imputation']
+            if strategy == 'drop':
+                data = data.dropna(subset=[target_column])
+                logger.info(f"Dropped rows with missing target values. New shape: {data.shape}")
+            elif strategy in ['mean', 'median', 'most_frequent']:
+                imputer = SimpleImputer(strategy=strategy)
+                data[target_column] = imputer.fit_transform(data[[target_column]])
+                logger.info(f"Imputed missing target values using {strategy} strategy")
+            elif strategy == 'new_category' and task_type.lower() == 'classification':
+                data[target_column] = data[target_column].fillna('Unknown')
+                logger.info(f"Filled missing target values with 'Unknown' category")
+            elif strategy == 'none':
+                logger.info("No imputation applied to target column")
+            else:
+                error_message = f"Unsupported imputation strategy for target column: {strategy}"
+                logger.error(error_message)
+                raise ValueError(error_message)
+            
+        # Verify that there are no NaN values in the target column after preprocessing
+        if data[target_column].isnull().any():
+            error_message = f"Target column '{target_column}' still contains NaN values after preprocessing."
             logger.error(error_message)
             raise ValueError(error_message)
 
+        # Store the target column separately
         y = data[target_column]
         X = data.drop(columns=[target_column])
     elif task_type.lower() == 'clustering':
-        # Unsupervised learning task (clustering)
         logger.info("Clustering task detected. No target column will be used.")
         y = None
         X = data
@@ -271,28 +336,17 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
 
     # Get column transformers
     try:
-        transformers = get_column_preprocessing(preprocessing_config, X.columns, task_type)
+        preprocessor = get_column_preprocessing(preprocessing_config, X.columns, task_type)
     except Exception as e:
         logger.error(f"Error in get_column_preprocessing: {str(e)}")
         raise
 
-    # Create preprocessor
-    try:
-        preprocessor = ColumnTransformer(
-            transformers=transformers,
-            remainder='passthrough'
-        )
-    except Exception as e:
-        logger.error(f"Error creating ColumnTransformer: {str(e)}")
-        logger.error(f"Transformers: {transformers}")
-        raise
-
     # Fit and transform the data
     try:
+        logger.debug("Starting fit_transform on preprocessor")
         X_preprocessed = preprocessor.fit_transform(X)
         logger.info("Preprocessing completed successfully")
         logger.debug(f"Preprocessed X shape: {X_preprocessed.shape}")
-        logger.debug(f"Preprocessed X type: {type(X_preprocessed)}")
 
         # Convert to dense array if it's sparse
         if sparse.issparse(X_preprocessed):
@@ -305,15 +359,22 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
     except Exception as e:
         logger.error(f"Error during preprocessing: {str(e)}")
         logger.error(f"Dataframe columns: {X.columns.tolist()}")
-        logger.error(f"Transformer columns: {[col for name, transformer, col in transformers]}")
         raise
 
     # Get feature names
     try:
-        feature_names = get_feature_names(preprocessor)
+        logger.debug("Calling get_feature_names function")
+        feature_names = get_feature_names(preprocessor, X.columns)
         logger.debug(f"Extracted feature names: {feature_names}")
+        
+        # Verify the number of feature names matches the number of columns
+        if len(feature_names) != X_preprocessed.shape[1]:
+            logger.warning(f"Mismatch in number of features: {len(feature_names)} names for {X_preprocessed.shape[1]} columns")
+            logger.warning("Using generic column names")
+            feature_names = [f'feature_{i}' for i in range(X_preprocessed.shape[1])]
     except Exception as e:
-        logger.warning(f"Error getting feature names: {str(e)}. Using generic column names.")
+        logger.error(f"Error getting feature names: {str(e)}")
+        logger.warning("Using generic column names")
         feature_names = [f'feature_{i}' for i in range(X_preprocessed.shape[1])]
 
     # Convert to DataFrame
@@ -327,6 +388,10 @@ def preprocess_data(file_path, task_type, target_column, preprocessing_config):
     output_csv = file_path.rsplit(".", 1)[0] + "_preprocessed.csv"
     preprocessed_data.to_csv(output_csv, index=False)
     logger.info(f"Preprocessed data saved to {output_csv}")
+
+    # Log the first few rows and columns of preprocessed data for verification
+    logger.debug(f"First few rows of preprocessed data:\n{preprocessed_data.head().to_string()}")
+    logger.debug(f"Preprocessed data columns: {preprocessed_data.columns.tolist()}")
 
     return output_csv, preprocessed_data.to_csv(index=False)
 
@@ -371,3 +436,5 @@ if __name__ == "__main__":
         sys.stderr.write(json.dumps(error_result))
         sys.stderr.flush()
         sys.exit(1)
+else:
+    __all__ = ['get_column_preprocessing']

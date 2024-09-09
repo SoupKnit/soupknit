@@ -377,7 +377,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             <>
               <ModelPredictionHeader />
               <CardContent>
-                <ModelPrediction />
+                <ModelPrediction projectId={projectId} />
               </CardContent>
             </>
           )}
