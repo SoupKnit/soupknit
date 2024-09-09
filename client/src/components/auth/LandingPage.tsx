@@ -2,19 +2,14 @@ import React, { useRef } from "react"
 import { Link } from "@tanstack/react-router"
 import { motion, useInView } from "framer-motion"
 
+import aiAnimation from "../../assets/landing-page/AI.gif"
+import lookingForInsights from "../../assets/landing-page/lookingForInsights.gif"
+import soupKnitArt from "../../assets/landing-page/soupKnit_Art.gif"
+import aiTools from "../../assets/landing-page/tools.gif"
 import HowItWorks from "./HowItWorks"
-import aiAnimation from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/AI.gif"
-import lookingForInsights from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/lookingForInsights.gif"
-import soupKnitArt from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/soupKnit_Art.gif"
-import aiTools from "/Users/vikram/Documents/CODE/soupknit/client/src/assets/landing-page/tools.gif"
 import { Button } from "@/components/ui/button"
 
-const textRaiseAttributes = {
-  hidden: { opacity: 0, y: 60, scale: 0.9 },
-  visible: { opacity: 1, y: 0, scale: 1 },
-}
-
-const buttonRaiseAttributes = {
+const riseAttributes = {
   hidden: { opacity: 0, y: 60, scale: 0.9 },
   visible: { opacity: 1, y: 0, scale: 1 },
 }
@@ -117,7 +112,7 @@ export function LandingPage() {
 
           <motion.h2
             className="pb-6 text-xl font-semibold"
-            variants={textRaiseAttributes}
+            variants={riseAttributes}
             initial="hidden"
             animate="visible"
             transition={{ delay: 4.5, duration: 0.5, ease: "easeOut" }}
@@ -126,7 +121,7 @@ export function LandingPage() {
           </motion.h2>
 
           <motion.div
-            variants={buttonRaiseAttributes}
+            variants={riseAttributes}
             initial="hidden"
             animate="visible"
             transition={{ delay: 5.5, duration: 0.5, ease: "easeOut" }}
