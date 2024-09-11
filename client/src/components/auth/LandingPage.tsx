@@ -97,7 +97,7 @@ export function LandingPage() {
                 <span className="text-glow-xl text-[#46278d]">Everyone</span>
               </h1>
               <p className="mb-8 text-xl text-gray-600 dark:text-gray-400">
-                <span>Build, train, and deploy machine learning models</span>
+                <span>Build, train, and deploy ML models</span>
                 <br />
                 <span>without writing a single line of code.</span>
               </p>
