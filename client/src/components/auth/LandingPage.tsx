@@ -290,14 +290,14 @@ function FeatureCard({
     <motion.div
       ref={ref}
       className="flex flex-col items-center justify-center gap-4"
-      initial={{ opacity: 0, y: 200, scale: 0.8 }}
+      initial={{ opacity: 0, y: 100, scale: 0.8 }}
       animate={isInView ? { opacity: 1, y: 0, scale: 1 } : null}
       transition={{
         duration: 1.1,
         ease: "easeIn",
         type: "spring",
-        stiffness: 35,
-        damping: 10,
+        stiffness: 45,
+        damping: 15,
       }}
     >
       <img
