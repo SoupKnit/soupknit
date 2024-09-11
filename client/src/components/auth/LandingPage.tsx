@@ -58,9 +58,9 @@ export function LandingPage() {
   const ref1 = useRef(null)
   const ref2 = useRef(null)
   const ref3 = useRef(null)
-  const isDataInsightsInView = useInView(ref1, { once: true, amount: 0 })
-  const isUsecaseInView = useInView(ref2, { once: true, amount: 0 })
-  const isCallToActionInView = useInView(ref3, { once: true, amount: 0 })
+  const isDataInsightsInView = useInView(ref1, { once: false, amount: 0 })
+  const isUsecaseInView = useInView(ref2, { once: false, amount: 0 })
+  const isCallToActionInView = useInView(ref3, { once: false, amount: 0 })
 
   return (
     <div className="min-h-screen dark:bg-black">
@@ -284,7 +284,7 @@ function FeatureCard({
   index: number
 }) {
   const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, amount: 0 })
+  const isInView = useInView(ref, { once: false, amount: 0 })
 
   return (
     <motion.div
