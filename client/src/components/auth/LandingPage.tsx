@@ -2,10 +2,19 @@ import React, { useRef } from "react"
 import { Link } from "@tanstack/react-router"
 import { motion, useInView } from "framer-motion"
 
+import { EarthLock, LockKeyhole, ShieldCheck } from "lucide-react"
+
 import aiAnimation from "../../assets/landing-page/AI.gif"
 import lookingForInsights from "../../assets/landing-page/lookingForInsights.gif"
 import soupKnitArt from "../../assets/landing-page/soupKnit_Art.gif"
 import aiTools from "../../assets/landing-page/tools.gif"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../ui/card"
 import HowItWorks from "./HowItWorks"
 import { Button } from "@/components/ui/button"
 
@@ -14,9 +23,47 @@ const riseAttributes = {
   visible: { opacity: 1, y: 0, scale: 1 },
 }
 
+const useCases = [
+  {
+    title: "Retail Demand Forecasting",
+    description:
+      "Predict demand for products using historical sales data and trends.",
+  },
+  {
+    title: "Fraud Detection in Finance",
+    description:
+      "Detect fraudulent transactions in real-time by analyzing customer data.",
+  },
+  {
+    title: "Personalized Marketing Campaigns",
+    description: "Build recommendation engines based on customer behavior.",
+  },
+  {
+    title: "Energy Consumption Optimization",
+    description:
+      "Predict and optimize energy usage using historical data and weather patterns.",
+  },
+  {
+    title: "Customer Churn Prediction",
+    description: "Identify at-risk customers to proactively reduce churn.",
+  },
+  {
+    title: "Agriculture Yield Forecasting",
+    description:
+      "Predict crop yields based on soil quality, weather patterns, and historical data.",
+  },
+]
+
 export function LandingPage() {
+  const ref1 = useRef(null)
+  const ref2 = useRef(null)
+  const ref3 = useRef(null)
+  const isDataInsightsInView = useInView(ref1, { once: true, amount: 0 })
+  const isUsecaseInView = useInView(ref2, { once: true, amount: 0 })
+  const isCallToActionInView = useInView(ref3, { once: true, amount: 0 })
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fef2f225] to-[#fef3c720]">
+    <div className="min-h-screen dark:bg-black">
       <header className="container mx-auto px-4 py-8">
         <nav className="flex items-center justify-between">
           <div className="text-2xl font-bold" style={{ color: "#46278d" }}>
@@ -24,7 +71,7 @@ export function LandingPage() {
           </div>
           <div className="space-x-4">
             <Link to="/signin">
-              <Button variant="ghost">Sign In</Button>
+              <Button className="text-white">Sign In</Button>
             </Link>
             <Link to="/signup">
               <Button>Sign Up</Button>
@@ -33,14 +80,13 @@ export function LandingPage() {
         </nav>
       </header>
 
-      <main className="container mx-auto px-16 py-16">
+      <main className="container mx-auto px-10 py-4 text-center transition-all duration-500 ease-in-out md:px-32">
         <motion.div
-          className="pl-20"
-          initial={{ y: 20, opacity: 0.2 }}
+          initial={{ y: 40, opacity: 0.2 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.8, ease: "easeInOut" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <section className="flex text-left">
+          <section className="flex md:flex-row md:text-left">
             <div>
               <h1 className="mb-6 font-headline text-6xl font-semibold leading-none text-gray-700 dark:text-blue-100">
                 <span>No-Code</span>
@@ -48,24 +94,24 @@ export function LandingPage() {
                 <span>Machine Learning</span>
                 <br />
                 <span>for </span>
-                <span className="text-[#46278d]">Everyone</span>
+                <span className="text-glow-xl text-[#46278d]">Everyone</span>
               </h1>
-              <p className="mb-8 max-w-2xl text-xl text-gray-600 dark:text-gray-400">
+              <p className="mb-8 text-xl text-gray-600 dark:text-gray-400">
                 <span>Build, train, and deploy machine learning models</span>
                 <br />
                 <span>without writing a single line of code.</span>
               </p>
             </div>
-            <div className="hero-image-container pl-40">
+            <div className="hero-image-container hidden pl-40 md:block">
               <img
                 src={soupKnitArt}
                 alt="soupKnit Art"
-                className="h-auto w-full sm:max-w-xs md:max-w-md lg:max-w-md xl:max-w-md"
+                className="h-auto md:w-full"
                 style={{ filter: "grayscale(50%)" }}
               />
             </div>
           </section>
-          <section className="mb-20">
+          <section className="mb-10 text-center md:mb-20 md:text-left">
             <Link to="/signup">
               <Button size="lg" className="gap-2 px-8 text-lg">
                 Get Started. It's free<span>→</span>
@@ -84,12 +130,12 @@ export function LandingPage() {
             <span>but don’t have the tools or the team?</span>
             <br />
           </h1>
-          <section className="mb-16 mt-4 flex gap-8">
+          <section className="mb-16 flex flex-col gap-8 md:mt-4 md:flex-row">
             {[
               {
                 gif: lookingForInsights,
                 description:
-                  "Looking to find insights from data, but can’t afford a data scientist ?",
+                  "Looking to find insights from your data, but can’t afford a data scientist ?",
               },
               {
                 gif: aiAnimation,
@@ -109,29 +155,30 @@ export function LandingPage() {
               />
             ))}
           </section>
-
-          <motion.h2
-            className="pb-6 text-xl font-semibold"
-            variants={riseAttributes}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 4.5, duration: 0.5, ease: "easeOut" }}
+          <motion.section
+            ref={ref1}
+            initial={{ opacity: 0, y: 100 }}
+            animate={isDataInsightsInView ? { opacity: 1, y: 0 } : null}
+            transition={{
+              duration: 1.1,
+              ease: "easeIn",
+              type: "spring",
+              stiffness: 45,
+              damping: 15,
+            }}
           >
-            Soupknit is the no code AI solution you are looking for !
-          </motion.h2>
+            <h2 className="px-4 pb-6 text-center text-xl font-semibold">
+              SoupKnit is the no code AI solution you are looking for !
+            </h2>
 
-          <motion.div
-            variants={riseAttributes}
-            initial="hidden"
-            animate="visible"
-            transition={{ delay: 5.5, duration: 0.5, ease: "easeOut" }}
-          >
-            <Link to="/signup">
-              <Button size="sm" className="mb-5 gap-2 px-8 py-6 text-sm">
-                Get Started. It's free<span>→</span>
-              </Button>
-            </Link>
-          </motion.div>
+            <div>
+              <Link to="/signup">
+                <Button size="sm" className="mb-5 gap-2 py-6 text-sm">
+                  Get Started. It's free<span>→</span>
+                </Button>
+              </Link>
+            </div>
+          </motion.section>
         </div>
         <div className="soupknit-steps-container">
           <h2
@@ -145,11 +192,80 @@ export function LandingPage() {
           </h2>
           {<HowItWorks />}
         </div>
+        <motion.div
+          ref={ref2}
+          initial={{ opacity: 0, y: 100 }}
+          animate={isUsecaseInView ? { opacity: 1, y: 0 } : null}
+          transition={{
+            duration: 1.1,
+            ease: "easeIn",
+            type: "spring",
+            stiffness: 45,
+            damping: 15,
+          }}
+          className="usecases-container mx-auto flex flex-col justify-center pb-16"
+        >
+          <h2 className="my-16 text-center font-headline text-4xl font-semibold text-gray-700 dark:text-blue-100">
+            Discover how SoupKnit empowers diverse industries
+            <p className="md:pt-2">
+              with end-to-end Machine Learning solutions
+            </p>
+          </h2>
+
+          <div className="mx-auto grid grid-cols-1 gap-4 md:w-[80%] md:grid-cols-2">
+            {useCases.map((useCase, index) => (
+              <Card
+                key={index}
+                className="shadow-xs rounded-lg border border-slate-200 transition-transform hover:scale-105"
+              >
+                <CardContent className="p-6">
+                  <CardTitle className="text-xl font-bold text-gray-800">
+                    {useCase.title}
+                  </CardTitle>
+                  <CardDescription className="mt-4 text-gray-600">
+                    {useCase.description}
+                  </CardDescription>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </motion.div>
+        <motion.div
+          ref={ref3}
+          initial={{ opacity: 1, y: 150 }}
+          animate={isCallToActionInView ? { opacity: 1, y: 0 } : null}
+          transition={{
+            duration: 1.1,
+            ease: "easeIn",
+            type: "spring",
+            stiffness: 45,
+            damping: 15,
+          }}
+          className="flex flex-col pb-8 text-center text-gray-800 md:px-32 md:pb-24 md:pt-12 md:text-left"
+        >
+          <h2 className="font-headline text-4xl font-semibold md:text-8xl">
+            Get started.
+          </h2>
+          <p className="mb-14 mt-4 md:text-2xl">
+            See how SoupKnit can transform your business and change how you make
+            decisions.
+          </p>
+          <Link to="/signup">
+            <Button size="lg" className="gap-2 md:text-2xl">
+              Let's go, <span>create an account</span>
+              <span>→</span>
+            </Button>
+          </Link>
+        </motion.div>
       </main>
 
-      <footer className="mt-8 bg-black py-8 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <p>&copy; 2024 Soupknit. All rights reserved.</p>
+      <footer className="bg-black py-1 text-white md:mt-40">
+        <div className="md:text-md container mx-auto px-4 text-center text-sm">
+          <span className="inline-flex items-center gap-2 pb-1">
+            Your data is secure with us
+            <LockKeyhole size={15} />
+          </span>
+          <p>&copy; 2024 SoupKnit. All rights reserved.</p>
         </div>
       </footer>
     </div>

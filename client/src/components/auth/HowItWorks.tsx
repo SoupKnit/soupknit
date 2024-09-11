@@ -1,5 +1,13 @@
 import React, { useEffect } from "react"
 
+import {
+  BicepsFlexed,
+  BrainCircuit,
+  CloudUpload,
+  PackageCheck,
+  Rocket,
+} from "lucide-react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 
 import "./styles.css"
@@ -7,26 +15,31 @@ import "./styles.css"
 function HowItWorks() {
   const steps = [
     {
+      icon: <CloudUpload />,
       title: "Upload your Data",
       description:
         "Upload your dataset, which will be automatically preprocessed to prepare it for analysis.",
     },
     {
+      icon: <BrainCircuit />,
       title: "Choose Task",
       description:
-        "Identify your specific machine learning task, such as forecasting, classification, or anomaly detection.",
+        "Choose a machine learning task, such as forecasting, classification, or anomaly detection.",
     },
     {
+      icon: <PackageCheck />,
       title: "Select a Model",
       description:
         "Select a suitable machine learning model for your task, such as linear regression, decision trees, or neural networks.",
     },
     {
+      icon: <BicepsFlexed />,
       title: "Optimize",
       description:
         "Tune and optimize your chosen model to improve its performance and accuracy.",
     },
     {
+      icon: <Rocket />,
       title: "Deploy",
       description:
         "Deploy your trained model, making it available for real-time predictions.",
@@ -75,14 +88,18 @@ function HowItWorks() {
           <Card
             key={index}
             hoverable
-            className={`grid-item grid-area-${index + 1} rounded-lg border border-slate-200 shadow-2xl`}
+            className={`grid-item grid-area-${index + 1} rounded-md border border-slate-200 shadow-2xl`}
           >
             <CardHeader>
-              <CardTitle className="flex text-xl font-semibold">
-                {step.title}
+              <CardTitle className="flex text-left text-xl font-semibold">
+                <span className="mr-2 lg:hidden">{index + 1}. </span>
+                <div className="flex w-full items-center justify-between">
+                  <span>{step.title}</span>
+                  <span className="ml-2">{step.icon}</span>
+                </div>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-left">
               <p>{step.description}</p>
             </CardContent>
           </Card>
