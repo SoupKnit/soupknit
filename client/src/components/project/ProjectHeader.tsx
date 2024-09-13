@@ -164,8 +164,11 @@ export function ProjectHeaderLarge({
           </Badge>
         </a>
       </div>
-      <div className="flex w-full justify-center">
-        <button onClick={() => setCollapsed(true)} className="mx-auto w-4">
+      <div className="flex justify-center">
+        <button
+          onClick={() => setCollapsed(true)}
+          className="mx-auto w-4 bg-red-400"
+        >
           <ChevronUp />
         </button>
       </div>

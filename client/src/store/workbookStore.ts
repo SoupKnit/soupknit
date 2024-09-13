@@ -49,7 +49,8 @@ export type _WorkbookConfig = {
 export const workbookConfigStore = atom<WorkbookConfig>({
   featureColumns: {},
   modelResults: {},
-  taskType: TaskTypes.Regression,
+  modelParams: {},
+  taskType: null,
   targetColumn: null,
   preProcessingConfig: {
     columns: [],

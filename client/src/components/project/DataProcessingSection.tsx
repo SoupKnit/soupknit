@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
-import { useAtom } from "jotai"
+import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { toast } from "sonner"
+import { data } from "tailwindcss/defaultTheme"
 
 import { ColumnPreprocessing } from "../editor/ColumnPreprocessing"
 import { DatasetPreview, FileInputArea } from "../editor/DatasetPreview"
@@ -17,7 +18,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 // import { useFetchWorkbook } from "@/hooks/useFetchWorkbook"
 import { useWorkbook } from "@/hooks/useWorkbook"
-import { filesStore, workbookConfigStore } from "@/store/workbookStore"
+import { userSettingsStore } from "@/store/userSettingsStore"
+import {
+  activeProjectAndWorkbook,
+  filesStore,
+  getDataPreviewAtom,
+  setActiveFileWithPreviewAtom,
+  workbookConfigStore,
+} from "@/store/workbookStore"
 
 export function DataProcessingSection({
   projectId,
@@ -25,33 +33,35 @@ export function DataProcessingSection({
   projectId: string
 }>) {
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [activeFile] = useAtom(filesStore)
+  const projectWorkbook = useAtomValue(activeProjectAndWorkbook)
+  const setActiveFileWithPreview = useSetAtom(setActiveFileWithPreviewAtom)
+  const [userSettings] = useAtom(userSettingsStore)
+  const activeFile = useAtomValue(filesStore)
   // const [isAnalyzing, setIsAnalyzing] = useState(false)
   // const [isPreprocessing, setIsPreprocessing] = useState(false)
   // const { setCSVData, setHeaders, workbookQuery, csvData, headers } =
-  //   useFetchWorkbook(projectId)
   const { error, handleFileUpload, analyzeFile, preprocessFile } =
     useWorkbook(projectId)
 
-  const hasUploadedFile =
-    activeFile && activeFile.file_url && csvData.length > 0
+  const activeFilePreview = useAtomValue(getDataPreviewAtom)
+
   const hasPreprocessingConfig =
     workbookConfig.preProcessingConfig &&
     Object.keys(workbookConfig.preProcessingConfig).length > 0
 
   console.log("DataProcessingSection state:", {
-    hasUploadedFile,
+    // hasUploadedFile,
     activeFile,
-    csvDataLength: csvData.length,
+    csvDataLength: activeFilePreview?.data.length,
     workbookConfig,
     hasPreprocessingConfig,
-    isAnalyzing,
+    // isAnalyzing,
   })
 
   const isAnalyzeButtonDisabled = () => {
     const reasons = []
-    if (isAnalyzing) reasons.push("isAnalyzing")
-    if (!hasUploadedFile) reasons.push("!hasUploadedFile")
+    // if (isAnalyzing) reasons.push("isAnalyzing") // replace with 'isLoading' mutation state
+    if (!activeFile?.file_url) reasons.push("!hasUploadedFile")
     if (!workbookConfig.taskType) reasons.push("!taskType")
     if (
       workbookConfig.taskType !== "Clustering" &&
@@ -81,11 +91,10 @@ export function DataProcessingSection({
       return
     }
     try {
-      setIsAnalyzing(true)
       const result = await analyzeFile.mutateAsync({
         taskType: workbookConfig.taskType,
         targetColumn: workbookConfig.targetColumn || "",
-        fileUrl: activeFile.file_url,
+        fileUrl: data.file_url,
         projectId,
         modelParams: workbookConfig.modelParams,
       })
@@ -101,7 +110,7 @@ export function DataProcessingSection({
       console.error("Error in file analysis:", error)
       toast.error(`Error analyzing file:`) //${(error as Error).message}`)
     } finally {
-      setIsAnalyzing(false)
+      // setIsAnalyzing(false)
     }
   }
 

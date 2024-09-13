@@ -7,5 +7,5 @@ export const Route = createFileRoute("/app/_editor/blocks")({
 })
 
 function BaseLayout() {
-  return <DatasetPreview />
+  return <DatasetPreview name={""} headers={[]} data={[]} />
 }

@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { api } from "./baseApi"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
+import { isNonEmptyArray } from "@/lib/utils"
 
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 import type { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
@@ -53,12 +54,14 @@ export async function loadExistingWorkbook(
     .select("*")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
-    .single()
     .throwOnError()
 
-  console.log("Raw workbook data:", data) // Log the raw data
-  const parsedData = WorkbookDataSchema.parse(data)
-  return parsedData
+  if (isNonEmptyArray(data)) {
+    console.log("Raw workbook data:", data) // Log the raw data
+    const parsedData = WorkbookDataSchema.parse(data[0])
+    return parsedData
+  }
+  return null
 }
 
 export async function createNewWorkbook(

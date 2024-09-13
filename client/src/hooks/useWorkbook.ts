@@ -31,6 +31,7 @@ import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
  *
  * {@link workbookStore}
  * {@link workbookActions}
+ * @deprecated
  */
 export function useWorkbook(_projectId: string) {
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +39,7 @@ export function useWorkbook(_projectId: string) {
   const projectWorkbook = useAtomValue(activeProjectAndWorkbook)
   const [userSettings] = useAtom(userSettingsStore)
   const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [predictionResult, setPredictionResult] = useState<any>(null)
+  const [predictionResult, setPredictionResult] = useState<any>(null) // TODO: no local state for prediction result
   const setActiveFileWithPreview = useSetAtom(setActiveFileWithPreviewAtom)
   const setDataPreview = useSetAtom(setDataPreviewAtom)
 
@@ -64,15 +65,6 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
-  // Effect to save workbook config when component unmounts
-  // useEffect(() => {
-  //   return () => {
-  //     if (projectWorkbook?.workbookId && workbookConfig) {
-  //       saveWorkbookConfig.mutate(workbookConfig)
-  //     }
-  //   }
-  // }, [projectWorkbook?.workbookId, saveWorkbookConfig, workbookConfig])
-
   const createWorkbook = useMutation({
     mutationFn: async (data: { preview_data: any; file: WorkbookDataFile }) => {
       console.log("Creating new workbook", data)
@@ -96,8 +88,6 @@ export function useWorkbook(_projectId: string) {
     },
   })
 
-  // setWorkbookId(workbook.id)
-  // setWorkbookName(workbook.name)
   // setWorkbookFileType(workbook.file_type)
 
   // const fetchFirstRows = async (workbookId: string) => {
@@ -233,24 +223,13 @@ export function useWorkbook(_projectId: string) {
 
   const predictMutation = useMutation({
     mutationFn: async (inputData: Record<string, string>) => {
-      const response = await fetch(`${env.serverUrl}/app/predict`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await getSupabaseAccessToken()}`,
-        },
-        body: JSON.stringify({
-          projectId: projectWorkbook?.projectId,
-          inputData,
-        }),
+      return await modelActions.predict(env, {
+        projectId: _projectId,
+        inputData,
       })
-      if (!response.ok) {
-        throw new Error("Prediction failed")
-      }
-      return response.json()
     },
     onSuccess: (data) => {
-      setPredictionResult(data.prediction)
+      setPredictionResult(data)
       toast.success("Prediction completed successfully")
     },
     onError: (error) => {
@@ -291,7 +270,7 @@ export function useWorkbook(_projectId: string) {
         name: file.name,
         file_url: publicUrl,
         file_type: file.type,
-        preview: parsedData,
+        preview: parsedData as Record<string, any>[],
       })
 
       console.log("File uploaded:", {

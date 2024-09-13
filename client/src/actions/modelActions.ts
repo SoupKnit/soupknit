@@ -16,3 +16,16 @@ export async function createModel(
   // TODO: validate response with zod
   return response
 }
+
+export async function predict(
+  env: ClientEnvironment,
+  data: { projectId: string; inputData: Record<string, string> },
+) {
+  const url = `${env.serverUrl}/app/predict`
+
+  const response = await api.post(url, data, {
+    token: await getSupabaseAccessToken(),
+  })
+
+  return await response
+}

@@ -46,9 +46,6 @@ export function ProjectList() {
     },
     onSuccess: ({ projectId, workbookId }) => {
       setActiveProjectAndWorkbook({ projectId, workbookId })
-      // if (activeFile) {
-      //   setActiveFile(activeFile)
-      // }
       navigate({ to: "/app/$projectId", params: { projectId } })
     },
     onError: (error) => {

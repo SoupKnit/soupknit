@@ -46,14 +46,14 @@ export function EditorHeader() {
       <div className="relative ml-auto md:grow-0">
         <ThemeSwitcher />
       </div>
-      <div className="relative flex-1 md:grow-0">
-        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
+      {/* <div className="relative flex-1 md:grow-0"> */}
+      {/* <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /> */}
+      {/* <Input
           type="search"
           placeholder="Search..."
           className="w-full rounded-lg border border-slate-300 bg-transparent pl-8 md:w-[200px] lg:w-[336px]"
-        />
-      </div>
+        /> */}
+      {/* </div> */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
