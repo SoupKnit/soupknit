@@ -55,11 +55,11 @@ const preProcessingConfig = z.object({
 
 const workbookConfigSchema = z.object({
   // TODO: define this type properly
-  featureColumns: z.object({}),
+  featureColumns: z.array(z.string()),
   // TODO: define this type properly
   // Maybe this should be a separate table in the database
-  modelParams: z.object({}),
-  modelResults: z.object({}),
+  modelParams: z.optional(z.object({})),
+  modelResults: z.optional(z.object({})),
   targetColumn: z.string().nullable(),
   taskType: z.nullable(TaskTypesSchema),
   preProcessingConfig,
@@ -79,7 +79,7 @@ export const WorkbookDataSchema = z.object({
   files: z.nullable(z.array(WorkbookDataFileSchema)),
   // TODO: maybe this should be a separate table in the database (data preview)
   preview_data: CSVFileSchema,
-  preview_data_preprocessed: CSVFileSchema,
+  preview_data_preprocessed: CSVFileSchema.nullable(),
   created_at: z.string(),
   created_by: z.string(),
   updated_at: z.string(),

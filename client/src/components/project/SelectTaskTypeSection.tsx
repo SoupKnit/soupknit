@@ -1,8 +1,11 @@
-import { useAtom } from "jotai"
+import { toast } from "sonner"
 
 import SelectCards from "../SelectCards"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
-import { workbookConfigStore } from "@/store/workbookStore"
+import { useWorkbookMutation } from "@/actions/workbookActions"
+import { updateObject } from "@/lib/utils"
+
+import type { WorkbookData } from "@soupknit/model/src/workbookSchemas"
 
 const options = [
   {
@@ -64,17 +67,37 @@ const options = [
     `,
   },
 ]
-export function SelectTaskTypeSection() {
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+export function SelectTaskTypeSection({
+  projectId,
+  workbookData,
+}: {
+  projectId: string
+  workbookData: WorkbookData
+}) {
+  // const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+  const updateWorkbookConfigMutation = useWorkbookMutation({
+    onSuccess: (data) => {
+      console.log("Workbook config updated successfully:", data)
+      toast.success("Workbook config updated successfully")
+    },
+    onError: (error) => {
+      console.error("Error updating workbook config:", error)
+      toast.error("Error updating workbook config")
+    },
+  })
   return (
     <>
       <SelectCards
         stacking="horizontal"
         options={options}
-        selectedValue={workbookConfig.taskType ?? undefined}
+        selectedValue={workbookData.config.taskType ?? undefined}
         onSelectValue={(v) => {
           console.log(v)
-          setWorkbookConfig((prev: any) => ({ ...prev, taskType: v }))
+          updateWorkbookConfigMutation.mutate({
+            projectId,
+            workbookId: workbookData.id,
+            updatedConfig: updateObject(workbookData.config, "taskType", v),
+          })
         }}
       />
     </>

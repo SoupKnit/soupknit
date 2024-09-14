@@ -9,6 +9,7 @@ import { ChevronUp, Trash2 } from "lucide-react"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import { Badge } from "../ui/badge"
 import { buttonVariants } from "../ui/button"
+import { Skeleton } from "../ui/skeleton"
 import { useProjectActions } from "@/actions/projectsActions"
 import {
   AlertDialog,
@@ -39,7 +40,6 @@ export function ProjectHeaderLarge({
   // const [title, setTitle] = useState<string>(activeProject.title)
   const [projectDetails, setProjectDetails] = useAtom(projectDetailsStore)
   const navigate = useNavigate({ from: "/app" })
-  console.log("activeProject in header large", activeProject)
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -126,7 +126,6 @@ export function ProjectHeaderLarge({
           })
         }}
         onBlur={() => {
-          console.log("Setting project title to:", projectDetails?.title)
           // debounce the mutation
           projectDetailsMutation.mutate({
             title: projectDetails?.title,
@@ -151,7 +150,6 @@ export function ProjectHeaderLarge({
           value={projectDetails?.description ?? ""}
           onChange={(value) => {
             if (value !== activeProject?.description) {
-              console.log("Setting description to:", value)
               projectDetailsMutation.mutate({
                 description: value,
               })
@@ -263,16 +261,41 @@ export function DeleteDialog({
   )
 }
 
-export function ProjectHeader({
-  projectDetails,
-}: {
-  projectDetails: ProjectDetails
-}) {
+export function ProjectHeader({ projectId }: { projectId: string }) {
   const [collapsed, setCollapsed] = useState(true)
-  // const { loadProject } = useProjectActions()
+  const [projectDetails, setProjectDetails] = useAtom(projectDetailsStore)
+  const { loadProject } = useProjectActions()
 
-  // this will have a value if navigating from project list
-  // but we have refetch and set it just in case
+  const projectQuery = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: async () => {
+      return await loadProject(projectId)
+    },
+    placeholderData: () => {
+      if (!projectDetails) {
+        return undefined
+      }
+      if (projectDetails.id === projectId) {
+        return projectDetails
+      }
+      return undefined
+    },
+  })
+
+  useEffect(() => {
+    if (projectQuery.data) {
+      setProjectDetails(projectQuery.data)
+    }
+  }, [projectQuery.data, setProjectDetails])
+
+  if (!projectDetails) {
+    return (
+      <div className="mt-10 flex flex-col gap-2">
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-6 w-96" />
+      </div>
+    )
+  }
 
   return (
     <div className="relative py-4">

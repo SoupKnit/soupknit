@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useAtom, useSetAtom } from "jotai"
@@ -15,10 +16,14 @@ import { projectDetailsStore } from "@/store/workbookStore"
 // import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
 export function ProjectList() {
-  // const { supa } = useEnv()
   const { loadProjects, createNewProject } = useProjectActions()
   const navigate = useNavigate({ from: "/app/$projectId" })
   const setProjectDetails = useSetAtom(projectDetailsStore)
+
+  // on mount, set project details to null
+  useEffect(() => {
+    setProjectDetails(null)
+  }, [setProjectDetails])
 
   const {
     isPending,

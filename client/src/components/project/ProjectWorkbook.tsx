@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { useAtom, useSetAtom } from "jotai"
+import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 
 import { Skeleton } from "../ui/skeleton"
@@ -11,32 +10,15 @@ import {
 import { ModelDeploySection, ModelDeploySectionHeader } from "./ModelDeployMain"
 import { ModelPrediction, ModelPredictionHeader } from "./ModelPrediction"
 import { ModelSelector, ModelSelectorHeader } from "./ModelSelector"
-import {
-  ProjectHeader,
-  ProjectHeaderLarge,
-  ProjectHeaderSmall,
-} from "./ProjectHeader"
+import { ProjectHeader } from "./ProjectHeader"
 import {
   SelectTaskTypeSection,
   SelectTaskTypeSectionHeader,
 } from "./SelectTaskTypeSection"
-import { useProjectActions } from "@/actions/projectsActions"
 import { useWorkbookActions } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { useEnv } from "@/lib/clientEnvironment"
-import { cn, isNonEmptyArray } from "@/lib/utils"
-import {
-  activeProjectAndWorkbook,
-  projectDetailsStore,
-  setDataPreviewAtom,
-  workbookConfigStore,
-} from "@/store/workbookStore"
-
-import type {
-  ActiveProject,
-  WorkbookConfig,
-} from "@soupknit/model/src/workbookSchemas"
+import { cn } from "@/lib/utils"
 
 const sections = {
   overview: "Task Type",
@@ -74,98 +56,22 @@ const sectionComponents = {
 // projectId is present in the URL
 const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [activeSection, setActiveSection] = useState<Section>("overview")
-  const [workbookConfig] = useAtom(workbookConfigStore) // replace with useQuery
-  const { loadProject } = useProjectActions()
+  // const [workbookConfig] = useAtom(workbookConfigStore) // replace with useQuery
   const { loadExistingWorkbook } = useWorkbookActions()
-  const [projectDetails, setProjectDetails] = useAtom(projectDetailsStore)
-  const setDataPreview = useSetAtom(setDataPreviewAtom)
-
-  const projectQuery = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: async () => {
-      return await loadProject(projectId)
-    },
-    placeholderData: () => {
-      if (!projectDetails) {
-        return undefined
-      }
-      if (projectDetails.id === projectId) {
-        return projectDetails
-      }
-      return undefined
-    },
-  })
-
-  useEffect(() => {
-    if (projectQuery.data) {
-      console.log("This changed: Setting project details", projectQuery.data)
-      setProjectDetails(projectQuery.data)
-    }
-  }, [projectQuery.data, setProjectDetails])
 
   const workbookQuery = useQuery({
     queryKey: ["workbook", projectId],
     queryFn: async () => {
       return await loadExistingWorkbook(projectId)
     },
-    enabled: !!projectDetails,
   })
 
-  // useEffect(() => {
-  //   console.log("Workbook Query isSuccess, setting state", workbookQuery.data)
-  //   if (workbookQuery.data) {
-  //     const data = workbookQuery.data
-  //     console.log("Refetched Workbook data:", data)
-  //     if (data?.id && data.project_id) {
-  //       toast.success("Workbook loaded successfully")
-  //       // setActiveProject((p) => ({
-  //       //   ...p,
-  //       //   projectId: data.project_id,
-  //       //   workbookId: data.id,
-  //       //   files: data.files?.map((f) => ({
-  //       //     name: f.name,
-  //       //     file_url: f.file_url,
-  //       //     file_type: f.file_type,
-  //       //   })),
-  //       // }))
-
-  //       // if (data.config) {
-  //       //   setWorkbookConfig(data.config)
-  //       //   if (data.config.taskType) {
-  //       //     // TODO: Figure out how to go to other sections
-  //       //     setActiveSection("preprocessing")
-  //       //   }
-  //       //   // Prioritize preprocessed data if available
-  //       //   if (isNonEmptyArray(data.preview_data_preprocessed)) {
-  //       //     setDataPreview(data.preview_data_preprocessed)
-  //       //   } else if (isNonEmptyArray(data.preview_data)) {
-  //       //     setDataPreview(data.preview_data)
-  //       //   }
-  //       // }
-  //     } else {
-  //       console.error("No existing workbook found")
-  //       toast.info("No existing workbook found")
-  //     }
-  //   }
-  // }, [setActiveProject, workbookQuery.data, setWorkbookConfig, setDataPreview])
-
-  // const workbookConfigMutation = useMutation({
-  //   mutationFn: async (config: WorkbookConfig) => {
-  //     if (!activeProject?.workbookId) {
-  //       throw new Error("No workbook ID found")
-  //     }
-  //     return await updateWorkbookConfig({
-  //       workbookId: activeProject?.workbookId,
-  //       config,
-  //     })
-  //   },
-  //   onError: (error) => {
-  //     console.error("Error updating workbook config:", error)
-  //   },
-  //   onSuccess: () => {
-  //     toast.success("Workbook configuration saved successfully")
-  //   },
-  // })
+  useEffect(() => {
+    if (workbookQuery.data?.config.taskType) {
+      setActiveSection("preprocessing")
+    }
+    // TODO: Figure out how to go to other sections
+  }, [workbookQuery.data])
 
   // const runAction = useMutation({
   //   mutationFn: async (project: ActiveProject) => {
@@ -180,39 +86,27 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   // })
 
   const canProceedToPreprocessing = () => {
-    return !!workbookConfig.taskType
+    return !!workbookQuery.data?.config.taskType
   }
 
   const proceedToPreprocessing = () => {
     console.log(
       "Moving to data processing section with task type:",
-      workbookConfig.taskType,
+      workbookQuery.data?.config.taskType,
     )
     setActiveSection("preprocessing")
   }
 
   const canProceedToModelCreation = () => {
     return (
-      workbookConfig.targetColumn || workbookConfig.taskType === "Clustering"
+      workbookQuery.data?.config.targetColumn ||
+      workbookQuery.data?.config.taskType === "Clustering"
     )
   }
 
   const proceedToModelCreation = () => {
     console.log("Moving to model creation section")
     setActiveSection("modelCreation")
-    // Note: Uncomment and adapt the following code when workbookConfigMutation is implemented
-    // workbookConfigMutation.mutate(workbookConfig, {
-    //   onSuccess: () => {
-    //     console.log("Workbook config updated successfully")
-    //     setActiveSection("modelCreation")
-    //   },
-    //   onError: (error) => {
-    //     console.error("Error updating workbook config:", error)
-    //     toast.error(
-    //       "Failed to update workbook configuration. Please try again.",
-    //     )
-    //   },
-    // })
   }
 
   const canProceedToModelPrediction = () => {
@@ -296,11 +190,15 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const disabled = () => {
     switch (activeSection) {
       case "overview":
-        return !workbookConfig.taskType
+        return !canProceedToPreprocessing()
       case "preprocessing":
-        return !!workbookConfig.targetColumn || !!workbookConfig.taskType
+        return !canProceedToModelCreation()
       case "modelCreation":
-        return true
+        return !canProceedToModelPrediction()
+      case "modelPrediction":
+        return !canProceedToDeploy()
+      default:
+        return false
     }
   }
   const getNextButtonText = () => {
@@ -308,10 +206,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
       case "overview":
         return disabled() ? "Select Task Type" : "Start Preprocessing"
       case "preprocessing":
-        return workbookConfig.targetColumn ||
-          workbookConfig.taskType === "Clustering"
-          ? "Proceed to Model Creation"
-          : "Select Target Column"
+        return disabled() ? "Select Target Column" : "Proceed to Model Creation"
       case "modelCreation":
         return "Predict Values"
       case "modelPrediction":
@@ -323,40 +218,44 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
 
   return (
     <div className="app-container relative">
-      {!projectDetails ? (
+      <ProjectHeader projectId={projectId} />
+      {workbookQuery.isLoading || !workbookQuery.data ? (
         <LoadingSkeleton />
       ) : (
-        <>
-          {/* <ProjectHeader projectDetails={projectDetails} /> */}
-          <div className="mb-12 mt-4">
-            <SectionsNav
-              activeSection={activeSection}
-              setActiveSection={navigateToSection}
-            />
-            <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
-              {Object.entries(sections).map(([key, label]) => {
+        <div className="mb-12 mt-4">
+          <SectionsNav
+            activeSection={activeSection}
+            setActiveSection={navigateToSection}
+          />
+          <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
+            {workbookQuery.data !== null &&
+              Object.entries(sections).map(([key, label]) => {
                 const { Header, Content } = sectionComponents[label]
                 return (
                   activeSection === key && (
                     <React.Fragment key={key}>
                       <Header />
                       <CardContent>
-                        <Content projectId={projectId} />
+                        <Content
+                          projectId={projectId}
+                          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                          // @ts-ignore
+                          workbookData={workbookQuery.data}
+                        />
                       </CardContent>
                     </React.Fragment>
                   )
                 )
               })}
-              <CardFooter className="justify-end">
-                {activeSection !== "deploy" && (
-                  <Button onClick={proceedToNextSection} disabled={disabled()}>
-                    {getNextButtonText()}
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          </div>
-        </>
+            <CardFooter className="justify-end">
+              {activeSection !== "deploy" && (
+                <Button onClick={proceedToNextSection} disabled={disabled()}>
+                  {getNextButtonText()}
+                </Button>
+              )}
+            </CardFooter>
+          </Card>
+        </div>
       )}
 
       {/* <div className="mt-4 flex justify-end">
@@ -378,9 +277,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
 
 const LoadingSkeleton = () => {
   return (
-    <div className="app-container mt-10 flex flex-col gap-4 px-12">
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-6 w-96" />
+    <div className="flex flex-col gap-4 px-12">
       <Skeleton className="mx-auto mt-6 h-6 w-96" />
       <Skeleton className="mt-8 h-6 w-32" />
       <Skeleton className="h-6 w-96" />

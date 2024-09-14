@@ -1,228 +1,112 @@
 import { useState } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useAtom, useAtomValue, useSetAtom } from "jotai"
+import { useMutation } from "@tanstack/react-query"
+import { useAtom, useAtomValue } from "jotai"
 import Papa from "papaparse"
 import { toast } from "sonner"
 
 import * as dataProcessingActions from "@/actions/dataProcessingActions"
+import { useDataProcessingActions } from "@/actions/dataProcessingActions"
 import * as modelActions from "@/actions/modelActions"
+import { useModelActions } from "@/actions/modelActions"
 import { usePreprocessingActions } from "@/actions/preprocessingActions"
-import { useWorkbookActions } from "@/actions/workbookActions"
+import {
+  useWorkbookActions,
+  useWorkbookMutation,
+} from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
-import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { isNonEmptyArray } from "@/lib/utils"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import {
-  activeProjectAndWorkbook,
-  setActiveFileWithPreviewAtom,
-  setDataPreviewAtom,
-  workbookConfigStore,
-} from "@/store/workbookStore"
+import { projectDetailsStore, workbookConfigStore } from "@/store/workbookStore"
 
-// import type { AnalyzePostData } from "@/actions/workbookActions"
+import type { AnalyzePostData } from "@/actions/preprocessingActions"
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
-/**
- * TODO: refactor needed here
- *   - This needs to tie in with the Workbook store, and jotai global state
- *   - This hook should also interface with react-query to keep the workbook state synced with the database
- *   - Split this hook into smaller hooks and functions. Only state management should be here
- *   - All other logic should be moved to actions/stores
- *
- * {@link workbookStore}
- * {@link workbookActions}
- * @deprecated
- */
-export function useWorkbook(_projectId: string) {
-  const [error, setError] = useState<string | null>(null)
-  const env = useEnv()
-  const projectWorkbook = useAtomValue(activeProjectAndWorkbook)
-  const [userSettings] = useAtom(userSettingsStore)
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [predictionResult, setPredictionResult] = useState<any>(null) // TODO: no local state for prediction result
-  const setActiveFileWithPreview = useSetAtom(setActiveFileWithPreviewAtom)
-  const setDataPreview = useSetAtom(setDataPreviewAtom)
-  const { createNewWorkbook, saveWorkbookConfig } = useWorkbookActions()
-  const { analyzeFilePost } = usePreprocessingActions()
-
-  const queryClient = useQueryClient()
-
-  // Add a new mutation for saving the workbook config
-  const saveWorkbookConfigMutation = useMutation({
-    mutationFn: async (config: any) => {
-      if (!projectWorkbook?.workbookId) {
-        throw new Error("No workbook ID found for saving config")
-      }
-      return await saveWorkbookConfig(projectWorkbook.workbookId, config)
-    },
-    onSuccess: () => {
-      toast.success("Workbook configuration saved successfully")
-    },
-    onError: (error) => {
-      toast.error(`Error saving workbook configuration: ${error.message}`)
-    },
-  })
-
-  const createWorkbook = useMutation({
+const useCreateWorkbook = (projectId: string) => {
+  const { createNewWorkbook } = useWorkbookActions()
+  return useMutation({
     mutationFn: async (data: { preview_data: any; file: WorkbookDataFile }) => {
       console.log("Creating new workbook", data)
-      return await createNewWorkbook(_projectId, data.file, data.preview_data)
+      return await createNewWorkbook(projectId, data.file, data.preview_data)
     },
     onSuccess: (data) => {
       console.log("Workbook created successfully", data)
       toast.success("Workbook created successfully")
-      queryClient.invalidateQueries({
-        queryKey: ["workbook", _projectId, env.supa],
-      })
     },
     onError: (error) => {
       console.error("Error creating workbook:", error)
       toast.error("Failed to create workbook")
     },
   })
+}
 
-  // setWorkbookFileType(workbook.file_type)
-
-  // const fetchFirstRows = async (workbookId: string) => {
-  //   setLoading(true)
-
-  //   try {
-  //     // use react-query
-  //     // const { data, error } = await supa
-  //     //   .from("workbook_data")
-  //     //   .select("preview_data")
-  //     //   .eq("workbook_id", workbookId)
-  //     //   .single()
-
-  //     if (error) throw error
-
-  //     if (data && data.preview_data) {
-  //       setHeaders(Object.keys(data.preview_data[0]))
-  //       setCSVData(data.preview_data)
-  //     } else {
-  //       setHeaders([])
-  //       setCSVData([])
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching preview data:", error)
-  //     setError(`Error fetching preview data: ${error.message}`)
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
-
-  const analyzeFile = useMutation({
-    mutationFn: async (data: any) => {
+export const useAnalyzeFile = (workbookId: string) => {
+  const { analyzeFilePost } = usePreprocessingActions()
+  return useMutation({
+    mutationFn: async (data: AnalyzePostData) => {
       console.log("fetching analyze file with", data)
-      const response = analyzeFilePost(data)
-
-      return response
+      return analyzeFilePost(data)
     },
     onSuccess: (data) => {
       toast.success("File analysis completed successfully")
       console.log("File analysis result:", data)
-      // Invalidate the workbook config query to trigger a refetch
-      if (projectWorkbook?.workbookId) {
-        queryClient.invalidateQueries({
-          queryKey: ["workbookConfig", projectWorkbook.workbookId],
-        })
-      }
     },
     onError: (error) => {
       toast.error(`Error analyzing file: ${error.message}`)
     },
   })
+}
 
-  // Update the preprocessFile mutation
-  const preprocessFile = useMutation({
-    mutationFn: async (data: {
-      taskType: string
-      targetColumn: string | null
-      preProcessingConfig: any
-      projectId: string
-    }) => {
-      return await dataProcessingActions.preprocessFile(env, data)
+// move this to dataProcessingActions.ts
+const usePreprocessFile = (projectId: string, workbookId: string) => {
+  const { preprocessFile } = useDataProcessingActions()
+  return useMutation({
+    mutationFn: async (data: any) => {
+      return await preprocessFile(data)
     },
     onSuccess: (data) => {
-      // Update the active file to the preprocessed file
       if (data.preprocessedFileUrl) {
-        setActiveFileWithPreview({
-          name:
-            data.preprocessedFileUrl.split("/").pop() ||
-            "preprocessed_file.csv",
-          file_url: data.preprocessedFileUrl,
-          file_type: "text/csv",
-          preview: data.previewDataPreprocessed,
-        })
+        // Update active file logic should be handled in a separate function or store
+        console.log("Preprocessed file URL:", data.preprocessedFileUrl)
       }
 
-      // Update the workbook config with the new preprocessing config
-      setWorkbookConfig((prevConfig) => ({
-        ...prevConfig,
-        preProcessingConfig:
-          data.preProcessingConfig || prevConfig.preProcessingConfig,
-      }))
-
-      // Invalidate the workbook query to trigger a refetch
-      if (projectWorkbook?.projectId) {
-        queryClient.invalidateQueries({
-          queryKey: ["workbook", projectWorkbook.projectId, env.supa],
-        })
-      }
-
-      // Invalidate the workbook config query to trigger a refetch
-      if (projectWorkbook?.workbookId) {
-        queryClient.invalidateQueries({
-          queryKey: ["workbookConfig", projectWorkbook.workbookId],
-        })
-      }
+      toast.success("File preprocessed successfully")
     },
     onError: (error) => {
       toast.error(`Error preprocessing file: ${error.message}`)
-      setError(`Error preprocessing file: ${error.message}`)
     },
   })
+}
 
-  const createModel = useMutation({
+// move this to modelActions.ts
+const useCreateModel = (projectId: string) => {
+  const { createModel } = useModelActions()
+  return useMutation({
     mutationFn: async (data: any) => {
-      return await modelActions.createModel(env, data)
+      return await createModel(data)
     },
     onSuccess: (data) => {
       toast.success("Model created successfully")
       console.log("Model creation result:", data)
-
-      // Update the workbook config with the new model results
-      // setWorkbookConfig((prevConfig) => ({
-      //   ...prevConfig,
-      //   modelResults: data,
-      // }))
-
-      // Invalidate the workbook query to trigger a refetch
-      if (_projectId) {
-        queryClient.invalidateQueries({
-          queryKey: ["workbook", _projectId, env.supa],
-        })
-      }
-
-      // Invalidate the workbook config query to trigger a refetch
-      queryClient.invalidateQueries({
-        queryKey: ["workbookConfig", _projectId],
-      })
     },
     onError: (error) => {
       toast.error(`Error creating model: ${error.message}`)
     },
   })
+}
 
-  const predictMutation = useMutation({
+// move this to modelActions.ts
+const usePredictMutation = (projectId: string) => {
+  const { predict } = useModelActions()
+  return useMutation({
     mutationFn: async (inputData: Record<string, string>) => {
-      return await modelActions.predict(env, {
-        projectId: _projectId,
+      return await predict({
+        projectId,
         inputData,
       })
     },
     onSuccess: (data) => {
-      setPredictionResult(data)
+      // setPredictionResult should be handled in a separate function or store
+      console.log("Prediction result:", data)
       toast.success("Prediction completed successfully")
     },
     onError: (error) => {
@@ -230,6 +114,21 @@ export function useWorkbook(_projectId: string) {
       toast.error("Error running prediction")
     },
   })
+}
+
+// this is actually analyzeFile and set config
+export function useWorkbook(projectId: string, workbookId: string) {
+  const [error, setError] = useState<string | null>(null)
+  const env = useEnv()
+  const projectDetails = useAtomValue(projectDetailsStore)
+  const [userSettings] = useAtom(userSettingsStore)
+  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
+
+  const createWorkbook = useCreateWorkbook(projectId)
+  const analyzeFile = useAnalyzeFile(workbookId)
+  const preprocessFile = usePreprocessFile(projectId, workbookId)
+  const createModel = useCreateModel(projectId)
+  const predictMutation = usePredictMutation(projectId)
 
   const handleFileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -240,8 +139,9 @@ export function useWorkbook(_projectId: string) {
     setError(null)
 
     try {
-      const filePath = `${userSettings.userId}/project-${projectWorkbook?.projectId}/${Date.now()}_${file.name}`
+      const filePath = `${userSettings.userId}/project-${projectId}/${Date.now()}_${file.name}`
 
+      // TODO: move this to a new fileActions.ts
       const { data: uploadData, error: uploadError } = await env.supa.storage
         .from("workbook-files")
         .upload(filePath, file)
@@ -259,7 +159,8 @@ export function useWorkbook(_projectId: string) {
         throw new Error("Failed to parse file data")
       }
 
-      setActiveFileWithPreview({
+      // setActiveFileWithPreview should be handled in a separate function or store
+      console.log("File uploaded:", {
         name: file.name,
         file_url: publicUrl,
         file_type: file.type,
@@ -287,17 +188,13 @@ export function useWorkbook(_projectId: string) {
           taskType: workbookConfig.taskType,
           targetColumn: workbookConfig.targetColumn,
           fileUrl: publicUrl,
-          projectId: _projectId,
+          projectId,
         })
       } else {
         console.warn(
           "Workbook config is missing taskType or targetColumn. Skipping file analysis.",
         )
       }
-      // Refetch the workbook query to update the UI
-      queryClient.invalidateQueries({
-        queryKey: ["workbook", _projectId, env.supa],
-      })
     } catch (error: any) {
       console.error("Error processing file:", error)
       setError(`Error processing file: ${error.message}`)
@@ -307,11 +204,7 @@ export function useWorkbook(_projectId: string) {
   return {
     error,
     handleFileUpload,
-    analyzeFile,
-    projectWorkbook,
-    saveWorkbookConfig,
     preprocessFile,
-    setWorkbookConfig,
     createModel,
     predictMutation,
   }

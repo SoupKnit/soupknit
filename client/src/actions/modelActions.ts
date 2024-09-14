@@ -1,6 +1,9 @@
+import { withClientContext } from "./actionRegistry"
 import { api } from "./baseApi"
+import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 
+import type { ClientActionRegistry } from "./actionRegistry"
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
 
 export async function createModel(
@@ -28,4 +31,14 @@ export async function predict(
   })
 
   return await response
+}
+
+const allModelActions = {
+  createModel,
+  predict,
+} as const satisfies ClientActionRegistry
+
+export function useModelActions() {
+  const env = useEnv()
+  return withClientContext(allModelActions, env)
 }

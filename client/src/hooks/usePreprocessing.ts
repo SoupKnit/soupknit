@@ -7,7 +7,6 @@ import { useWorkbook } from "@/hooks/useWorkbook"
 import { useEnv } from "@/lib/clientEnvironment"
 import { workbookConfigStore } from "@/store/workbookStore"
 
-import type { WorkbookConfig } from "@/store/workbookStore"
 import type {
   CategoricalEncodingMethod,
   GlobalPreprocessingOption,
@@ -15,11 +14,13 @@ import type {
   NumericScalingMethod,
   PreProcessingColumnConfig,
 } from "@soupknit/model/src/preprocessing"
+import type { WorkbookConfig } from "@soupknit/model/src/workbookSchemas"
 
-export function useFetchPreprocessing(headers: string[], projectId: string) {
+/** @deprecated */
+export function useFetchPreprocessing(projectId: string, workbookId: string) {
   const { supa } = useEnv()
   const [_, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const { workbookConfigQuery } = useWorkbook(projectId)
+  const { analyzeFile } = useWorkbook(projectId, workbookId)
 
   const { data: fetchedDefaultConfig } = useQuery({
     queryKey: ["defaultPreProcessingConfig", supa],

@@ -36,10 +36,14 @@ export function EditorHeader() {
               <Link to="/app">Home</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{currentProject?.title}</BreadcrumbPage>
-          </BreadcrumbItem>
+          {currentProject && (
+            <>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{currentProject?.title}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </>
+          )}
         </BreadcrumbList>
       </Breadcrumb>
       <div className="relative ml-auto md:grow-0">

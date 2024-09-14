@@ -1,4 +1,5 @@
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 import { withClientContext } from "./actionRegistry"
 import { api } from "./baseApi"
@@ -11,8 +12,10 @@ import type { ClientEnvironment } from "@/lib/clientEnvironment"
 import type {
   ActiveProject,
   WorkbookConfig,
+  WorkbookData,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
+import type { MutationOptions } from "@tanstack/react-query"
 
 /** @deprecated */
 async function runProject(
@@ -33,13 +36,18 @@ async function loadExistingWorkbook(env: ClientEnvironment, projectId: string) {
     .from("workbook_data")
     .select("*")
     .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .throwOnError()
 
   if (isNonEmptyArray(data)) {
     console.log("Raw workbook data:", data) // Log the raw data
-    const parsedData = WorkbookDataSchema.parse(data[0])
-    return parsedData
+    // validate the data with zod, and log any errors
+    const validationResult = WorkbookDataSchema.safeParse(data[0])
+    if (!validationResult.success) {
+      console.error("Workbook data validation failed:", validationResult.error)
+      throw new Error("Zod: Workbook data validation failed")
+    }
+    return validationResult.data
   }
   return null
 }
@@ -81,29 +89,21 @@ async function updateWorkbookConfig(
     .from("workbook_data")
     .update({
       config: config,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", workbookId)
-    .select()
+    .select("*")
+    .single()
     .throwOnError()
-  return data
-}
 
-async function saveWorkbookConfig(
-  env: ClientEnvironment,
-  workbookId: string,
-  config: any,
-) {
-  const { data, error } = await env.supa
-    .from("workbook_data")
-    .update({ config: config })
-    .eq("id", workbookId)
+  if (!data) {
+    throw new Error("No data returned from updateWorkbookConfig")
+  }
 
-  if (error) throw error
-  return data
+  return data as WorkbookData
 }
 
 const allWorkbookActions = {
-  saveWorkbookConfig,
   loadExistingWorkbook,
   createNewWorkbook,
   runProject,
@@ -113,4 +113,43 @@ const allWorkbookActions = {
 export function useWorkbookActions() {
   const env = useEnv()
   return withClientContext(allWorkbookActions, env)
+}
+
+type WorkbookConfigMutationArgs = {
+  projectId: string
+  workbookId: string
+  updatedConfig: WorkbookConfig
+}
+
+export function useWorkbookMutation(
+  options: MutationOptions<WorkbookData, any, WorkbookConfigMutationArgs> = {},
+) {
+  const env = useEnv()
+  const queryClient = useQueryClient()
+  const updateWorkbookConfigMutation = useMutation({
+    mutationFn: async ({
+      projectId,
+      workbookId,
+      updatedConfig,
+    }: WorkbookConfigMutationArgs) => {
+      if (!workbookId || !projectId) {
+        throw new Error("IDs are missing for saving config")
+      }
+      const updatedRow = await updateWorkbookConfig(env, {
+        workbookId: workbookId,
+        config: updatedConfig,
+      })
+      return updatedRow
+    },
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.setQueryData<WorkbookData>(
+        ["workbook", variables.projectId],
+        data,
+      )
+      options.onSuccess?.(data, variables, context)
+    },
+  })
+
+  return updateWorkbookConfigMutation
 }
