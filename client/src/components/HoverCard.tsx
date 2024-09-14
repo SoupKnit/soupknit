@@ -7,6 +7,7 @@ export function HoverCard(props: CardProps) {
   return (
     <Card
       hoverable
+      onClick={props.onClick}
       className={cn(
         "rounded-md p-6 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800",
         props.className,

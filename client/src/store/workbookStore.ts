@@ -16,6 +16,9 @@ import type {
 } from "@soupknit/model/src/workbookSchemas"
 
 // atom to store the active workbook ID
+/**
+ * @deprecated use react query and local state
+ */
 export const activeProjectAndWorkbook = atom<ActiveProject>({
   projectId: "",
   workbookId: undefined,
@@ -24,12 +27,16 @@ export const activeProjectAndWorkbook = atom<ActiveProject>({
 })
 
 // atom to store all the loaded projects, their titles, and descriptions
-type ProjectDetails = {
-  id: string
+export type ProjectDetails = {
   title: string
+  id: string
   description: string
+  updated_at: string
+  workbook_data: {
+    id: string
+  }[]
 }
-export const projectDetailsStore = atom<ProjectDetails[]>([])
+export const projectDetailsStore = atom<ProjectDetails | null>(null)
 
 /**
  * @deprecated use ${@link WorkbookConfig} instead

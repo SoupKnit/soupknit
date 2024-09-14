@@ -52,6 +52,7 @@
     "@tailwindcss/container-queries": "0.1.1",
     "@tailwindcss/typography": "0.5.13",
     "@tanstack/react-query": "5.45.1",
+    "@tanstack/react-query-devtools": "^5.56.2",
     "@tanstack/react-router": "1.39.4",
     "@tanstack/react-table": "^8.20.1",
     "@tanstack/router-devtools": "1.39.4",

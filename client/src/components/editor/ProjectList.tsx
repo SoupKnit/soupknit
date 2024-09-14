@@ -6,32 +6,30 @@ import { toast } from "sonner"
 import { PlusCircle } from "lucide-react"
 
 import OnboardingForm from "../onboarding/OnbaordingForm"
-import {
-  createNewProject,
-  loadDatasets,
-  loadProjects,
-} from "@/actions/projectsActions"
+import { useProjectActions } from "@/actions/projectsActions"
 import { HoverCard } from "@/components/HoverCard"
 import { Button } from "@/components/ui/button"
-import { useEnv } from "@/lib/clientEnvironment"
 import { userSettingsStore } from "@/store/userSettingsStore"
-import { activeProjectAndWorkbook } from "@/store/workbookStore"
+import { projectDetailsStore } from "@/store/workbookStore"
 
-import type { DBProject } from "@soupknit/model/src/dbTables"
+// import { activeProjectAndWorkbook } from "@/store/workbookStore"
 
 export function ProjectList() {
-  const { supa } = useEnv()
+  // const { supa } = useEnv()
+  const { loadProjects, createNewProject } = useProjectActions()
   const navigate = useNavigate({ from: "/app/$projectId" })
-  const setActiveProjectAndWorkbook = useSetAtom(activeProjectAndWorkbook)
+  const setProjectDetails = useSetAtom(projectDetailsStore)
 
   const {
     isPending,
     data: projects,
     isError,
   } = useQuery({
-    queryKey: ["projects", supa],
+    queryKey: ["projects"],
     queryFn: async () => {
-      return await loadProjects(supa)
+      const data = await loadProjects()
+      console.log("Projects: ", data)
+      return data
     },
   })
 
@@ -42,10 +40,16 @@ export function ProjectList() {
       //   file_url: "",
       //   type: "csv",
       // }
-      return await createNewProject(supa)
+      return await createNewProject()
     },
     onSuccess: ({ projectId, workbookId }) => {
-      setActiveProjectAndWorkbook({ projectId, workbookId })
+      setProjectDetails({
+        id: projectId,
+        title: "",
+        description: "",
+        updated_at: new Date().toISOString(),
+        workbook_data: [{ id: workbookId }],
+      })
       navigate({ to: "/app/$projectId", params: { projectId } })
     },
     onError: (error) => {
@@ -53,6 +57,17 @@ export function ProjectList() {
       toast.error(`Failed to create project: ${error.message}`)
     },
   })
+
+  const navigateToProject = (project: { id: string; title: string }) => {
+    setProjectDetails({
+      id: project.id,
+      title: project.title,
+      description: "",
+      updated_at: new Date().toISOString(),
+      workbook_data: [],
+    })
+    navigate({ to: "/app/$projectId", params: { projectId: project.id } })
+  }
 
   if (isPending || !projects) {
     return <div>Loading...</div>
@@ -84,27 +99,31 @@ export function ProjectList() {
         {!isError &&
           projects
             .filter((p) => !!p)
-            .map((project: DBProject) => (
-              <HoverCard key={project.id} className="md:w-[360px]">
-                <Link to={`/app/${project.id}`}>
-                  <div className="flex h-full flex-col">
-                    {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
-                    <div className="flex-grow text-2xl font-semibold text-gray-800 dark:text-gray-300">
-                      {project.title || "Untitled Project"}
-                    </div>
-                    <div className="mt-2 h-40 flex-grow overflow-hidden">
-                      <AddLineBreaks
-                        className="text-sm tracking-tighter text-gray-500"
-                        text={project.description || ""}
-                      />
-                    </div>
-                    <div className="mt-3 text-sm text-gray-500">
-                      Last updated:{" "}
-                      {project.updated_at &&
-                        new Date(project.updated_at).toLocaleString()}
-                    </div>
+            .map((project) => (
+              <HoverCard
+                key={project.id}
+                className="md:w-[360px]"
+                onClick={() => navigateToProject(project)}
+              >
+                {/* <Link to={`/app/${project.id}`}> */}
+                <div className="flex h-full flex-col">
+                  {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
+                  <div className="flex-grow text-2xl font-semibold text-gray-800 dark:text-gray-300">
+                    {project.title || "Untitled Project"}
                   </div>
-                </Link>
+                  <div className="mt-2 h-40 flex-grow overflow-hidden">
+                    <AddLineBreaks
+                      className="text-sm tracking-tighter text-gray-500"
+                      text={project.description || ""}
+                    />
+                  </div>
+                  <div className="mt-3 text-sm text-gray-500">
+                    Last updated:{" "}
+                    {project.updated_at &&
+                      new Date(project.updated_at).toLocaleString()}
+                  </div>
+                </div>
+                {/* </Link> */}
               </HoverCard>
             ))}
         <HoverCard
@@ -118,24 +137,26 @@ export function ProjectList() {
           </div>
         </HoverCard>
       </div>
-
-      <Datasets />
+      {/* <Datasets /> */}
     </div>
   )
 }
 
 function Datasets() {
-  const { supa } = useEnv()
+  const { loadDatasets } = useProjectActions()
 
   const userId = useAtom(userSettingsStore)[0].userId
 
   const { data: datasets } = useQuery({
-    queryKey: ["datasets", supa, userId],
+    queryKey: ["datasets", userId],
     queryFn: async () => {
-      return await loadDatasets(supa, userId)
+      const data = await loadDatasets(userId)
+      console.log("Datasets: ", data)
+      return data || [] // Ensure we return an array
     },
     enabled: !!userId,
   })
+
   return (
     <>
       <div className="mt-20 flex flex-wrap justify-between">
@@ -144,14 +165,13 @@ function Datasets() {
         </h2>
       </div>
       <div className="mx-auto my-8 flex flex-wrap gap-8">
-        {datasets?.map((dataset) => (
+        {datasets?.map((dataset: any) => (
           <HoverCard
             className="w-full rounded-md p-6 transition-colors duration-200 hover:bg-gray-100 md:w-80"
             key={dataset.name}
           >
             <Link to={`/app/${dataset.name}`}>
               <div className="flex h-full flex-col">
-                {/* <Folder className="mr-3 mt-1 h-12 w-12 flex-shrink-0 text-gray-500" /> */}
                 <div className="flex-grow text-2xl font-semibold text-gray-800">
                   {dataset.name}
                 </div>

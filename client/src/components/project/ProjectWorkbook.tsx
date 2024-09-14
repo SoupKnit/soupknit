@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAtom, useSetAtom } from "jotai"
 import { toast } from "sonner"
 
@@ -11,23 +11,32 @@ import {
 import { ModelDeploySection, ModelDeploySectionHeader } from "./ModelDeployMain"
 import { ModelPrediction, ModelPredictionHeader } from "./ModelPrediction"
 import { ModelSelector, ModelSelectorHeader } from "./ModelSelector"
-import { ProjectHeaderLarge, ProjectHeaderSmall } from "./ProjectHeader"
+import {
+  ProjectHeader,
+  ProjectHeaderLarge,
+  ProjectHeaderSmall,
+} from "./ProjectHeader"
 import {
   SelectTaskTypeSection,
   SelectTaskTypeSectionHeader,
 } from "./SelectTaskTypeSection"
-import * as workbookActions from "@/actions/workbookActions"
+import { useProjectActions } from "@/actions/projectsActions"
+import { useWorkbookActions } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { useEnv } from "@/lib/clientEnvironment"
 import { cn, isNonEmptyArray } from "@/lib/utils"
 import {
   activeProjectAndWorkbook,
+  projectDetailsStore,
   setDataPreviewAtom,
   workbookConfigStore,
 } from "@/store/workbookStore"
 
-import type { WorkbookConfig } from "@soupknit/model/src/workbookSchemas"
+import type {
+  ActiveProject,
+  WorkbookConfig,
+} from "@soupknit/model/src/workbookSchemas"
 
 const sections = {
   overview: "Task Type",
@@ -62,90 +71,101 @@ const sectionComponents = {
   },
 }
 
+// projectId is present in the URL
 const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
-  const env = useEnv()
-  const [collapsed, setCollapsed] = useState(true)
   const [activeSection, setActiveSection] = useState<Section>("overview")
-  const [activeProject, setActiveProject] = useAtom(activeProjectAndWorkbook)
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-
+  const [workbookConfig] = useAtom(workbookConfigStore) // replace with useQuery
+  const { loadProject } = useProjectActions()
+  const { loadExistingWorkbook } = useWorkbookActions()
+  const [projectDetails, setProjectDetails] = useAtom(projectDetailsStore)
   const setDataPreview = useSetAtom(setDataPreviewAtom)
-  const workbookQuery = useQuery({
-    queryKey: ["workbook", projectId, env.supa],
+
+  const projectQuery = useQuery({
+    queryKey: ["project", projectId],
     queryFn: async () => {
-      return await workbookActions.loadExistingWorkbook(env.supa, projectId)
+      return await loadProject(projectId)
+    },
+    placeholderData: () => {
+      if (!projectDetails) {
+        return undefined
+      }
+      if (projectDetails.id === projectId) {
+        return projectDetails
+      }
+      return undefined
     },
   })
-
-  // Ideally this is not required, since the project details are already loaded in the project header
-  // Effect to update local state when workbook is fetched
-  // update atoms when project is loaded
-  // useEffect(() => {
-  //   console.log("Project Query isSuccess, setting state", projectQuery.data)
-  //   if (projectQuery.isSuccess && projectQuery.data) {
-  //     setProjectAndWorkbook({
-  //       projectId: projectQuery.data.id,
-  //       projectTitle: projectQuery.data.title,
-  //       description: projectQuery.data.description,
-  //     })
-  //   }
-  // }, [projectQuery.isSuccess, projectQuery.data, setProjectAndWorkbook])
 
   useEffect(() => {
-    console.log("Workbook Query isSuccess, setting state", workbookQuery.data)
-    if (workbookQuery.data) {
-      const data = workbookQuery.data
-      console.log("Refetched Workbook data:", data)
-      if (data?.id && data.project_id) {
-        toast.success("Workbook loaded successfully")
-        setActiveProject((p) => ({
-          ...p,
-          projectId: data.project_id,
-          workbookId: data.id,
-          files: data.files?.map((f) => ({
-            name: f.name,
-            file_url: f.file_url,
-            file_type: f.file_type,
-          })),
-        }))
-
-        if (data.config) {
-          setWorkbookConfig(data.config)
-          if (data.config.taskType) {
-            // TODO: Figure out how to go to other sections
-            setActiveSection("preprocessing")
-          }
-          // Prioritize preprocessed data if available
-          if (isNonEmptyArray(data.preview_data_preprocessed)) {
-            setDataPreview(data.preview_data_preprocessed)
-          } else if (isNonEmptyArray(data.preview_data)) {
-            setDataPreview(data.preview_data)
-          }
-        }
-      } else {
-        console.error("No existing workbook found")
-        toast.info("No existing workbook found")
-      }
+    if (projectQuery.data) {
+      console.log("This changed: Setting project details", projectQuery.data)
+      setProjectDetails(projectQuery.data)
     }
-  }, [setActiveProject, workbookQuery.data, setWorkbookConfig, setDataPreview])
+  }, [projectQuery.data, setProjectDetails])
 
-  const workbookConfigMutation = useMutation({
-    mutationFn: async (config: WorkbookConfig) => {
-      if (!activeProject?.workbookId) {
-        throw new Error("No workbook ID found")
-      }
-      return await workbookActions.updateWorkbookConfig(env.supa, {
-        workbookId: activeProject?.workbookId,
-        config,
-      })
+  const workbookQuery = useQuery({
+    queryKey: ["workbook", projectId],
+    queryFn: async () => {
+      return await loadExistingWorkbook(projectId)
     },
-    onError: (error) => {
-      console.error("Error updating workbook config:", error)
-    },
-    onSuccess: () => {
-      toast.success("Workbook configuration saved successfully")
-    },
+    enabled: !!projectDetails,
   })
+
+  // useEffect(() => {
+  //   console.log("Workbook Query isSuccess, setting state", workbookQuery.data)
+  //   if (workbookQuery.data) {
+  //     const data = workbookQuery.data
+  //     console.log("Refetched Workbook data:", data)
+  //     if (data?.id && data.project_id) {
+  //       toast.success("Workbook loaded successfully")
+  //       // setActiveProject((p) => ({
+  //       //   ...p,
+  //       //   projectId: data.project_id,
+  //       //   workbookId: data.id,
+  //       //   files: data.files?.map((f) => ({
+  //       //     name: f.name,
+  //       //     file_url: f.file_url,
+  //       //     file_type: f.file_type,
+  //       //   })),
+  //       // }))
+
+  //       // if (data.config) {
+  //       //   setWorkbookConfig(data.config)
+  //       //   if (data.config.taskType) {
+  //       //     // TODO: Figure out how to go to other sections
+  //       //     setActiveSection("preprocessing")
+  //       //   }
+  //       //   // Prioritize preprocessed data if available
+  //       //   if (isNonEmptyArray(data.preview_data_preprocessed)) {
+  //       //     setDataPreview(data.preview_data_preprocessed)
+  //       //   } else if (isNonEmptyArray(data.preview_data)) {
+  //       //     setDataPreview(data.preview_data)
+  //       //   }
+  //       // }
+  //     } else {
+  //       console.error("No existing workbook found")
+  //       toast.info("No existing workbook found")
+  //     }
+  //   }
+  // }, [setActiveProject, workbookQuery.data, setWorkbookConfig, setDataPreview])
+
+  // const workbookConfigMutation = useMutation({
+  //   mutationFn: async (config: WorkbookConfig) => {
+  //     if (!activeProject?.workbookId) {
+  //       throw new Error("No workbook ID found")
+  //     }
+  //     return await updateWorkbookConfig({
+  //       workbookId: activeProject?.workbookId,
+  //       config,
+  //     })
+  //   },
+  //   onError: (error) => {
+  //     console.error("Error updating workbook config:", error)
+  //   },
+  //   onSuccess: () => {
+  //     toast.success("Workbook configuration saved successfully")
+  //   },
+  // })
 
   // const runAction = useMutation({
   //   mutationFn: async (project: ActiveProject) => {
@@ -159,50 +179,117 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   //   },
   // })
 
-  const proceedToNextSection = async () => {
-    switch (activeSection) {
+  const canProceedToPreprocessing = () => {
+    return !!workbookConfig.taskType
+  }
+
+  const proceedToPreprocessing = () => {
+    console.log(
+      "Moving to data processing section with task type:",
+      workbookConfig.taskType,
+    )
+    setActiveSection("preprocessing")
+  }
+
+  const canProceedToModelCreation = () => {
+    return (
+      workbookConfig.targetColumn || workbookConfig.taskType === "Clustering"
+    )
+  }
+
+  const proceedToModelCreation = () => {
+    console.log("Moving to model creation section")
+    setActiveSection("modelCreation")
+    // Note: Uncomment and adapt the following code when workbookConfigMutation is implemented
+    // workbookConfigMutation.mutate(workbookConfig, {
+    //   onSuccess: () => {
+    //     console.log("Workbook config updated successfully")
+    //     setActiveSection("modelCreation")
+    //   },
+    //   onError: (error) => {
+    //     console.error("Error updating workbook config:", error)
+    //     toast.error(
+    //       "Failed to update workbook configuration. Please try again.",
+    //     )
+    //   },
+    // })
+  }
+
+  const canProceedToModelPrediction = () => {
+    // Add logic to check if we can proceed to model prediction
+    return false // Placeholder, adjust as needed
+  }
+
+  const proceedToModelPrediction = () => {
+    console.log("Moving to model prediction section")
+    setActiveSection("modelPrediction")
+  }
+
+  const canProceedToDeploy = () => {
+    // Add logic to check if we can proceed to deploy
+    return true // Placeholder, adjust as needed
+  }
+
+  const proceedToDeploy = () => {
+    console.log("Moving to deploy section")
+    setActiveSection("deploy")
+  }
+
+  const navigateToSection = (section: Section) => {
+    switch (section) {
       case "overview":
-        if (workbookConfig.taskType) {
-          console.log(
-            "Moving to data processing section with task type:",
-            workbookConfig.taskType,
-          )
-          setActiveSection("preprocessing")
+        setActiveSection("overview")
+        break
+      case "preprocessing":
+        if (canProceedToPreprocessing()) {
+          proceedToPreprocessing()
         } else {
-          console.warn(
-            "Task type not selected. Please select a task type before proceeding.",
-          )
           toast.error("Please select a task type before proceeding.")
         }
         break
-      case "preprocessing":
-        if (
-          workbookConfig.targetColumn ||
-          workbookConfig.taskType === "Clustering"
-        ) {
-          console.log("Moving to model creation section")
-          workbookConfigMutation.mutate(workbookConfig, {
-            onSuccess: () => {
-              console.log("Workbook config updated successfully")
-              setActiveSection("modelCreation")
-            },
-            onError: (error) => {
-              console.error("Error updating workbook config:", error)
-              toast.error(
-                "Failed to update workbook configuration. Please try again.",
-              )
-            },
-          })
+      case "modelCreation":
+        if (canProceedToModelCreation()) {
+          proceedToModelCreation()
         } else {
-          console.warn(
-            "Target column not selected. Please select a target column before proceeding.",
-          )
-          toast.error("Please select a target column before proceeding.")
+          toast.error("Cannot proceed to model creation at this time.")
         }
         break
+      case "modelPrediction":
+        if (canProceedToModelPrediction()) {
+          proceedToModelPrediction()
+        } else {
+          toast.error("Cannot proceed to model prediction at this time.")
+        }
+        break
+      case "deploy":
+        if (canProceedToDeploy()) {
+          proceedToDeploy()
+        } else {
+          toast.error("Cannot proceed to deploy at this time.")
+        }
+        break
+    }
+  }
+
+  const proceedToNextSection = () => {
+    switch (activeSection) {
+      case "overview":
+        navigateToSection("preprocessing")
+        break
+      case "preprocessing":
+        navigateToSection("modelCreation")
+        break
+      case "modelCreation":
+        navigateToSection("modelPrediction")
+        break
+      case "modelPrediction":
+        navigateToSection("deploy")
+        break
+      case "deploy":
+        navigateToSection("deploy")
+        break
       default:
-        console.log("Moving to next section")
-        setActiveSection("modelCreation")
+        console.log("No more sections to proceed to")
     }
   }
 
@@ -234,89 +321,45 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     }
   }
 
-  if (workbookQuery.isLoading) {
-    return (
-      <div className="app-container mt-10 flex flex-col items-center gap-4 px-12">
-        <Skeleton className="h-8 w-32" />
-        <Skeleton className="h-8 w-96" />
-        <div className="mt-20 flex gap-6">
-          <Skeleton className="h-56 w-64" />
-          <Skeleton className="h-56 w-64" />
-          <Skeleton className="h-56 w-64" />
-          <Skeleton className="h-56 w-64" />
-        </div>
-      </div>
-    )
-  }
-
-  const SectionsSwitcher = () => {
-    return (
-      <div className="mx-auto mb-6 flex items-center justify-center">
-        {Object.entries(sections).map(([key, label], index) => (
-          <React.Fragment key={key}>
-            <button
-              onClick={() => setActiveSection(key as Section)}
-              className={cn(
-                "mx-2 text-xl",
-                key == activeSection ? "font-semibold" : "font-thin",
-              )}
-            >
-              {label}
-            </button>
-            {index < Object.keys(sections).length - 1 && (
-              <span className="mx-2">→</span>
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-    )
-  }
-
   return (
-    <>
-      <div className="relative py-4">
-        <div className="app-container mx-auto">
-          {collapsed ? (
-            <ProjectHeaderSmall
-              activeProject={activeProject}
-              setCollapsed={setCollapsed}
+    <div className="app-container relative">
+      {!projectDetails ? (
+        <LoadingSkeleton />
+      ) : (
+        <>
+          {/* <ProjectHeader projectDetails={projectDetails} /> */}
+          <div className="mb-12 mt-4">
+            <SectionsNav
+              activeSection={activeSection}
+              setActiveSection={navigateToSection}
             />
-          ) : (
-            <ProjectHeaderLarge
-              activeProject={activeProject}
-              setActiveProject={setActiveProject}
-              setCollapsed={setCollapsed}
-              projectId={projectId}
-            />
-          )}
-        </div>
-      </div>
-      <div className="app-container mb-12 mt-4">
-        <SectionsSwitcher />
-        <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
-          {Object.entries(sections).map(([key, label]) => {
-            const { Header, Content } = sectionComponents[label]
-            return (
-              activeSection === key && (
-                <React.Fragment key={key}>
-                  <Header />
-                  <CardContent>
-                    <Content projectId={projectId} />
-                  </CardContent>
-                </React.Fragment>
-              )
-            )
-          })}
-          <CardFooter className="justify-end">
-            {activeSection !== "deploy" && (
-              <Button onClick={proceedToNextSection} disabled={disabled()}>
-                {getNextButtonText()}
-              </Button>
-            )}
-          </CardFooter>
-        </Card>
+            <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
+              {Object.entries(sections).map(([key, label]) => {
+                const { Header, Content } = sectionComponents[label]
+                return (
+                  activeSection === key && (
+                    <React.Fragment key={key}>
+                      <Header />
+                      <CardContent>
+                        <Content projectId={projectId} />
+                      </CardContent>
+                    </React.Fragment>
+                  )
+                )
+              })}
+              <CardFooter className="justify-end">
+                {activeSection !== "deploy" && (
+                  <Button onClick={proceedToNextSection} disabled={disabled()}>
+                    {getNextButtonText()}
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          </div>
+        </>
+      )}
 
-        {/* <div className="mt-4 flex justify-end">
+      {/* <div className="mt-4 flex justify-end">
           <Button
             onClick={() => {
               console.log("Running project...")
@@ -329,8 +372,53 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             RUN WORKBOOK
           </Button>
         </div> */}
+    </div>
+  )
+}
+
+const LoadingSkeleton = () => {
+  return (
+    <div className="app-container mt-10 flex flex-col gap-4 px-12">
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-6 w-96" />
+      <Skeleton className="mx-auto mt-6 h-6 w-96" />
+      <Skeleton className="mt-8 h-6 w-32" />
+      <Skeleton className="h-6 w-96" />
+      <div className="mt-2 flex items-center justify-center gap-6">
+        <Skeleton className="h-72 w-full" />
+        <Skeleton className="h-72 w-full" />
+        <Skeleton className="h-72 w-full" />
+        <Skeleton className="h-72 w-full" />
       </div>
-    </>
+    </div>
+  )
+}
+const SectionsNav = ({
+  activeSection,
+  setActiveSection,
+}: {
+  activeSection: Section
+  setActiveSection: (section: Section) => void
+}) => {
+  return (
+    <div className="mx-auto mb-6 flex items-center justify-center">
+      {Object.entries(sections).map(([key, label], index) => (
+        <React.Fragment key={key}>
+          <button
+            onClick={() => setActiveSection(key as Section)}
+            className={cn(
+              "mx-2 text-xl",
+              key == activeSection ? "font-semibold" : "font-thin",
+            )}
+          >
+            {label}
+          </button>
+          {index < Object.keys(sections).length - 1 && (
+            <span className="mx-2">→</span>
+          )}
+        </React.Fragment>
+      ))}
+    </div>
   )
 }
 

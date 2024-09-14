@@ -6,8 +6,8 @@ import { toast } from "sonner"
 
 import * as dataProcessingActions from "@/actions/dataProcessingActions"
 import * as modelActions from "@/actions/modelActions"
-import * as workbookActions from "@/actions/workbookActions"
-import { analyzeFilePost } from "@/actions/workbookActions"
+import { usePreprocessingActions } from "@/actions/preprocessingActions"
+import { useWorkbookActions } from "@/actions/workbookActions"
 import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { isNonEmptyArray } from "@/lib/utils"
@@ -19,7 +19,7 @@ import {
   workbookConfigStore,
 } from "@/store/workbookStore"
 
-import type { AnalyzePostData } from "@/actions/workbookActions"
+// import type { AnalyzePostData } from "@/actions/workbookActions"
 import type { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
 
 /**
@@ -42,20 +42,18 @@ export function useWorkbook(_projectId: string) {
   const [predictionResult, setPredictionResult] = useState<any>(null) // TODO: no local state for prediction result
   const setActiveFileWithPreview = useSetAtom(setActiveFileWithPreviewAtom)
   const setDataPreview = useSetAtom(setDataPreviewAtom)
+  const { createNewWorkbook, saveWorkbookConfig } = useWorkbookActions()
+  const { analyzeFilePost } = usePreprocessingActions()
 
   const queryClient = useQueryClient()
 
   // Add a new mutation for saving the workbook config
-  const saveWorkbookConfig = useMutation({
+  const saveWorkbookConfigMutation = useMutation({
     mutationFn: async (config: any) => {
       if (!projectWorkbook?.workbookId) {
         throw new Error("No workbook ID found for saving config")
       }
-      return await workbookActions.saveWorkbookConfig(
-        env.supa,
-        projectWorkbook.workbookId,
-        config,
-      )
+      return await saveWorkbookConfig(projectWorkbook.workbookId, config)
     },
     onSuccess: () => {
       toast.success("Workbook configuration saved successfully")
@@ -68,12 +66,7 @@ export function useWorkbook(_projectId: string) {
   const createWorkbook = useMutation({
     mutationFn: async (data: { preview_data: any; file: WorkbookDataFile }) => {
       console.log("Creating new workbook", data)
-      return await workbookActions.createNewWorkbook(
-        env.supa,
-        _projectId,
-        data.file,
-        data.preview_data,
-      )
+      return await createNewWorkbook(_projectId, data.file, data.preview_data)
     },
     onSuccess: (data) => {
       console.log("Workbook created successfully", data)
@@ -119,9 +112,9 @@ export function useWorkbook(_projectId: string) {
   // }
 
   const analyzeFile = useMutation({
-    mutationFn: async (data: AnalyzePostData) => {
+    mutationFn: async (data: any) => {
       console.log("fetching analyze file with", data)
-      const response = analyzeFilePost(env, data)
+      const response = analyzeFilePost(data)
 
       return response
     },
@@ -199,10 +192,10 @@ export function useWorkbook(_projectId: string) {
       console.log("Model creation result:", data)
 
       // Update the workbook config with the new model results
-      setWorkbookConfig((prevConfig) => ({
-        ...prevConfig,
-        modelResults: data,
-      }))
+      // setWorkbookConfig((prevConfig) => ({
+      //   ...prevConfig,
+      //   modelResults: data,
+      // }))
 
       // Invalidate the workbook query to trigger a refetch
       if (_projectId) {

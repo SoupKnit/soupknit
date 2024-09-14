@@ -21,12 +21,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { activeProjectAndWorkbook } from "@/store/workbookStore"
+import { projectDetailsStore } from "@/store/workbookStore"
 
 export function EditorHeader() {
   // TODO: get the project name from here and display it in the breadcrumb
-  const currentProject = useAtomValue(activeProjectAndWorkbook)
+  const currentProject = useAtomValue(projectDetailsStore)
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-muted/40 px-4 dark:bg-green-200/15 sm:static sm:ml-14 sm:h-auto sm:border-0 sm:py-2">
       <Sidebar />
@@ -39,7 +38,7 @@ export function EditorHeader() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{currentProject?.projectTitle}</BreadcrumbPage>
+            <BreadcrumbPage>{currentProject?.title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

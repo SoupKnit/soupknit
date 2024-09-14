@@ -1,22 +1,21 @@
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
-import { z } from "zod"
 
+import { withClientContext } from "./actionRegistry"
 import { api } from "./baseApi"
+import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
 import { isNonEmptyArray } from "@/lib/utils"
 
+import type { ClientActionRegistry } from "./actionRegistry"
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
-import type { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
 import type {
   ActiveProject,
-  Workbook,
   WorkbookConfig,
-  WorkbookData,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
-import type { SupabaseClient } from "@supabase/supabase-js"
 
-export async function runProject(
+/** @deprecated */
+async function runProject(
   env: ClientEnvironment,
   data: { project: ActiveProject },
 ) {
@@ -25,31 +24,12 @@ export async function runProject(
   })
 }
 
-export type AnalyzePostData = {
-  taskType: string
-  targetColumn: string
-  fileUrl: string
-  projectId: string
-}
-
-export async function analyzeFilePost(
-  env: ClientEnvironment,
-  data: AnalyzePostData,
-) {
-  return (await api.post(`${env.serverUrl}/app/analyze_file`, data, {
-    token: await getSupabaseAccessToken(),
-  })) as PreProcessingColumnConfig
-}
-
-export async function loadExistingWorkbook(
-  supa: SupabaseClient,
-  projectId: string,
-) {
+async function loadExistingWorkbook(env: ClientEnvironment, projectId: string) {
   if (!projectId) {
     throw new Error("No project ID provided")
   }
   console.log(`Fetching workbook data for project with ID: ${projectId}`)
-  const { data } = await supa
+  const { data } = await env.supa
     .from("workbook_data")
     .select("*")
     .eq("project_id", projectId)
@@ -65,7 +45,7 @@ export async function loadExistingWorkbook(
 }
 
 export async function createNewWorkbook(
-  supa: SupabaseClient,
+  env: ClientEnvironment,
   projectId: string,
   file: WorkbookDataFile,
   preview_data?: any,
@@ -75,7 +55,7 @@ export async function createNewWorkbook(
     file,
     preview_data,
   )
-  const { data } = await supa
+  const { data } = await env.supa
     .from("workbook_data")
     .insert({
       project_id: projectId,
@@ -88,8 +68,8 @@ export async function createNewWorkbook(
   return data
 }
 
-export async function updateWorkbookConfig(
-  supa: SupabaseClient,
+async function updateWorkbookConfig(
+  env: ClientEnvironment,
   args: { workbookId: string; config: WorkbookConfig },
 ) {
   const { workbookId, config } = args
@@ -97,7 +77,7 @@ export async function updateWorkbookConfig(
     `Updating workbook config for workbook with ID: ${workbookId}: `,
     config,
   )
-  const { data } = await supa
+  const { data } = await env.supa
     .from("workbook_data")
     .update({
       config: config,
@@ -108,12 +88,12 @@ export async function updateWorkbookConfig(
   return data
 }
 
-export async function saveWorkbookConfig(
-  supa: SupabaseClient,
+async function saveWorkbookConfig(
+  env: ClientEnvironment,
   workbookId: string,
   config: any,
 ) {
-  const { data, error } = await supa
+  const { data, error } = await env.supa
     .from("workbook_data")
     .update({ config: config })
     .eq("id", workbookId)
@@ -122,61 +102,15 @@ export async function saveWorkbookConfig(
   return data
 }
 
-export async function deleteProject(
-  supa: SupabaseClient,
-  workbook: ActiveProject,
-) {
-  console.log(`Starting deletion process for project: ${workbook}`)
-  // //1. Fetch the workbooks associated with this project
-  // const { data: workbooks, error: workbooksError } = await supa
-  //   .from("workbooks")
-  //   .select("id, file_url")
-  //   .eq("project_id", projectId)
-  // if (workbooksError) throw workbooksError
+const allWorkbookActions = {
+  saveWorkbookConfig,
+  loadExistingWorkbook,
+  createNewWorkbook,
+  runProject,
+  updateWorkbookConfig,
+} as const satisfies ClientActionRegistry
 
-  // 2. Delete files from storage
-
-  if (workbook.files?.length && workbook.files[0]?.file_url) {
-    const filePathMatch = workbook.files[0]?.file_url.match(
-      /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
-    )
-    if (filePathMatch) {
-      const filePath = filePathMatch[1]
-      if (!filePath) {
-        throw new Error("Failed to extract file path from URL")
-      }
-      const { error: deleteFileError } = await supa.storage
-        .from("workbook-files")
-        .remove([filePath])
-      if (deleteFileError) {
-        console.error(
-          `Failed to delete file for workbook ${workbook.projectId}:`,
-          deleteFileError,
-        )
-      } else {
-        console.log(`Deleted file for workbook ${workbook.projectId}`)
-      }
-    }
-  }
-
-  // // 3. Delete workbook data
-  // await supa
-  //   .from("workbook_data")
-  //   .delete()
-  //   .in(
-  //     "workbook_id",
-  //     workbooks.map((w) => w.id),
-  //   )
-  //   .throwOnError()
-
-  // 5. Delete the project
-  const { error: projectDeleteError } = await supa
-    .from("projects")
-    .delete()
-    .eq("id", workbook.projectId)
-    .throwOnError()
-  if (projectDeleteError) throw projectDeleteError
-  console.log(
-    `Successfully deleted project ${workbook.projectId} and all associated data`,
-  )
+export function useWorkbookActions() {
+  const env = useEnv()
+  return withClientContext(allWorkbookActions, env)
 }

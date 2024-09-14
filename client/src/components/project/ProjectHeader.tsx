@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
+import { useAtom, useAtomValue, useSetAtom } from "jotai"
 import { toast } from "sonner"
 
 import { ChevronUp, Trash2 } from "lucide-react"
@@ -8,11 +9,7 @@ import { ChevronUp, Trash2 } from "lucide-react"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import { Badge } from "../ui/badge"
 import { buttonVariants } from "../ui/button"
-import {
-  updateProjectDescription,
-  updateProjectTitle,
-} from "@/actions/projectsActions"
-import * as workbookActions from "@/actions/workbookActions"
+import { useProjectActions } from "@/actions/projectsActions"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,24 +22,25 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { useEnv } from "@/lib/clientEnvironment"
+import { projectDetailsStore } from "@/store/workbookStore"
 
-import type { ActiveProject } from "@soupknit/model/src/workbookSchemas"
+import type { ProjectDetails } from "@/store/workbookStore"
+import type { Atom } from "jotai"
 
 export function ProjectHeaderLarge({
   activeProject,
-  setActiveProject,
   setCollapsed,
-  projectId,
 }: Readonly<{
-  projectId: string
-  activeProject: ActiveProject
-  setActiveProject: React.Dispatch<React.SetStateAction<ActiveProject>>
+  activeProject: ProjectDetails
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>
 }>) {
   const descriptionInputRef = useRef<HTMLDivElement>(null)
   const [focusDescription, setFocusDescription] = useState<boolean>(false)
+  // const [title, setTitle] = useState<string>(activeProject.title)
+  const [projectDetails, setProjectDetails] = useAtom(projectDetailsStore)
   const navigate = useNavigate({ from: "/app" })
+  console.log("activeProject in header large", activeProject)
+  const queryClient = useQueryClient()
 
   useEffect(() => {
     if (focusDescription && descriptionInputRef.current) {
@@ -51,36 +49,57 @@ export function ProjectHeaderLarge({
     }
   }, [focusDescription])
 
-  const env = useEnv()
+  const { updateProjectTitle, updateProjectDescription, deleteProject } =
+    useProjectActions()
 
-  const titleMutation = useMutation({
-    mutationFn: async (title: string) =>
-      updateProjectTitle(env.supa, title, projectId),
+  // debounce the mutation, so it doesn't fire on every keystroke
+  // also keep the previous values in the mutation, so it can update the previous values
+  const projectDetailsMutation = useMutation({
+    mutationFn: async ({
+      title,
+      description,
+    }: {
+      title?: string
+      description?: string
+    }) => {
+      if (!activeProject) {
+        throw new Error("No active project")
+      }
+      if (title && title !== activeProject.title) {
+        return await updateProjectTitle(title, activeProject.id)
+      }
+      if (description && description !== activeProject.description) {
+        return await updateProjectDescription(description, activeProject.id)
+      }
+      return activeProject
+    },
     onSuccess: () => {
-      console.log("Title saved successfully")
+      queryClient.invalidateQueries({ queryKey: ["project", activeProject.id] })
+      toast.success("Project details saved successfully")
     },
     onError: (error) => {
       console.error("Error saving title:", error)
+      toast.error("Error saving project details")
     },
   })
 
-  const descriptionMutation = useMutation({
-    mutationFn: async (description: string) =>
-      updateProjectDescription(env.supa, description, projectId),
-    onSuccess: () => {
-      console.log("Description saved successfully")
-    },
-    onError: (error) => {
-      console.error("Error saving description:", error)
-    },
-  })
+  // const descriptionMutation = useMutation({
+  //   mutationFn: async (description: string) =>
+  //     updateProjectDescription(description, activeProject.id),
+  //   onSuccess: () => {
+  //     console.log("Description saved successfully")
+  //   },
+  //   onError: (error) => {
+  //     console.error("Error saving description:", error)
+  //   },
+  // })
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!activeProject) {
         throw new Error("No active project")
       }
-      return workbookActions.deleteProject(env.supa, activeProject)
+      // return deleteProject(project/workbook)
     },
     onSuccess: () => {
       toast.success("Project deleted successfully")
@@ -96,16 +115,22 @@ export function ProjectHeaderLarge({
       <input
         type="text"
         className="input-invisible pl-1 text-4xl font-semibold"
-        value={activeProject?.projectTitle}
+        value={projectDetails?.title ?? ""}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          if (e.target.value !== activeProject?.projectTitle) {
-            console.log("Setting project title to:", e.target.value)
-            setActiveProject({
-              ...activeProject,
-              projectTitle: e.target.value,
-            })
-            titleMutation.mutate(e.target.value)
+          if (!projectDetails) {
+            return
           }
+          setProjectDetails({
+            ...projectDetails,
+            title: e.target.value,
+          })
+        }}
+        onBlur={() => {
+          console.log("Setting project title to:", projectDetails?.title)
+          // debounce the mutation
+          projectDetailsMutation.mutate({
+            title: projectDetails?.title,
+          })
         }}
         onKeyDown={(e) => {
           if (
@@ -123,13 +148,11 @@ export function ProjectHeaderLarge({
       <div>
         <MultiLineTextInput
           className="input-invisible min-h-12 rounded-md p-2 text-lg text-gray-700 hover:outline-gray-400 focus:outline-2 focus:outline-gray-500 dark:text-gray-300"
-          value={activeProject?.description ?? ""}
+          value={projectDetails?.description ?? ""}
           onChange={(value) => {
             if (value !== activeProject?.description) {
               console.log("Setting description to:", value)
-              descriptionMutation.mutate(value)
-              setActiveProject({
-                ...activeProject,
+              projectDetailsMutation.mutate({
                 description: value,
               })
             }
@@ -152,10 +175,10 @@ export function ProjectHeaderLarge({
         </DeleteDialog>
         <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
           <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-            ProjectID: {projectId}
+            ProjectID: {activeProject?.id}
           </Badge>
           <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-            WorkbookId: {activeProject?.workbookId}
+            WorkbookId: {activeProject?.workbook_data[0]?.id}
           </Badge>
         </a>
         <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
@@ -165,10 +188,7 @@ export function ProjectHeaderLarge({
         </a>
       </div>
       <div className="flex justify-center">
-        <button
-          onClick={() => setCollapsed(true)}
-          className="mx-auto w-4 bg-red-400"
-        >
+        <button onClick={() => setCollapsed(true)} className="mx-auto w-4">
           <ChevronUp />
         </button>
       </div>
@@ -180,7 +200,7 @@ export function ProjectHeaderSmall({
   activeProject,
   setCollapsed,
 }: Readonly<{
-  activeProject: ActiveProject
+  activeProject: ProjectDetails
   setCollapsed: React.Dispatch<React.SetStateAction<boolean>>
 }>) {
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -200,10 +220,12 @@ export function ProjectHeaderSmall({
       {/* Small variant: Title and Description, no buttons, no edits, smaller font */}
 
       <h2 className="mb-1 text-xl font-semibold text-gray-800 dark:text-gray-200">
-        {activeProject?.projectTitle ?? "Untitled"}
+        {activeProject?.title || (
+          <span className="italic text-gray-500">Untitled</span>
+        )}
       </h2>
       <p className="text-lg text-gray-500 dark:text-gray-400">
-        {activeProject?.description ?? "No description provided"}
+        {activeProject?.description}
       </p>
     </div>
   )
@@ -238,5 +260,35 @@ export function DeleteDialog({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  )
+}
+
+export function ProjectHeader({
+  projectDetails,
+}: {
+  projectDetails: ProjectDetails
+}) {
+  const [collapsed, setCollapsed] = useState(true)
+  // const { loadProject } = useProjectActions()
+
+  // this will have a value if navigating from project list
+  // but we have refetch and set it just in case
+
+  return (
+    <div className="relative py-4">
+      <div className="app-container mx-auto">
+        {collapsed ? (
+          <ProjectHeaderSmall
+            activeProject={projectDetails}
+            setCollapsed={setCollapsed}
+          />
+        ) : (
+          <ProjectHeaderLarge
+            activeProject={projectDetails}
+            setCollapsed={setCollapsed}
+          />
+        )}
+      </div>
+    </div>
   )
 }

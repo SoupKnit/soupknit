@@ -71,7 +71,7 @@ export function SelectTaskTypeSection() {
       <SelectCards
         stacking="horizontal"
         options={options}
-        selectedValue={workbookConfig.taskType}
+        selectedValue={workbookConfig.taskType ?? undefined}
         onSelectValue={(v) => {
           console.log(v)
           setWorkbookConfig((prev: any) => ({ ...prev, taskType: v }))

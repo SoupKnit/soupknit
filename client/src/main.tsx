@@ -28,6 +28,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnMount: false,
     },
   },
 })
@@ -35,7 +36,7 @@ const queryClient = new QueryClient({
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      {/* <ReactQueryDevtools initialIsOpen={false} /> */}
+      <ReactQueryDevtools initialIsOpen={false} />
       <RouterProvider router={router} />
     </QueryClientProvider>
   </React.StrictMode>,
