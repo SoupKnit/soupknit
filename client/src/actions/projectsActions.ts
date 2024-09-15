@@ -80,10 +80,10 @@ const createNewProject = async (
 
     const projectId = projectData.id
 
-    if (initialFile) {
-      const workbookData = await createNewWorkbook(env, projectId, initialFile)
-      return { projectId, workbookId: workbookData.id }
-    }
+    // if (initialFile) {
+    //   const workbookData = await createNewWorkbook(env, projectId, initialFile)
+    //   return { projectId, workbookId: workbookData.id }
+    // }
 
     return { projectId }
   } catch (error) {

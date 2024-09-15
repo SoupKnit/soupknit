@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
-import { useAtom, useAtomValue, useSetAtom } from "jotai"
+import { useAtom } from "jotai"
 import { toast } from "sonner"
 
 import { ChevronUp, Trash2 } from "lucide-react"
 
+import { DevMode } from "../DevMode"
 import { MultiLineTextInput } from "../editor/MultiLineText"
 import { Badge } from "../ui/badge"
 import { buttonVariants } from "../ui/button"
@@ -26,7 +27,6 @@ import { Button } from "@/components/ui/button"
 import { projectDetailsStore } from "@/store/workbookStore"
 
 import type { ProjectDetails } from "@/store/workbookStore"
-import type { Atom } from "jotai"
 
 export function ProjectHeaderLarge({
   activeProject,
@@ -171,16 +171,10 @@ export function ProjectHeaderLarge({
             <Trash2 className="h-4" />
           </Button>
         </DeleteDialog>
+
+        <DevMode activeProject={activeProject} />
         <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
-          <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-            ProjectID: {activeProject?.id}
-          </Badge>
-          <Badge className="bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
-            WorkbookId: {activeProject?.workbook_data[0]?.id}
-          </Badge>
-        </a>
-        <a href="https://supabase.com/dashboard/project/kstcbdcmgvzsitnywtue">
-          <Badge className="ml-4 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
+          <Badge className="ml-2 bg-slate-200 p-1 px-2 text-gray-600 hover:bg-slate-300">
             Status: Draft
           </Badge>
         </a>

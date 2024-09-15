@@ -19,7 +19,6 @@ import { Route as IndexImport } from "./app/index"
 import { Route as AppEditorImport } from "./app/app/_editor"
 import { Route as AppInternalIndexImport } from "./app/app/internal/index"
 import { Route as AppEditorIndexImport } from "./app/app/_editor/index"
-import { Route as AppEditorBlocksImport } from "./app/app/_editor/blocks"
 import { Route as AppEditorProjectIdImport } from "./app/app/_editor/$projectId"
 
 // Create Virtual Routes
@@ -60,11 +59,6 @@ const AppInternalIndexRoute = AppInternalIndexImport.update({
 
 const AppEditorIndexRoute = AppEditorIndexImport.update({
   path: "/",
-  getParentRoute: () => AppEditorRoute,
-} as any)
-
-const AppEditorBlocksRoute = AppEditorBlocksImport.update({
-  path: "/blocks",
   getParentRoute: () => AppEditorRoute,
 } as any)
 
@@ -119,13 +113,6 @@ declare module "@tanstack/react-router" {
       preLoaderRoute: typeof AppEditorProjectIdImport
       parentRoute: typeof AppEditorImport
     }
-    "/app/_editor/blocks": {
-      id: "/app/_editor/blocks"
-      path: "/blocks"
-      fullPath: "/app/blocks"
-      preLoaderRoute: typeof AppEditorBlocksImport
-      parentRoute: typeof AppEditorImport
-    }
     "/app/_editor/": {
       id: "/app/_editor/"
       path: "/"
@@ -152,7 +139,6 @@ export const routeTree = rootRoute.addChildren({
   AppRoute: AppRoute.addChildren({
     AppEditorRoute: AppEditorRoute.addChildren({
       AppEditorProjectIdRoute,
-      AppEditorBlocksRoute,
       AppEditorIndexRoute,
     }),
     AppInternalIndexRoute,
@@ -194,16 +180,11 @@ export const routeTree = rootRoute.addChildren({
       "parent": "/app",
       "children": [
         "/app/_editor/$projectId",
-        "/app/_editor/blocks",
         "/app/_editor/"
       ]
     },
     "/app/_editor/$projectId": {
       "filePath": "app/_editor/$projectId.tsx",
-      "parent": "/app/_editor"
-    },
-    "/app/_editor/blocks": {
-      "filePath": "app/_editor/blocks.tsx",
       "parent": "/app/_editor"
     },
     "/app/_editor/": {

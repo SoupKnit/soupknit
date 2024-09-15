@@ -60,12 +60,18 @@ export type DataPreview = {
 
 type DataPreviewRaw = [Record<string, any>, ...Record<string, any>[]]
 
-export function createFileStore(data: DataPreviewRaw, file?: WorkbookDataFile) {
-  return atom<DataPreview>({
-    file,
-    headers: Object.keys(data[0]),
-    data: data.slice(0, 15),
-  })
+export function createFileStore(
+  data: Record<string, any>[] | null,
+  file?: WorkbookDataFile,
+) {
+  const value = isNonEmptyArray(data)
+    ? {
+        file,
+        headers: Object.keys(data[0]),
+        data: data.slice(0, 15),
+      }
+    : null
+  return atom<DataPreview | null>(value)
 }
 
 // const dataPreviewStore = atom<DataFilePreview | null>(null)

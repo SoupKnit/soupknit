@@ -78,7 +78,7 @@ export const WorkbookDataSchema = z.object({
   project_id: z.string(),
   files: z.nullable(z.array(WorkbookDataFileSchema)),
   // TODO: maybe this should be a separate table in the database (data preview)
-  preview_data: CSVFileSchema,
+  preview_data: CSVFileSchema.nullable(),
   preview_data_preprocessed: CSVFileSchema.nullable(),
   created_at: z.string(),
   created_by: z.string(),

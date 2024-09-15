@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -20,6 +20,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
+import type { AppLabels } from "@/lib/labels"
+
 const sections = {
   overview: "Task Type",
   preprocessing: "Preprocessing",
@@ -29,6 +31,29 @@ const sections = {
 } as const
 
 type Section = keyof typeof sections
+
+const NextButtonLabels = {
+  overview: {
+    label: "Select Task Type",
+    id: "ProjectWorkbook.NextButton.overview",
+  },
+  preprocessing: {
+    label: "Proceed to Model Creation",
+    id: "ProjectWorkbook.NextButton.preprocessing",
+  },
+  "preprocessing.disabled": {
+    label: "Select Target Column",
+    id: "ProjectWorkbook.NextButton.preprocessing.disabled",
+  },
+  modelCreation: {
+    label: "Predict Values",
+    id: "ProjectWorkbook.NextButton.modelCreation",
+  },
+  modelPrediction: {
+    label: "Deploy Model",
+    id: "ProjectWorkbook.NextButton.modelPrediction",
+  },
+} as const satisfies AppLabels
 
 const sectionComponents = {
   [sections.overview]: {
@@ -56,7 +81,6 @@ const sectionComponents = {
 // projectId is present in the URL
 const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
   const [activeSection, setActiveSection] = useState<Section>("overview")
-  // const [workbookConfig] = useAtom(workbookConfigStore) // replace with useQuery
   const { loadExistingWorkbook } = useWorkbookActions()
 
   const workbookQuery = useQuery({
@@ -89,14 +113,6 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     return !!workbookQuery.data?.config.taskType
   }
 
-  const proceedToPreprocessing = () => {
-    console.log(
-      "Moving to data processing section with task type:",
-      workbookQuery.data?.config.taskType,
-    )
-    setActiveSection("preprocessing")
-  }
-
   const canProceedToModelCreation = () => {
     return (
       workbookQuery.data?.config.targetColumn ||
@@ -104,29 +120,14 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     )
   }
 
-  const proceedToModelCreation = () => {
-    console.log("Moving to model creation section")
-    setActiveSection("modelCreation")
-  }
-
   const canProceedToModelPrediction = () => {
     // Add logic to check if we can proceed to model prediction
     return false // Placeholder, adjust as needed
   }
 
-  const proceedToModelPrediction = () => {
-    console.log("Moving to model prediction section")
-    setActiveSection("modelPrediction")
-  }
-
   const canProceedToDeploy = () => {
     // Add logic to check if we can proceed to deploy
     return true // Placeholder, adjust as needed
-  }
-
-  const proceedToDeploy = () => {
-    console.log("Moving to deploy section")
-    setActiveSection("deploy")
   }
 
   const navigateToSection = (section: Section) => {
@@ -136,28 +137,28 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
         break
       case "preprocessing":
         if (canProceedToPreprocessing()) {
-          proceedToPreprocessing()
+          setActiveSection("preprocessing")
         } else {
           toast.error("Please select a task type before proceeding.")
         }
         break
       case "modelCreation":
         if (canProceedToModelCreation()) {
-          proceedToModelCreation()
+          setActiveSection("modelCreation")
         } else {
           toast.error("Cannot proceed to model creation at this time.")
         }
         break
       case "modelPrediction":
         if (canProceedToModelPrediction()) {
-          proceedToModelPrediction()
+          setActiveSection("modelPrediction")
         } else {
           toast.error("Cannot proceed to model prediction at this time.")
         }
         break
       case "deploy":
         if (canProceedToDeploy()) {
-          proceedToDeploy()
+          setActiveSection("deploy")
         } else {
           toast.error("Cannot proceed to deploy at this time.")
         }
@@ -187,7 +188,7 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
     }
   }
 
-  const disabled = () => {
+  const disabled = (activeSection: Section) => {
     switch (activeSection) {
       case "overview":
         return !canProceedToPreprocessing()
@@ -201,25 +202,44 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
         return false
     }
   }
-  const getNextButtonText = () => {
+
+  const NextButton = ({ activeSection }: { activeSection: Section }) => {
+    const isDisabled = useMemo(() => disabled(activeSection), [activeSection])
     switch (activeSection) {
       case "overview":
-        return disabled() ? "Select Task Type" : "Start Preprocessing"
+        return null
       case "preprocessing":
-        return disabled() ? "Select Target Column" : "Proceed to Model Creation"
+        return (
+          <Button onClick={proceedToNextSection} disabled={isDisabled}>
+            {isDisabled
+              ? NextButtonLabels["preprocessing.disabled"].label
+              : NextButtonLabels.preprocessing.label}
+          </Button>
+        )
       case "modelCreation":
-        return "Predict Values"
+        return (
+          <Button onClick={proceedToNextSection} disabled={isDisabled}>
+            {NextButtonLabels.modelCreation.label}
+          </Button>
+        )
       case "modelPrediction":
-        return "Deploy Model"
+        return (
+          <Button onClick={proceedToNextSection} disabled={isDisabled}>
+            {NextButtonLabels.modelPrediction.label}
+          </Button>
+        )
+      case "deploy":
+        return null
       default:
-        return "Next"
+        console.error("This should never happen: ", activeSection)
+        return null
     }
   }
 
   return (
     <div className="app-container relative">
       <ProjectHeader projectId={projectId} />
-      {workbookQuery.isLoading || !workbookQuery.data ? (
+      {workbookQuery.isLoading ? (
         <LoadingSkeleton />
       ) : (
         <div className="mb-12 mt-4">
@@ -228,31 +248,26 @@ const ProjectWorkbook: React.FC<{ projectId: string }> = ({ projectId }) => {
             setActiveSection={navigateToSection}
           />
           <Card className="min-h-[50vh] border-0 bg-transparent shadow-none">
-            {workbookQuery.data !== null &&
-              Object.entries(sections).map(([key, label]) => {
-                const { Header, Content } = sectionComponents[label]
-                return (
-                  activeSection === key && (
-                    <React.Fragment key={key}>
-                      <Header />
-                      <CardContent>
-                        <Content
-                          projectId={projectId}
-                          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                          // @ts-ignore
-                          workbookData={workbookQuery.data}
-                        />
-                      </CardContent>
-                    </React.Fragment>
-                  )
+            {Object.entries(sections).map(([key, label]) => {
+              const { Header, Content } = sectionComponents[label]
+              return (
+                activeSection === key && (
+                  <React.Fragment key={key}>
+                    <Header />
+                    <CardContent>
+                      <Content
+                        projectId={projectId}
+                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                        // @ts-ignore
+                        workbookData={workbookQuery.data}
+                      />
+                    </CardContent>
+                  </React.Fragment>
                 )
-              })}
+              )
+            })}
             <CardFooter className="justify-end">
-              {activeSection !== "deploy" && (
-                <Button onClick={proceedToNextSection} disabled={disabled()}>
-                  {getNextButtonText()}
-                </Button>
-              )}
+              <NextButton activeSection={activeSection} />
             </CardFooter>
           </Card>
         </div>

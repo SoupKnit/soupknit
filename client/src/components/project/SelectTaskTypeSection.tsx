@@ -2,9 +2,10 @@ import { toast } from "sonner"
 
 import SelectCards from "../SelectCards"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
-import { useWorkbookMutation } from "@/actions/workbookActions"
+import { useCreateWorkbook, useUpdateWorkbook } from "@/actions/workbookActions"
 import { updateObject } from "@/lib/utils"
 
+import type { Option } from "../SelectCards"
 import type { WorkbookData } from "@soupknit/model/src/workbookSchemas"
 
 const options = [
@@ -66,7 +67,12 @@ const options = [
       Type of Data: Time series data consists of observations collected at regular intervals over time (e.g., daily stock prices, hourly weather readings). The data's temporal order is crucial, as patterns over time (like trends and seasonality) are key to making accurate predictions.
     `,
   },
-]
+] satisfies Array<
+  { description: string } & Option<
+    "Regression" | "Clustering" | "Classification" | "TimeSeries"
+  >
+>
+
 export function SelectTaskTypeSection({
   projectId,
   workbookData,
@@ -74,30 +80,47 @@ export function SelectTaskTypeSection({
   projectId: string
   workbookData: WorkbookData
 }) {
-  // const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const updateWorkbookConfigMutation = useWorkbookMutation({
-    onSuccess: (data) => {
-      console.log("Workbook config updated successfully:", data)
-      toast.success("Workbook config updated successfully")
+  const createWorkbookMutation = useCreateWorkbook(projectId, {
+    onSuccess: (_data) => {
+      toast.success("Workbook created successfully")
     },
-    onError: (error) => {
-      console.error("Error updating workbook config:", error)
-      toast.error("Error updating workbook config")
+  })
+  const { updateWorkbookConfigMutation } = useUpdateWorkbook({
+    projectId,
+    updateConfigOptions: {
+      onSuccess: (_data) => {
+        toast.success("Workbook config updated successfully")
+      },
+      onError: (error) => {
+        console.error("Error updating workbook config:", error)
+        toast.error("Error updating workbook config")
+      },
     },
   })
   return (
     <>
-      <SelectCards
+      <SelectCards<
+        "Regression" | "Clustering" | "Classification" | "TimeSeries"
+      >
         stacking="horizontal"
         options={options}
-        selectedValue={workbookData.config.taskType ?? undefined}
+        selectedValue={workbookData?.config?.taskType ?? undefined}
         onSelectValue={(v) => {
           console.log(v)
-          updateWorkbookConfigMutation.mutate({
-            projectId,
-            workbookId: workbookData.id,
-            updatedConfig: updateObject(workbookData.config, "taskType", v),
-          })
+          if (workbookData?.config) {
+            updateWorkbookConfigMutation.mutate({
+              projectId,
+              workbookId: workbookData.id,
+              updatedConfig: updateObject(workbookData.config, "taskType", v),
+            })
+          } else {
+            // create new workbook
+            createWorkbookMutation.mutate({
+              config: {
+                taskType: v,
+              },
+            })
+          }
         }}
       />
     </>

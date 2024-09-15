@@ -52,43 +52,81 @@ async function loadExistingWorkbook(env: ClientEnvironment, projectId: string) {
   return null
 }
 
+type CreateNewWorkbookArgs = Omit<
+  Partial<WorkbookData>,
+  "project_id" | "config"
+> & {
+  project_id: string
+  config: Partial<WorkbookConfig>
+}
+
 export async function createNewWorkbook(
   env: ClientEnvironment,
-  projectId: string,
-  file: WorkbookDataFile,
-  preview_data?: any,
+  workbookData: CreateNewWorkbookArgs,
 ) {
+  if (!workbookData.project_id) {
+    throw new Error("Project ID is required to create a new workbook")
+  }
   console.log(
-    `Creating new workbook for project with ID: ${projectId} with data: `,
-    file,
-    preview_data,
+    `Creating new workbook for project with ID: ${workbookData.project_id} with data: `,
+    workbookData,
   )
+
+  // add defaults for required fields
+  const workbookDataToInsert: Omit<
+    WorkbookData,
+    "id" | "updated_at" | "created_at" | "created_by"
+  > = {
+    files: [],
+    preview_data: [],
+    preview_data_preprocessed: [],
+    ...workbookData, // merge with the workbookData passed in
+    config: {
+      featureColumns: [],
+      targetColumn: null,
+      taskType: null,
+      preProcessingConfig: {
+        global_preprocessing: [],
+        columns: [],
+        global_params: {},
+      },
+      modelParams: {},
+      modelResults: {},
+      ...workbookData.config, // merge with the workbookData.config passed in
+    },
+  }
+
   const { data } = await env.supa
     .from("workbook_data")
-    .insert({
-      project_id: projectId,
-      files: [file],
-      preview_data: preview_data,
-    })
+    .insert(workbookDataToInsert)
     .select()
     .single()
     .throwOnError()
-  return data
+  if (!data) {
+    throw new Error("No data returned from createNewWorkbook")
+  }
+  console.log("Created new workbook:", data)
+  return data as WorkbookData
 }
 
-async function updateWorkbookConfig(
+async function updateWorkbook(
   env: ClientEnvironment,
-  args: { workbookId: string; config: WorkbookConfig },
+  args: {
+    workbookId: string
+    updatedData?: Partial<WorkbookData>
+    config?: WorkbookConfig
+  },
 ) {
-  const { workbookId, config } = args
+  const { workbookId, updatedData, config } = args
   console.log(
-    `Updating workbook config for workbook with ID: ${workbookId}: `,
-    config,
+    `Updating workbook ID: ${workbookId} with data ${JSON.stringify(updatedData)} and config ${JSON.stringify(config)}`,
   )
+  const updatedConfig = config ? { config: config } : {}
   const { data } = await env.supa
     .from("workbook_data")
     .update({
-      config: config,
+      ...updatedData,
+      ...{ config: updatedConfig },
       updated_at: new Date().toISOString(),
     })
     .eq("id", workbookId)
@@ -107,7 +145,7 @@ const allWorkbookActions = {
   loadExistingWorkbook,
   createNewWorkbook,
   runProject,
-  updateWorkbookConfig,
+  updateWorkbook,
 } as const satisfies ClientActionRegistry
 
 export function useWorkbookActions() {
@@ -116,40 +154,94 @@ export function useWorkbookActions() {
 }
 
 type WorkbookConfigMutationArgs = {
-  projectId: string
   workbookId: string
   updatedConfig: WorkbookConfig
 }
 
-export function useWorkbookMutation(
-  options: MutationOptions<WorkbookData, any, WorkbookConfigMutationArgs> = {},
-) {
+type WorkbookDataMutationArgs = {
+  workbookId: string
+  updatedData: Partial<WorkbookData>
+}
+
+export function useUpdateWorkbook(args: {
+  projectId: string
+  updateConfigOptions?: MutationOptions<
+    WorkbookData,
+    any,
+    WorkbookConfigMutationArgs
+  >
+  updateDataOptions?: MutationOptions<
+    WorkbookData,
+    any,
+    WorkbookDataMutationArgs
+  >
+  optimisticUpdate?: boolean
+}) {
   const env = useEnv()
   const queryClient = useQueryClient()
+  const optimisticUpdate = args.optimisticUpdate === false ? false : true
+  const setCacheData = (data: WorkbookData) => {
+    queryClient.setQueryData<WorkbookData>(["workbook", args.projectId], data)
+  }
   const updateWorkbookConfigMutation = useMutation({
     mutationFn: async ({
-      projectId,
       workbookId,
       updatedConfig,
     }: WorkbookConfigMutationArgs) => {
-      if (!workbookId || !projectId) {
-        throw new Error("IDs are missing for saving config")
-      }
-      const updatedRow = await updateWorkbookConfig(env, {
+      const updatedRow = await updateWorkbook(env, {
         workbookId: workbookId,
         config: updatedConfig,
       })
       return updatedRow
     },
-    ...options,
+    ...args.updateConfigOptions,
     onSuccess: (data, variables, context) => {
-      queryClient.setQueryData<WorkbookData>(
-        ["workbook", variables.projectId],
-        data,
-      )
-      options.onSuccess?.(data, variables, context)
+      optimisticUpdate && setCacheData(data)
+      args.updateConfigOptions?.onSuccess?.(data, variables, context)
     },
   })
 
-  return updateWorkbookConfigMutation
+  const updateWorkbookDataMutation = useMutation({
+    mutationFn: async ({
+      workbookId,
+      updatedData,
+    }: WorkbookDataMutationArgs) => {
+      return await updateWorkbook(env, {
+        workbookId,
+        updatedData,
+      })
+    },
+    ...args.updateDataOptions,
+    onSuccess: (data, variables, context) => {
+      optimisticUpdate && setCacheData(data)
+      args.updateDataOptions?.onSuccess?.(data, variables, context)
+    },
+  })
+  return { updateWorkbookConfigMutation, updateWorkbookDataMutation }
+}
+
+export const useCreateWorkbook = (
+  projectId: string,
+  options: MutationOptions<
+    WorkbookData,
+    any,
+    Omit<CreateNewWorkbookArgs, "project_id">
+  > = {},
+) => {
+  const env = useEnv()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Omit<CreateNewWorkbookArgs, "project_id">) => {
+      console.log("Creating new workbook", data)
+      return await createNewWorkbook(env, {
+        project_id: projectId,
+        ...data,
+      })
+    },
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.setQueryData<WorkbookData>(["workbook", projectId], data)
+      options.onSuccess?.(data, variables, context)
+    },
+  })
 }

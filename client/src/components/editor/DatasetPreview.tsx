@@ -36,9 +36,15 @@ import type { Atom } from "jotai"
 
 export function DatasetPreview(props: {
   loading?: boolean
-  fileStore: Atom<DataPreview>
+  fileStore: Atom<DataPreview | null>
 }) {
-  const { data, headers, file } = useAtomValue(props.fileStore)
+  const fileData = useAtomValue(props.fileStore)
+  console.log("fileData", fileData)
+  if (!fileData) {
+    return null
+  }
+  const { data, headers, file } = fileData
+  console.log("fileData", fileData)
   return (
     <div className="mt-2">
       <div className="flex items-center pb-6 pt-3 text-2xl">
@@ -160,10 +166,14 @@ export function FileInputArea({
 }
 
 function TableExpand(props: {
-  fileStore: Atom<DataPreview>
+  fileStore: Atom<DataPreview | null>
   loading?: boolean
 }) {
-  const { data, headers, file } = useAtomValue(props.fileStore)
+  const fileData = useAtomValue(props.fileStore)
+  if (!fileData) {
+    return null
+  }
+  const { data, headers, file } = fileData
   return (
     <Drawer>
       <DrawerTrigger asChild>

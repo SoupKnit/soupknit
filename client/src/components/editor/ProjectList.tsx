@@ -47,13 +47,17 @@ export function ProjectList() {
       // }
       return await createNewProject()
     },
-    onSuccess: ({ projectId, workbookId }) => {
+    onSuccess: ({ projectId }) => {
+      if (!projectId) {
+        toast.error("Failed to create project")
+        return
+      }
       setProjectDetails({
         id: projectId,
         title: "",
         description: "",
         updated_at: new Date().toISOString(),
-        workbook_data: [{ id: workbookId }],
+        workbook_data: [],
       })
       navigate({ to: "/app/$projectId", params: { projectId } })
     },
