@@ -1,4 +1,5 @@
 import { clsx } from "clsx"
+import { cloneDeep, set } from "lodash"
 import { twMerge } from "tailwind-merge"
 
 import type { ClassValue } from "clsx"
@@ -56,4 +57,20 @@ export function createDedupeFn<
     dedupeMap.set(key, promise)
     return promise as R
   }
+}
+
+export function isNonEmptyArray<T>(
+  arr: T[] | null | undefined,
+): arr is [T, ...T[]] {
+  return Array.isArray(arr) && arr.length > 0
+}
+
+export function updateObject<T extends object>(
+  obj: T,
+  path: string,
+  value: any,
+): T {
+  const clone = cloneDeep(obj)
+  set(clone, path, value)
+  return clone
 }

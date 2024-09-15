@@ -1,4 +1,5 @@
 import React, { useCallback } from "react"
+import { useAtomValue } from "jotai"
 
 import {
   DownloadIcon,
@@ -30,23 +31,35 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
+import type { DataPreview } from "@/store/workbookStore"
+import type { Atom } from "jotai"
+
 export function DatasetPreview(props: {
-  name: string
   loading?: boolean
-  headers: string[]
-  data: Record<string, any>[]
+  fileStore: Atom<DataPreview | null>
 }) {
+  const fileData = useAtomValue(props.fileStore)
+  console.log("fileData", fileData)
+  if (!fileData) {
+    return null
+  }
+  const { data, headers, file } = fileData
+  console.log("fileData", fileData)
   return (
     <div className="mt-2">
       <div className="flex items-center pb-6 pt-3 text-2xl">
         <TableIcon className="mr-2" />
         <div className="flex-grow font-bold">
-          <span className="font-thin">Preview:</span> {props.name}
+          <span className="font-thin">Preview:</span> {file?.name}
         </div>
         <DownloadIcon className="ml-2 cursor-pointer" />
         <TableExpand {...props} />
       </div>
-      <DatasetPreviewInner {...props} />
+      <DatasetPreviewInner
+        loading={props.loading}
+        headers={headers}
+        data={data}
+      />
     </div>
   )
 }
@@ -153,10 +166,14 @@ export function FileInputArea({
 }
 
 function TableExpand(props: {
-  name: string
-  headers: string[]
-  data: Record<string, any>[]
+  fileStore: Atom<DataPreview | null>
+  loading?: boolean
 }) {
+  const fileData = useAtomValue(props.fileStore)
+  if (!fileData) {
+    return null
+  }
+  const { data, headers, file } = fileData
   return (
     <Drawer>
       <DrawerTrigger asChild>
@@ -166,10 +183,15 @@ function TableExpand(props: {
         <div className="mx-12 max-h-screen-safe">
           <DrawerHeader>
             <DrawerTitle className="text-center font-semibold">
-              Preview: {props.name}
+              Preview: {file?.name}
             </DrawerTitle>
           </DrawerHeader>
-          <DatasetPreviewInner {...props} vScroll={false} />
+          <DatasetPreviewInner
+            loading={props.loading}
+            headers={headers}
+            data={data}
+            vScroll={false}
+          />
           <DrawerFooter></DrawerFooter>
         </div>
       </DrawerContent>

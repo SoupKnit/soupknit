@@ -1,16 +1,23 @@
-import { WorkbookDataFile } from "@soupknit/model/src/workbookSchemas"
+import { useMemo } from "react"
 
-import { createNewWorkbook } from "@/actions/workbookActions"
+import { withClientContext } from "./actionRegistry"
+import { createNewWorkbook } from "./workbookActions"
+import { useEnv } from "@/lib/clientEnvironment"
 
-import type { DBProject } from "@soupknit/model/src/dbTables"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { ClientActionRegistry } from "./actionRegistry"
+import type { ClientEnvironment } from "@/lib/clientEnvironment"
+import type { ProjectDetails } from "@/store/workbookStore"
+import type {
+  ActiveProject,
+  WorkbookDataFile,
+} from "@soupknit/model/src/workbookSchemas"
 
-export const updateProjectTitle = async (
-  supa: SupabaseClient,
+const updateProjectTitle = async (
+  env: ClientEnvironment,
   title: string,
   projectId: string,
 ) => {
-  return await supa
+  return await env.supa
     .from("projects")
     .update({ title })
     .eq("id", projectId)
@@ -19,12 +26,12 @@ export const updateProjectTitle = async (
     .then((r) => r.data)
 }
 
-export const updateProjectDescription = async (
-  supa: SupabaseClient,
+const updateProjectDescription = async (
+  env: ClientEnvironment,
   description: string,
   projectId: string,
 ) => {
-  return await supa
+  return await env.supa
     .from("projects")
     .update({ description })
     .eq("id", projectId)
@@ -32,41 +39,51 @@ export const updateProjectDescription = async (
     .then((r) => r.data)
 }
 
-export const loadProject = async (supa: SupabaseClient, projectId: string) => {
-  const { data, error } = await supa
+const loadProject = async (env: ClientEnvironment, projectId: string) => {
+  const { data, error } = await env.supa
     .from("projects")
-    .select("title, id, description")
+    .select(
+      `
+      title,
+      id,
+      description,
+      updated_at,
+      workbook_data(
+        id
+      )
+    `,
+    )
     .eq("id", projectId)
+    .single()
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  if (error || !data || !data.length) {
+  if (error) {
     throw error
-  } else {
-    return data[0]
   }
+
+  return data as ProjectDetails
 }
 
-export const createNewProject = async (
-  supa: SupabaseClient,
+const createNewProject = async (
+  env: ClientEnvironment,
   initialFile?: WorkbookDataFile,
 ) => {
   try {
-    const { data: projectData, error: projectError } = await supa
+    const { data: projectData, error: projectError } = await env.supa
       .from("projects")
       .insert([{ title: "New Project" }])
       .select()
       .single()
 
-    if (projectError || !projectData) {
+    if (projectError ?? !projectData) {
       throw new Error(projectError?.message || "Failed to create project")
     }
 
     const projectId = projectData.id
 
-    if (initialFile) {
-      const workbookData = await createNewWorkbook(supa, projectId, initialFile)
-      return { projectId, workbookId: workbookData.id, activeFile: initialFile }
-    }
+    // if (initialFile) {
+    //   const workbookData = await createNewWorkbook(env, projectId, initialFile)
+    //   return { projectId, workbookId: workbookData.id }
+    // }
 
     return { projectId }
   } catch (error) {
@@ -75,24 +92,109 @@ export const createNewProject = async (
   }
 }
 
-export const loadProjects = async (supa: SupabaseClient) => {
-  return (await supa
+const loadProjects = async (env: ClientEnvironment) => {
+  const loadProjectsQuery = env.supa
     .from("projects")
-    .select("title, id, description, updated_at")
-    .throwOnError()
-    .then((r) => r.data)) as Partial<DBProject[]>
+    // .select("title, id, description, updated_at")
+    .select(
+      `
+      title,
+      id,
+      description,
+      updated_at,
+      workbook_data(
+        id
+      )
+    `,
+    )
+  const { data, error } = await loadProjectsQuery
+  if (error) {
+    throw error
+  }
+  return data as ProjectDetails[]
 }
 
-export const loadDatasets = async (
-  supa: SupabaseClient,
-  userId: string | null,
-) => {
+const loadDatasets = async (env: ClientEnvironment, userId: string | null) => {
   if (!userId) {
     return []
   }
-  const { data, error } = await supa.storage.from("workbook-files").list(userId)
+  const { data, error } = await env.supa.storage
+    .from("workbook-files")
+    .list(userId)
   if (error) {
     throw error
   }
   return data
+}
+
+// TODO: fix this it doesn't work
+async function deleteProject(env: ClientEnvironment, workbook: ActiveProject) {
+  console.log(`Starting deletion process for project: ${workbook}`)
+  // //1. Fetch the workbooks associated with this project
+  // const { data: workbooks, error: workbooksError } = await supa
+  //   .from("workbooks")
+  //   .select("id, file_url")
+  //   .eq("project_id", projectId)
+  // if (workbooksError) throw workbooksError
+
+  // 2. Delete files from storage
+
+  if (workbook.files?.length && workbook.files[0]?.file_url) {
+    const filePathMatch = workbook.files[0]?.file_url.match(
+      /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
+    )
+    if (filePathMatch) {
+      const filePath = filePathMatch[1]
+      if (!filePath) {
+        throw new Error("Failed to extract file path from URL")
+      }
+      const { error: deleteFileError } = await env.supa.storage
+        .from("workbook-files")
+        .remove([filePath])
+      if (deleteFileError) {
+        console.error(
+          `Failed to delete file for workbook ${workbook.projectId}:`,
+          deleteFileError,
+        )
+      } else {
+        console.log(`Deleted file for workbook ${workbook.projectId}`)
+      }
+    }
+  }
+
+  // // 3. Delete workbook data
+  // await supa
+  //   .from("workbook_data")
+  //   .delete()
+  //   .in(
+  //     "workbook_id",
+  //     workbooks.map((w) => w.id),
+  //   )
+  //   .throwOnError()
+
+  // 5. Delete the project
+  const { error: projectDeleteError } = await env.supa
+    .from("projects")
+    .delete()
+    .eq("id", workbook.projectId)
+    .throwOnError()
+  if (projectDeleteError) throw projectDeleteError
+  console.log(
+    `Successfully deleted project ${workbook.projectId} and all associated data`,
+  )
+}
+
+const allProjectActions = {
+  updateProjectTitle,
+  updateProjectDescription,
+  loadProject,
+  createNewProject,
+  loadProjects,
+  loadDatasets,
+  deleteProject,
+} as const satisfies ClientActionRegistry
+
+export function useProjectActions() {
+  const env = useEnv()
+  return withClientContext(allProjectActions, env)
 }

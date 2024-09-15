@@ -1,393 +1,224 @@
-import React, { useEffect, useState } from "react"
-import { useAtom } from "jotai"
+import { useCallback, useMemo, useState } from "react"
+import { useAtom, useAtomValue } from "jotai"
+import Papa from "papaparse"
 import { toast } from "sonner"
 
-import { ColumnPreprocessing } from "../editor/ColumnPreprocessing"
 import { DatasetPreview, FileInputArea } from "../editor/DatasetPreview"
-import { GlobalPreprocessing } from "../editor/GlobalPreprocessing"
 import { CardDescription, CardHeader, CardTitle } from "../ui/card"
+import { useUpdateWorkbook } from "@/actions/workbookActions"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useWorkbook } from "@/hooks/useWorkbook"
-import { activeFileStore, workbookConfigStore } from "@/store/workbookStore"
+import { useAnalyzeFile } from "@/hooks/useWorkbook"
+import { useEnv } from "@/lib/clientEnvironment"
+import { isNonEmptyArray } from "@/lib/utils"
+import { userSettingsStore } from "@/store/userSettingsStore"
+import { createFileStore } from "@/store/workbookStore"
+
+import type { AppLabels } from "@/lib/labels"
+import type { DataPreview } from "@/store/workbookStore"
+import type { WorkbookData } from "@soupknit/model/src/workbookSchemas"
+
+const labels = {
+  selectTaskType: {
+    label: "Select Task Type and Target Column",
+    id: "DataProcessingSection.selectTaskTypeAndTargetColumn",
+  },
+  selectTargetColumn: {
+    label: "Select Target Column",
+    id: "DataProcessingSection.selectTargetColumn",
+  },
+  selectClustering: {
+    label: "Select Clustering",
+    id: "DataProcessingSection.selectClustering",
+  },
+  dataProcessingHeader: {
+    label: "Dataset",
+    id: "DataProcessingSection.dataProcessingHeader",
+  },
+  dataProcessingDescription: {
+    label: "Configure data pre-processing steps",
+    id: "DataProcessingSection.dataProcessingDescription",
+  },
+  analyzeFile: {
+    label: "Analyze File",
+    id: "DataProcessingSection.analyzeFile",
+  },
+  analyzeFileInProgress: {
+    label: "Analyzing...",
+    id: "DataProcessingSection.analyzeFileInProgress",
+  },
+  preprocessingOptions: {
+    label: "Preprocessing Options",
+    id: "DataProcessingSection.preprocessingOptions",
+  },
+} as const satisfies AppLabels
 
 export function DataProcessingSection({
   projectId,
-}: Readonly<{
-  projectId: string
-}>) {
-  const [workbookConfig, setWorkbookConfig] = useAtom(workbookConfigStore)
-  const [activeFile] = useAtom(activeFileStore)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isPreprocessing, setIsPreprocessing] = useState(false)
-  const [preprocessedData, setPreprocessedData] = useState<any[]>([])
-  const [preprocessedHeaders, setPreprocessedHeaders] = useState<string[]>([])
-  const {
-    csvData,
-    headers,
-    loading,
-    error,
-    handleFileUpload,
-    analyzeFile,
-    workbookQuery,
-    preprocessFile,
-    setCSVData,
-    setHeaders,
-  } = useWorkbook(projectId)
-
-  const hasUploadedFile =
-    activeFile && activeFile.file_url && csvData.length > 0
-  const hasPreprocessingConfig =
-    workbookConfig.preProcessingConfig &&
-    Object.keys(workbookConfig.preProcessingConfig).length > 0
-
-  console.log("DataProcessingSection state:", {
-    hasUploadedFile,
-    activeFile,
-    csvDataLength: csvData.length,
-    workbookConfig,
-    hasPreprocessingConfig,
-    isAnalyzing,
+  workbookData,
+}: Readonly<{ projectId: string; workbookData: WorkbookData }>) {
+  const env = useEnv()
+  const [error, setError] = useState<string | null>(null)
+  const userSettings = useAtomValue(userSettingsStore)
+  const { updateWorkbookDataMutation } = useUpdateWorkbook({
+    projectId,
+    updateDataOptions: {
+      onSuccess: (data) => {
+        console.log("Workbook data updated:", data)
+      },
+    },
   })
 
+  const previewFileAtom = useMemo(() => {
+    console.log("workbookData.preview_data", workbookData.preview_data)
+    return createFileStore(workbookData.preview_data)
+  }, [workbookData.preview_data])
+
+  const preprocessedFileAtom = useMemo(() => {
+    return createFileStore(workbookData.preview_data_preprocessed)
+  }, [workbookData.preview_data_preprocessed])
+
+  const [previewFile, setPreviewFile] = useAtom(previewFileAtom)
+  const [preprocessedFile, setPreprocessedFile] = useAtom(preprocessedFileAtom)
+
+  const {
+    data: analysisResult,
+    mutate: triggerFileAnalysis,
+    isPending: isAnalyzing,
+  } = useAnalyzeFile(workbookData.id)
+
   const isAnalyzeButtonDisabled = () => {
-    const reasons = []
-    if (isAnalyzing) reasons.push("isAnalyzing")
-    if (!hasUploadedFile) reasons.push("!hasUploadedFile")
-    if (!workbookConfig.taskType) reasons.push("!taskType")
-    if (
-      workbookConfig.taskType !== "Clustering" &&
-      !workbookConfig.targetColumn
-    )
-      reasons.push("!targetColumn")
-    if (
-      workbookConfig.taskType === "Clustering" &&
-      !workbookConfig.modelParams?.n_clusters
-    )
-      reasons.push("!n_clusters")
-
-    const isDisabled = reasons.length > 0
-    console.log("Analyze button disabled:", isDisabled, "Reasons:", reasons)
-    return isDisabled
+    // TODO: Implement this function
+    return false
   }
+  const handleFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      console.log("File upload called with", event)
+      const workbookConfig = workbookData.config
+      const uploadedFile = event.target.files?.[0]
+      if (!uploadedFile) return
 
-  const triggerFileAnalysis = async () => {
-    if (!activeFile?.file_url) {
-      console.warn("Missing file URL for analysis")
-      toast.error("No file selected for analysis")
-      return
-    }
-    if (!workbookConfig.taskType) {
-      console.warn("Missing task type for analysis")
-      toast.error("Please select a task type before analysis")
-      return
-    }
-    try {
-      setIsAnalyzing(true)
-      const result = await analyzeFile.mutateAsync({
-        taskType: workbookConfig.taskType,
-        targetColumn: workbookConfig.targetColumn || "",
-        fileUrl: activeFile.file_url,
-        projectId,
-        modelParams: workbookConfig.modelParams,
-      })
-      console.log("File analysis result:", result)
-      if (result.preProcessingConfig) {
-        setWorkbookConfig((prev) => ({
-          ...prev,
-          preProcessingConfig: result.preProcessingConfig,
-        }))
+      setError(null)
+
+      try {
+        const filePath = `${userSettings.userId}/project-${projectId}/${Date.now()}_${uploadedFile.name}`
+
+        // TODO: move this to a new fileActions.ts
+        const { data: uploadData, error: uploadError } = await env.supa.storage
+          .from("workbook-files")
+          .upload(filePath, uploadedFile)
+
+        if (uploadError) throw uploadError
+
+        const {
+          data: { publicUrl },
+        } = env.supa.storage
+          .from("workbook-files")
+          .getPublicUrl(uploadData.path)
+
+        const text = await uploadedFile.text()
+        const { data: parsedData, meta } = Papa.parse(text, { header: true })
+
+        if (!isNonEmptyArray(parsedData)) {
+          throw new Error("Failed to parse file data")
+        }
+
+        // setActiveFileWithPreview should be handled in a separate function or store
+        console.log("File uploaded:", {
+          name: uploadedFile.name,
+          file_url: publicUrl,
+          file_type: uploadedFile.type,
+          preview: parsedData as Record<string, any>[],
+        })
+
+        console.log("File uploaded:", {
+          csvDataLength: parsedData.length,
+          headers: meta.fields,
+        })
+
+        // TODO: Update workbook with the uploaded file and preview
+        if (isNonEmptyArray(parsedData)) {
+          setPreviewFile({
+            data: parsedData as Record<string, any>[],
+            headers: meta.fields ?? [],
+          })
+          updateWorkbookDataMutation.mutate({
+            workbookId: workbookData.id,
+            updatedData: {
+              preview_data: parsedData.slice(0, 30) as Record<string, any>[],
+            },
+          })
+        }
+        // Analyze file
+        // auto analyze? disabled for now
+        // if (workbookConfig?.taskType && workbookConfig?.targetColumn) {
+        //   await analyzeFile.mutateAsync({
+        //     taskType: workbookConfig.taskType,
+        //     targetColumn: workbookConfig.targetColumn,
+        //     fileUrl: publicUrl,
+        //     projectId,
+        //   })
+        // } else {
+        //   console.warn(
+        //     "Workbook config is missing taskType or targetColumn. Skipping file analysis.",
+        //   )
+        // }
+      } catch (error: any) {
+        console.error("Error processing file:", error)
+        setError(`Error processing file: ${error.message}`)
       }
-      toast.success("File analysis completed successfully")
-    } catch (error) {
-      console.error("Error in file analysis:", error)
-      toast.error(`Error analyzing file:`) //${(error as Error).message}`)
-    } finally {
-      setIsAnalyzing(false)
-    }
+    },
+    [
+      workbookData.config,
+      workbookData.id,
+      userSettings.userId,
+      projectId,
+      env.supa.storage,
+      setPreviewFile,
+      updateWorkbookDataMutation,
+    ],
+  )
+
+  if (!previewFile && !preprocessedFile) {
+    return <FileInputArea fileUpload={handleFileUpload} />
   }
 
-  const setTargetColumn = (value: string) => {
-    setWorkbookConfig((prev) => {
-      const featureColumns = headers.filter((header) => header !== value)
-      return { ...prev, targetColumn: value, featureColumns }
-    })
-  }
-
-  const setNumClusters = (value: string) => {
-    setWorkbookConfig((prev) => ({
-      ...prev,
-      modelParams: {
-        ...prev.modelParams,
-        n_clusters: parseInt(value, 10),
-      },
-    }))
-  }
-
-  const globalPreprocessingOptions = [
-    "drop_constant",
-    "drop_duplicate",
-    "pca",
-    "feature_selection",
-  ]
-
-  const handleGlobalPreprocessingChange = (option: string) => {
-    setWorkbookConfig((prev) => ({
-      ...prev,
-      preProcessingConfig: {
-        ...prev.preProcessingConfig,
-        global_preprocessing:
-          prev.preProcessingConfig.global_preprocessing.includes(option)
-            ? prev.preProcessingConfig.global_preprocessing.filter(
-                (item) => item !== option,
-              )
-            : [...prev.preProcessingConfig.global_preprocessing, option],
-      },
-    }))
-  }
-
-  const handleGlobalParamChange = (param: string, value: number) => {
-    setWorkbookConfig((prev) => ({
-      ...prev,
-      preProcessingConfig: {
-        ...prev.preProcessingConfig,
-        global_params: {
-          ...prev.preProcessingConfig.global_params,
-          [param]: value,
-        },
-      },
-    }))
-  }
-
-  const handlePreprocess = async () => {
-    if (!workbookConfig.preProcessingConfig) {
-      toast.error("Please configure preprocessing steps first")
-      return
-    }
-
-    try {
-      setIsPreprocessing(true)
-      const result = await preprocessFile.mutateAsync({
-        taskType: workbookConfig.taskType || "",
-        targetColumn: workbookConfig.targetColumn || null,
-        preProcessingConfig: workbookConfig.preProcessingConfig,
-        projectId,
-        modelParams: workbookConfig.modelParams,
-      })
-
-      console.log("Raw preprocessing result:", JSON.stringify(result, null, 2))
-
-      if (result.previewDataPreprocessed) {
-        const newHeaders = Object.keys(result.previewDataPreprocessed[0])
-        setPreprocessedHeaders(newHeaders)
-        setPreprocessedData(result.previewDataPreprocessed)
-      }
-
-      toast.success("Data preprocessed successfully")
-    } catch (error) {
-      console.error("Error preprocessing data:", error)
-      toast.error(`Error preprocessing data`)
-    } finally {
-      setIsPreprocessing(false)
-    }
-  }
-
-  const handleDeleteColumn = (columnName: string) => {
-    setWorkbookConfig((prev) => {
-      // Remove the column from the preprocessing config
-      const updatedColumns = prev.preProcessingConfig.columns.filter(
-        (col) => col.name !== columnName,
-      )
-
-      // Update the target column if it's the deleted column
-      let updatedTargetColumn = prev.targetColumn
-      if (prev.targetColumn === columnName) {
-        updatedTargetColumn = ""
-      }
-
-      // Update feature columns
-      const updatedFeatureColumns =
-        prev.featureColumns?.filter((col) => col !== columnName) || []
-
-      return {
-        ...prev,
-        preProcessingConfig: {
-          ...prev.preProcessingConfig,
-          columns: updatedColumns,
-        },
-        targetColumn: updatedTargetColumn,
-        featureColumns: updatedFeatureColumns,
-      }
-    })
-
-    // Remove the column from preprocessed data if it exists
-    if (preprocessedData.length > 0) {
-      setPreprocessedData(
-        preprocessedData.map((row) => {
-          const { [columnName]: _, ...rest } = row
-          return rest
-        }),
-      )
-      setPreprocessedHeaders(
-        preprocessedHeaders.filter((h) => h !== columnName),
-      )
-    }
-
-    toast.success(`Column "${columnName}" removed from preprocessing`)
-  }
-
-  // Add this effect to set a default task type if it's not set
-  useEffect(() => {
-    if (!workbookConfig.taskType) {
-      setWorkbookConfig((prev) => ({ ...prev, taskType: "Regression" }))
-    }
-  }, [workbookConfig.taskType, setWorkbookConfig])
-
-  useEffect(() => {
-    if (headers.length > 0 && workbookConfig.targetColumn) {
-      const featureColumns = headers.filter(
-        (header) => header !== workbookConfig.targetColumn,
-      )
-      setWorkbookConfig((prev) => ({
-        ...prev,
-        featureColumns,
-      }))
-    }
-  }, [headers, workbookConfig.targetColumn, setWorkbookConfig])
-
-  if (workbookQuery.isLoading) {
-    return <Skeleton className="h-[500px] w-full" />
-  }
-
-  if (workbookQuery.isError) {
-    return (
-      <div>
-        Error loading workbook: {(workbookQuery.error as Error).message}
-      </div>
-    )
+  if (!workbookData.config.taskType || !workbookData.config.targetColumn) {
+    return <div>{labels.selectTaskType.label}</div>
   }
 
   return (
     <>
       {error && <div className="mb-4 text-red-500">{error}</div>}
-
-      {!hasUploadedFile ? (
-        <FileInputArea fileUpload={handleFileUpload} />
-      ) : (
-        <>
-          <DatasetPreview
-            name={activeFile.name ?? "Untitled"}
-            headers={headers}
-            data={csvData}
-            loading={loading}
-          />
-          {workbookConfig.taskType !== "Clustering" ? (
-            <div className="mt-4">
-              <Select
-                value={workbookConfig.targetColumn ?? undefined}
-                onValueChange={setTargetColumn}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select target column" />
-                </SelectTrigger>
-                <SelectContent>
-                  {headers.map((header) => (
-                    <SelectItem key={header} value={header}>
-                      {header}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <div className="mt-4">
-              <Select
-                value={
-                  workbookConfig.modelParams?.n_clusters?.toString() ??
-                  undefined
-                }
-                onValueChange={setNumClusters}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select number of clusters" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                    <SelectItem key={num} value={num.toString()}>
-                      {num} clusters
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="mt-4">
-            <Button
-              onClick={triggerFileAnalysis}
-              disabled={isAnalyzeButtonDisabled()}
-            >
-              {isAnalyzing ? "Analyzing..." : "Analyze File"}
-            </Button>
-          </div>
-          {analyzeFile.isSuccess && hasPreprocessingConfig && (
-            <div className="mt-8">
-              <GlobalPreprocessing
-                options={globalPreprocessingOptions}
-                selectedOptions={
-                  workbookConfig.preProcessingConfig.global_preprocessing
-                }
-                onOptionChange={handleGlobalPreprocessingChange}
-                globalParams={workbookConfig.preProcessingConfig.global_params}
-                onParamChange={handleGlobalParamChange}
-              />
-              <ColumnPreprocessing
-                columns={workbookConfig.preProcessingConfig.columns}
-                onColumnChange={(columnName, changes) => {
-                  setWorkbookConfig((prev) => ({
-                    ...prev,
-                    preProcessingConfig: {
-                      ...prev.preProcessingConfig,
-                      columns: prev.preProcessingConfig.columns.map((col) =>
-                        col.name === columnName ? { ...col, ...changes } : col,
-                      ),
-                    },
-                  }))
-                }}
-                onDeleteColumn={handleDeleteColumn}
-              />
-
-              <div className="mt-4">
-                <Button
-                  onClick={handlePreprocess}
-                  disabled={
-                    isPreprocessing || !workbookConfig.preProcessingConfig
-                  }
-                >
-                  {isPreprocessing ? "Preprocessing..." : "Preprocess Data"}
-                </Button>
-              </div>
-              {preprocessedData.length > 0 && (
-                <div className="mt-4">
-                  <h3>Preprocessed Data Preview</h3>
-                  <DatasetPreview
-                    name="Preprocessed Data"
-                    headers={preprocessedHeaders}
-                    data={preprocessedData}
-                    loading={false}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </>
+      {preprocessedFileAtom && ( // prefer preprocessed file
+        <DatasetPreview
+          fileStore={preprocessedFileAtom}
+          loading={isAnalyzing}
+        />
       )}
+      {previewFileAtom && ( // fallback to preview file
+        <DatasetPreview fileStore={previewFileAtom} loading={isAnalyzing} />
+      )}
+      {workbookData.config.taskType !== "Clustering" ? (
+        <div>{labels.selectTargetColumn.label}</div>
+      ) : (
+        <div>{labels.selectClustering.label}</div>
+      )}
+      <Button
+        onClick={() =>
+          triggerFileAnalysis({
+            taskType: workbookData.config.taskType,
+            targetColumn: workbookData.config.targetColumn,
+            projectId,
+            fileUrl: previewFile?.file?.file_url ?? "",
+          })
+        }
+        disabled={isAnalyzeButtonDisabled()}
+      >
+        {isAnalyzing
+          ? labels.analyzeFileInProgress.label
+          : labels.analyzeFile.label}
+      </Button>
+      {analysisResult && <div>{labels.preprocessingOptions.label}</div>}
     </>
   )
 }
@@ -395,8 +226,10 @@ export function DataProcessingSection({
 export function DataProcessingSectionHeader() {
   return (
     <CardHeader>
-      <CardTitle>Dataset</CardTitle>
-      <CardDescription>Configure data pre-processing steps</CardDescription>
+      <CardTitle>{labels.dataProcessingHeader.label}</CardTitle>
+      <CardDescription>
+        {labels.dataProcessingDescription.label}
+      </CardDescription>
     </CardHeader>
   )
 }

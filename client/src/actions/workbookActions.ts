@@ -1,22 +1,24 @@
-import { PreProcessingColumnConfig } from "@soupknit/model/src/preprocessing"
 import { WorkbookDataSchema } from "@soupknit/model/src/workbookSchemas"
-import { z } from "zod"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
+import { withClientContext } from "./actionRegistry"
 import { api } from "./baseApi"
+import { useEnv } from "@/lib/clientEnvironment"
 import { getSupabaseAccessToken } from "@/lib/supabaseClient"
-import { WorkbookConfig } from "@/store/workbookStore"
+import { isNonEmptyArray } from "@/lib/utils"
 
+import type { ClientActionRegistry } from "./actionRegistry"
 import type { ClientEnvironment } from "@/lib/clientEnvironment"
-import type { DBWorkbookData } from "@soupknit/model/src/dbTables"
 import type {
   ActiveProject,
-  Workbook,
+  WorkbookConfig,
   WorkbookData,
   WorkbookDataFile,
 } from "@soupknit/model/src/workbookSchemas"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import type { MutationOptions } from "@tanstack/react-query"
 
-export async function runProject(
+/** @deprecated */
+async function runProject(
   env: ClientEnvironment,
   data: { project: ActiveProject },
 ) {
@@ -25,196 +27,221 @@ export async function runProject(
   })
 }
 
-export type AnalyzePostData = {
-  taskType: string
-  targetColumn: string
-  fileUrl: string
-  projectId: string
-}
-
-export async function analyzeFilePost(
-  env: ClientEnvironment,
-  data: AnalyzePostData,
-) {
-  return (await api.post(`${env.serverUrl}/app/analyze_file`, data, {
-    token: await getSupabaseAccessToken(),
-  })) as PreProcessingColumnConfig
-}
-// Modify the WorkbookDataSchema to allow null config
-const WorkbookDataSchemaWithNullableConfig = WorkbookDataSchema.extend({
-  config: z.object({}).nullish().optional(),
-})
-
-export async function loadExistingWorkbook(
-  supa: SupabaseClient,
-  projectId: string,
-) {
+async function loadExistingWorkbook(env: ClientEnvironment, projectId: string) {
   if (!projectId) {
     throw new Error("No project ID provided")
   }
   console.log(`Fetching workbook data for project with ID: ${projectId}`)
-  const { data } = await supa
+  const { data } = await env.supa
     .from("workbook_data")
     .select("*")
     .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .order("updated_at", { ascending: false })
     .throwOnError()
 
-  if (data && data.length > 0) {
-    console.log("Raw workbook data:", data[0]) // Log the raw data
-    try {
-      // Use the modified schema that allows null config
-      const parsedData = WorkbookDataSchemaWithNullableConfig.parse(data[0])
-      console.log("Parsed workbook data:", parsedData)
-      return parsedData
-    } catch (error) {
-      console.error("Error parsing workbook data:", error)
-      if (error instanceof z.ZodError) {
-        console.error(
-          "Zod error issues:",
-          JSON.stringify(error.issues, null, 2),
-        )
-      }
-      // Instead of throwing, return null or a default workbook structure
-      return {
-        id: data[0].id,
-        project_id: data[0].project_id,
-        files: data[0].files || [],
-        preview_data: data[0].preview_data || [],
-        config: null,
-      }
+  if (isNonEmptyArray(data)) {
+    console.log("Raw workbook data:", data) // Log the raw data
+    // validate the data with zod, and log any errors
+    const validationResult = WorkbookDataSchema.safeParse(data[0])
+    if (!validationResult.success) {
+      console.error("Workbook data validation failed:", validationResult.error)
+      throw new Error("Zod: Workbook data validation failed")
     }
-  } else {
-    console.log("No workbook data found")
-    return null
+    return validationResult.data
   }
+  return null
+}
+
+type CreateNewWorkbookArgs = Omit<
+  Partial<WorkbookData>,
+  "project_id" | "config"
+> & {
+  project_id: string
+  config: Partial<WorkbookConfig>
 }
 
 export async function createNewWorkbook(
-  supa: SupabaseClient,
-  projectId: string,
-  file: WorkbookDataFile,
-  preview_data?: any,
+  env: ClientEnvironment,
+  workbookData: CreateNewWorkbookArgs,
 ) {
+  if (!workbookData.project_id) {
+    throw new Error("Project ID is required to create a new workbook")
+  }
   console.log(
-    `Creating new workbook for project with ID: ${projectId} with data: `,
-    file,
-    preview_data,
+    `Creating new workbook for project with ID: ${workbookData.project_id} with data: `,
+    workbookData,
   )
-  const { data } = await supa
-    .from("workbook_data")
-    .insert({
-      project_id: projectId,
-      files: [file],
-      preview_data: preview_data,
-    })
-    .select()
-    .single()
-    .throwOnError()
-  return data
-}
 
-export async function updateWorkbookConfig(
-  supa: SupabaseClient,
-  args: { workbookId: string; config: WorkbookConfig },
-) {
-  const { workbookId, config } = args
-  console.log(
-    `Updating workbook config for workbook with ID: ${workbookId}: `,
-    config,
-  )
-  const { data } = await supa
-    .from("workbook_data")
-    .update({
-      config: config,
-    })
-    .eq("id", workbookId)
-    .select()
-    .throwOnError()
-  return data
-}
-
-export async function saveWorkbookConfig(
-  supa: SupabaseClient,
-  workbookId: string,
-  config: any,
-) {
-  const { data, error } = await supa
-    .from("workbook_data")
-    .update({ config: config })
-    .eq("id", workbookId)
-
-  if (error) throw error
-  return data
-}
-
-export async function loadWorkbookConfig(
-  supa: SupabaseClient,
-  workbookId: string,
-) {
-  const { data, error } = await supa
-    .from("workbook_data")
-    .select("config")
-    .eq("id", workbookId)
-    .single()
-
-  if (error) throw error
-  return data?.config
-}
-
-export async function deleteProject(
-  supa: SupabaseClient,
-  workbook: ActiveProject,
-) {
-  console.log(`Starting deletion process for project: ${workbook}`)
-  // //1. Fetch the workbooks associated with this project
-  // const { data: workbooks, error: workbooksError } = await supa
-  //   .from("workbooks")
-  //   .select("id, file_url")
-  //   .eq("project_id", projectId)
-  // if (workbooksError) throw workbooksError
-
-  // 2. Delete files from storage
-
-  if (workbook.files?.length > 0 && workbook.files[0]?.file_url) {
-    const filePathMatch = workbook.files[0]?.file_url.match(
-      /\/storage\/v1\/object\/public\/workbook-files\/(.+)/,
-    )
-    if (filePathMatch) {
-      const filePath = filePathMatch[1]
-      const { error: deleteFileError } = await supa.storage
-        .from("workbook-files")
-        .remove([filePath])
-      if (deleteFileError) {
-        console.error(
-          `Failed to delete file for workbook ${workbook.projectId}:`,
-          deleteFileError,
-        )
-      } else {
-        console.log(`Deleted file for workbook ${workbook.projectId}`)
-      }
-    }
+  // add defaults for required fields
+  const workbookDataToInsert: Omit<
+    WorkbookData,
+    "id" | "updated_at" | "created_at" | "created_by"
+  > = {
+    files: [],
+    preview_data: [],
+    preview_data_preprocessed: [],
+    ...workbookData, // merge with the workbookData passed in
+    config: {
+      featureColumns: [],
+      targetColumn: null,
+      taskType: null,
+      preProcessingConfig: {
+        global_preprocessing: [],
+        columns: [],
+        global_params: {},
+      },
+      modelParams: {},
+      modelResults: {},
+      ...workbookData.config, // merge with the workbookData.config passed in
+    },
   }
 
-  // // 3. Delete workbook data
-  // await supa
-  //   .from("workbook_data")
-  //   .delete()
-  //   .in(
-  //     "workbook_id",
-  //     workbooks.map((w) => w.id),
-  //   )
-  //   .throwOnError()
-
-  // 5. Delete the project
-  const { error: projectDeleteError } = await supa
-    .from("projects")
-    .delete()
-    .eq("id", workbook.projectId)
+  const { data } = await env.supa
+    .from("workbook_data")
+    .insert(workbookDataToInsert)
+    .select()
+    .single()
     .throwOnError()
-  if (projectDeleteError) throw projectDeleteError
+  if (!data) {
+    throw new Error("No data returned from createNewWorkbook")
+  }
+  console.log("Created new workbook:", data)
+  return data as WorkbookData
+}
+
+async function updateWorkbook(
+  env: ClientEnvironment,
+  args: {
+    workbookId: string
+    updatedData?: Partial<WorkbookData>
+    config?: WorkbookConfig
+  },
+) {
+  const { workbookId, updatedData, config } = args
   console.log(
-    `Successfully deleted project ${workbook.projectId} and all associated data`,
+    `Updating workbook ID: ${workbookId} with data ${JSON.stringify(updatedData)} and config ${JSON.stringify(config)}`,
   )
+  const updatedConfig = config ? { config: config } : {}
+  const { data } = await env.supa
+    .from("workbook_data")
+    .update({
+      ...updatedData,
+      ...{ config: updatedConfig },
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", workbookId)
+    .select("*")
+    .single()
+    .throwOnError()
+
+  if (!data) {
+    throw new Error("No data returned from updateWorkbookConfig")
+  }
+
+  return data as WorkbookData
+}
+
+const allWorkbookActions = {
+  loadExistingWorkbook,
+  createNewWorkbook,
+  runProject,
+  updateWorkbook,
+} as const satisfies ClientActionRegistry
+
+export function useWorkbookActions() {
+  const env = useEnv()
+  return withClientContext(allWorkbookActions, env)
+}
+
+type WorkbookConfigMutationArgs = {
+  workbookId: string
+  updatedConfig: WorkbookConfig
+}
+
+type WorkbookDataMutationArgs = {
+  workbookId: string
+  updatedData: Partial<WorkbookData>
+}
+
+export function useUpdateWorkbook(args: {
+  projectId: string
+  updateConfigOptions?: MutationOptions<
+    WorkbookData,
+    any,
+    WorkbookConfigMutationArgs
+  >
+  updateDataOptions?: MutationOptions<
+    WorkbookData,
+    any,
+    WorkbookDataMutationArgs
+  >
+  optimisticUpdate?: boolean
+}) {
+  const env = useEnv()
+  const queryClient = useQueryClient()
+  const optimisticUpdate = args.optimisticUpdate === false ? false : true
+  const setCacheData = (data: WorkbookData) => {
+    queryClient.setQueryData<WorkbookData>(["workbook", args.projectId], data)
+  }
+  const updateWorkbookConfigMutation = useMutation({
+    mutationFn: async ({
+      workbookId,
+      updatedConfig,
+    }: WorkbookConfigMutationArgs) => {
+      const updatedRow = await updateWorkbook(env, {
+        workbookId: workbookId,
+        config: updatedConfig,
+      })
+      return updatedRow
+    },
+    ...args.updateConfigOptions,
+    onSuccess: (data, variables, context) => {
+      optimisticUpdate && setCacheData(data)
+      args.updateConfigOptions?.onSuccess?.(data, variables, context)
+    },
+  })
+
+  const updateWorkbookDataMutation = useMutation({
+    mutationFn: async ({
+      workbookId,
+      updatedData,
+    }: WorkbookDataMutationArgs) => {
+      return await updateWorkbook(env, {
+        workbookId,
+        updatedData,
+      })
+    },
+    ...args.updateDataOptions,
+    onSuccess: (data, variables, context) => {
+      optimisticUpdate && setCacheData(data)
+      args.updateDataOptions?.onSuccess?.(data, variables, context)
+    },
+  })
+  return { updateWorkbookConfigMutation, updateWorkbookDataMutation }
+}
+
+export const useCreateWorkbook = (
+  projectId: string,
+  options: MutationOptions<
+    WorkbookData,
+    any,
+    Omit<CreateNewWorkbookArgs, "project_id">
+  > = {},
+) => {
+  const env = useEnv()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: Omit<CreateNewWorkbookArgs, "project_id">) => {
+      console.log("Creating new workbook", data)
+      return await createNewWorkbook(env, {
+        project_id: projectId,
+        ...data,
+      })
+    },
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.setQueryData<WorkbookData>(["workbook", projectId], data)
+      options.onSuccess?.(data, variables, context)
+    },
+  })
 }

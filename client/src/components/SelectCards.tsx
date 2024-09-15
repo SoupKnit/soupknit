@@ -1,10 +1,9 @@
 import React, { useState } from "react"
 
 import { HoverCard } from "./HoverCard"
-import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 
-interface Option<T> {
+export interface Option<T> {
   value: T
   image: string
   title: string
@@ -109,7 +108,6 @@ function SelectCards<T extends React.Key>(props: {
           value={option.value}
           selectedValue={selectedValue ?? null}
           onSelect={() => {
-            console.log(option.value)
             onSelectValue(option.value)
           }}
         />

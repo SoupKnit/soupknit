@@ -105,9 +105,9 @@ function TableDemo() {
   return (
     <>
       <Variant title="Default" />
-      <DatasetPreview {...tableProps} />
+      {/* <DatasetPreview {...tableProps} /> */}
       <Variant title="Loading" />
-      <DatasetPreview {...tableProps} name="Loading Demo" loading />
+      {/* <DatasetPreview {...tableProps} name="Loading Demo" loading /> */}
     </>
   )
 }

@@ -5,7 +5,7 @@ import { MoonIcon, SunIcon } from "lucide-react"
 
 import { userSettingsStore } from "@/store/userSettingsStore"
 
-const DarkModeSwitcher = () => {
+const ThemeSwitcher = () => {
   const [userSettings, setUserSettings] = useAtom(userSettingsStore)
 
   useEffect(() => {
@@ -32,4 +32,4 @@ const DarkModeSwitcher = () => {
   )
 }
 
-export default DarkModeSwitcher
+export default ThemeSwitcher

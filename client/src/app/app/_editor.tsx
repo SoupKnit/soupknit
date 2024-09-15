@@ -45,19 +45,19 @@ function BaseLayout() {
       <div className="flex h-dvh w-full flex-col overflow-hidden">
         <EditorHeader />
         <Toaster />
-        <ScrollArea
+        {/* <ScrollArea
           className="flex h-full w-full flex-col [&>[data-orientation=vertical]]:!top-14 [&>[data-orientation=vertical]]:!h-auto"
           type="scroll"
-        >
-          <main className="flex flex-1 overflow-x-hidden">
-            <div className="flex min-h-screen w-full flex-col bg-muted/40 dark:bg-green-200/15">
-              <Sidebar />
-              <div className="sm:ml-12">
-                <Outlet />
-              </div>
+        > */}
+        <main className="flex flex-1 overflow-x-hidden">
+          <div className="flex min-h-screen w-full flex-col bg-muted/40 dark:bg-green-200/15">
+            <Sidebar />
+            <div className="sm:ml-12">
+              <Outlet />
             </div>
-          </main>
-        </ScrollArea>
+          </div>
+        </main>
+        {/* </ScrollArea> */}
         {/* <StatusBar /> */}
       </div>
     </TooltipProvider>
