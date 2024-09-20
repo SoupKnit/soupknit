@@ -150,6 +150,7 @@ export function LandingPage() {
             ].map((feature, index) => (
               <FeatureCard
                 index={index}
+                key={index}
                 description={feature.description}
                 gif={feature.gif}
               />
