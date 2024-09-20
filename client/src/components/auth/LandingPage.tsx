@@ -86,7 +86,7 @@ export function LandingPage() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
-          <section className="flex md:flex-row md:text-left">
+          <section className="flex justify-center md:flex-row md:text-left">
             <div>
               <h1 className="mb-6 font-headline text-6xl font-semibold leading-none text-gray-700 dark:text-blue-100">
                 <span>No-Code</span>
@@ -111,7 +111,7 @@ export function LandingPage() {
               />
             </div>
           </section>
-          <section className="mb-10 text-center md:mb-20 md:text-left">
+          <section className="mb-10 md:mb-20 md:text-left">
             <Link to="/signup">
               <Button size="lg" className="gap-2 px-8 text-lg">
                 Get Started. It's free<span>→</span>
@@ -123,7 +123,7 @@ export function LandingPage() {
           </section>
         </motion.div>
 
-        <div className="flex w-full flex-col items-center rounded-2xl bg-[#FFFFFF] p-4">
+        <div className="flex w-full flex-col rounded-2xl bg-[#FFFFFF] p-4">
           <h1 className="my-6 text-center font-headline text-4xl font-semibold text-gray-700 dark:text-blue-100">
             <span>Need data insights? </span>
             <br />
