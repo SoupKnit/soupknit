@@ -1,4 +1,4 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useRef } from "react"
 
 import {
   BicepsFlexed,
@@ -10,46 +10,14 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 
-import "./styles.css"
-
-function HowItWorks() {
-  const steps = [
-    {
-      icon: <CloudUpload />,
-      title: "Upload your Data",
-      description:
-        "Upload your dataset, which will be automatically preprocessed to prepare it for analysis.",
-    },
-    {
-      icon: <BrainCircuit />,
-      title: "Choose Task",
-      description:
-        "Choose a machine learning task, such as forecasting, classification, or anomaly detection.",
-    },
-    {
-      icon: <PackageCheck />,
-      title: "Select a Model",
-      description:
-        "Select a suitable machine learning model for your task, such as linear regression, decision trees, or neural networks.",
-    },
-    {
-      icon: <BicepsFlexed />,
-      title: "Optimize",
-      description:
-        "Tune and optimize your chosen model to improve its performance and accuracy.",
-    },
-    {
-      icon: <Rocket />,
-      title: "Deploy",
-      description:
-        "Deploy your trained model, making it available for real-time predictions.",
-    },
-  ]
+const useStepAnimation = () => {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const svg = document.querySelector(".steps-svg")
+    const svg = svgRef.current
     const path = svg?.querySelector("path")
-    const container = document.querySelector(".how-it-works-container")
+    const container = containerRef.current
 
     if (path && container) {
       const pathLength = path.getTotalLength()
@@ -60,7 +28,7 @@ function HowItWorks() {
       const handleScroll = () => {
         const containerRect = container.getBoundingClientRect()
         const containerTop = containerRect.top
-        const containerHeight = containerRect.height + 200
+        const containerHeight = containerRect.height + 500
         const windowHeight = window.innerHeight
 
         const scrolledPast = windowHeight - containerTop
@@ -70,6 +38,7 @@ function HowItWorks() {
         )
 
         const dashOffset = pathLength - pathLength * scrollPercentage
+        console.log(scrollPercentage, dashOffset)
         path.style.strokeDashoffset = `${dashOffset}`
       }
 
@@ -81,14 +50,62 @@ function HowItWorks() {
       }
     }
   }, [])
+
+  return { svgRef, containerRef }
+}
+
+const steps = [
+  {
+    icon: <CloudUpload />,
+    title: "Upload your Data",
+    description:
+      "Upload your dataset, which will be automatically preprocessed to prepare it for analysis.",
+  },
+  {
+    icon: <BrainCircuit />,
+    title: "Choose Task",
+    description:
+      "Choose a machine learning task, such as forecasting, classification, or anomaly detection.",
+  },
+  {
+    icon: <PackageCheck />,
+    title: "Select a Model",
+    description:
+      "Select a suitable machine learning model for your task, such as linear regression, decision trees, or neural networks.",
+  },
+  {
+    icon: <BicepsFlexed />,
+    title: "Optimize",
+    description:
+      "Tune and optimize your chosen model to improve its performance and accuracy.",
+  },
+  {
+    icon: <Rocket color="#46278d" />,
+    title: "Deploy",
+    description:
+      "Deploy your trained model, making it available for real-time predictions.",
+  },
+]
+
+function HowItWorks() {
+  const { svgRef, containerRef } = useStepAnimation()
+
+  const grid_area_classes = [
+    "grid-area-1",
+    "grid-area-2",
+    "grid-area-3",
+    "grid-area-4",
+    "grid-area-5",
+  ]
+
   return (
-    <div className="how-it-works-container">
+    <div ref={containerRef} className="">
       <div className="steps-grid">
         {steps.map((step, index) => (
           <Card
             key={index}
             hoverable
-            className={`grid-item grid-area-${index + 1} rounded-md border border-slate-200 shadow-2xl`}
+            className={`grid-item ${grid_area_classes[index]} rounded-lg border border-slate-200 shadow-2xl`}
           >
             <CardHeader>
               <CardTitle className="flex text-left text-xl font-semibold">
@@ -105,6 +122,7 @@ function HowItWorks() {
           </Card>
         ))}
         <svg
+          ref={svgRef}
           className="steps-svg"
           width="1054"
           height="1289"
