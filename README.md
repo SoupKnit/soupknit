@@ -1,5 +1,6 @@
 # Project Documentation
 
+
 ## Introduction
 
 This repository contains the source code for a web application built with React, utilizing Vite for the build toolchain and Tailwind CSS for styling. It integrates shadcn as the state management solution and uses the TanStack Router for routing.
